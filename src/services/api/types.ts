@@ -10,6 +10,11 @@ export interface RegisterRequest {
   email: string;
   password: string;
   confirmPassword: string;
+  phone: string;
+  /** Selected school code (e.g. "FPT", "OTHER"). */
+  school: string;
+  /** Free-text school name, only set when `school === "OTHER"`. */
+  schoolName?: string;
 }
 
 export interface AuthResponse {

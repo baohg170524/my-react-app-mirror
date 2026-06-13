@@ -1,26 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useUserProfile } from "../hooks/useUserProfile";
 
 export function AnnouncementBanner() {
   const { data: profile } = useUserProfile();
   const ann = profile?.announcement;
-  const [dismissed, setDismissed] = useState(false);
+  const [manuallyDismissed, setManuallyDismissed] = useState(false);
 
-  useEffect(() => {
-    if (!ann) return;
-    const key = `dismissed-announcement-${ann.id}`;
-    if (localStorage.getItem(key) === "true") setDismissed(true);
-  }, [ann]);
+  const storageKey = ann ? `dismissed-announcement-${ann.id}` : null;
+  const storedDismissed = useSyncExternalStore(
+    () => () => {},
+    () => (storageKey ? localStorage.getItem(storageKey) === "true" : false),
+    () => false,
+  );
 
-  if (!ann || dismissed) return null;
+  if (!ann || manuallyDismissed || storedDismissed) return null;
 
   function dismiss() {
-    const key = `dismissed-announcement-${ann!.id}`;
-    localStorage.setItem(key, "true");
-    setDismissed(true);
+    localStorage.setItem(storageKey!, "true");
+    setManuallyDismissed(true);
   }
 
   return (

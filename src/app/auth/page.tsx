@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useRef, type ChangeEvent, type FormEvent } from "react";
+import {
+  useState,
+  useRef,
+  type ChangeEvent,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import { useLogin, useRegister } from "@/hooks/useAuth";
 import type { AxiosError } from "axios";
 import type { ApiError } from "@/services/api";
@@ -19,7 +25,24 @@ interface RegisterForm {
   email: string;
   password: string;
   confirmPassword: string;
+  phone: string;
+  school: string;
+  schoolName: string;
 }
+
+// School dropdown options. "FPT" needs no student card; any other named school
+// requires a card photo; "OTHER" requires both a typed school name and a card.
+const SCHOOLS: { value: string; label: string }[] = [
+  { value: "", label: "— Chọn trường —" },
+  { value: "FPT", label: "FPT University" },
+  { value: "HCMUT", label: "ĐH Bách Khoa (HCMUT)" },
+  { value: "UIT", label: "ĐH Công nghệ Thông tin (UIT)" },
+  { value: "NEU", label: "ĐH Kinh tế Quốc dân (NEU)" },
+  { value: "UEH", label: "ĐH Kinh tế TP.HCM (UEH)" },
+  { value: "HUST", label: "ĐH Quốc gia Hà Nội" },
+  { value: "RMIT", label: "RMIT University Vietnam" },
+  { value: "OTHER", label: "Khác" },
+];
 
 // ─── Tiny field component ─────────────────────────────────────────────────────
 
@@ -58,8 +81,111 @@ function Field({
         onChange={onChange}
         placeholder={placeholder}
         autoComplete={autoComplete}
-        required
         style={{ height: 44 }}
+      />
+    </div>
+  );
+}
+
+// ─── Field label (shared with select / upload) ────────────────────────────────
+
+function FieldLabel({ children }: { children: ReactNode }) {
+  return (
+    <label
+      style={{
+        fontSize: 11,
+        fontWeight: 700,
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+        color: "var(--color-mute)",
+      }}
+    >
+      {children}
+    </label>
+  );
+}
+
+// ─── School select ────────────────────────────────────────────────────────────
+
+function SchoolSelect({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (e: ChangeEvent<HTMLSelectElement>) => void;
+}) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <FieldLabel>Trường</FieldLabel>
+      <select
+        className="auth-select"
+        value={value}
+        onChange={onChange}
+        style={{ color: value === "" ? "var(--color-mute)" : "var(--color-ink)" }}
+      >
+        {SCHOOLS.map((s) => (
+          <option
+            key={s.value}
+            value={s.value}
+            disabled={s.value === ""}
+            style={{ color: "var(--color-ink)" }}
+          >
+            {s.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+// ─── Student-card upload (UI only — preview, not submitted) ────────────────────
+
+function CardUpload({
+  preview,
+  fileName,
+  onSelect,
+  onClear,
+}: {
+  preview: string | null;
+  fileName: string | null;
+  onSelect: (e: ChangeEvent<HTMLInputElement>) => void;
+  onClear: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <FieldLabel>Ảnh thẻ sinh viên</FieldLabel>
+
+      {preview ? (
+        <div className="auth-upload-preview">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={preview} alt="Ảnh thẻ sinh viên" />
+          <div className="auth-upload-meta">
+            <span className="auth-upload-name">{fileName}</span>
+            <button type="button" onClick={onClear} className="auth-upload-remove">
+              Xóa
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="auth-upload-drop"
+          onClick={() => inputRef.current?.click()}
+        >
+          <span className="auth-upload-plus">+</span>
+          <span>Nhấn để tải ảnh thẻ</span>
+          <span className="auth-upload-hint">PNG, JPG · tối đa 5MB</span>
+        </button>
+      )}
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        onChange={onSelect}
+        style={{ display: "none" }}
       />
     </div>
   );
@@ -79,7 +205,15 @@ export default function AuthPage() {
     email: "",
     password: "",
     confirmPassword: "",
+    phone: "",
+    school: "",
+    schoolName: "",
   });
+  // Student-card image is UI-only (preview), not sent in the register payload.
+  const [cardImage, setCardImage] = useState<{
+    preview: string;
+    name: string;
+  } | null>(null);
   const [clientError, setClientError] = useState("");
   const [isSwitching, setIsSwitching] = useState(false);
   const switchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -133,9 +267,66 @@ export default function AuthPage() {
     loginMutation.mutate(loginForm);
   }
 
+  // School "FPT" → no card. Any other school → card required. "OTHER" → also
+  // requires a typed school name (rendered above the card upload).
+  const needsCard = registerForm.school !== "" && registerForm.school !== "FPT";
+  const isOther = registerForm.school === "OTHER";
+
+  function handleSchoolChange(e: ChangeEvent<HTMLSelectElement>) {
+    const value = e.target.value;
+    setRegisterForm((f) => ({
+      ...f,
+      school: value,
+      schoolName: value === "OTHER" ? f.schoolName : "",
+    }));
+    // Clear any previously chosen card when the school no longer needs one.
+    if (value === "FPT" || value === "") setCardImage(null);
+  }
+
+  function handleCardSelect(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file later
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setClientError("Vui lòng chọn một file ảnh hợp lệ.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setClientError("Ảnh thẻ không được vượt quá 5MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setClientError("");
+      setCardImage({ preview: reader.result as string, name: file.name });
+    };
+    reader.readAsDataURL(file);
+  }
+
   async function handleRegister(e: FormEvent) {
     e.preventDefault();
     setClientError("");
+
+    if (!registerForm.phone.trim()) {
+      setClientError("Vui lòng nhập số điện thoại.");
+      return;
+    }
+    if (!/^0\d{9}$/.test(registerForm.phone.trim())) {
+      setClientError("Số điện thoại phải gồm 10 chữ số và bắt đầu bằng 0.");
+      return;
+    }
+    if (!registerForm.school) {
+      setClientError("Vui lòng chọn trường.");
+      return;
+    }
+    if (isOther && !registerForm.schoolName.trim()) {
+      setClientError("Vui lòng nhập tên trường.");
+      return;
+    }
+    if (needsCard && !cardImage) {
+      setClientError("Vui lòng tải ảnh thẻ sinh viên.");
+      return;
+    }
     if (registerForm.password !== registerForm.confirmPassword) {
       setClientError("Mật khẩu xác nhận không khớp.");
       return;
@@ -432,6 +623,101 @@ export default function AuthPage() {
           gap: 20px;
         }
 
+        /* ── school select ────────────────────────────────────────────────── */
+        .auth-select {
+          box-sizing: border-box;
+          height: 44px;
+          width: 100%;
+          padding: 0 36px 0 12px;
+          font-size: 14px;
+          font-family: inherit;
+          color: var(--color-ink);
+          background-color: var(--color-canvas);
+          border: var(--border-hairline);
+          border-radius: 2px;
+          cursor: pointer;
+          appearance: none;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+          background-repeat: no-repeat;
+          background-position: right 14px center;
+        }
+        .auth-select:focus {
+          outline: none;
+          border: var(--border-primary-2);
+          padding: 0 35px 0 11px;
+        }
+
+        /* ── student-card upload ──────────────────────────────────────────── */
+        .auth-upload-drop {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          width: 100%;
+          padding: 20px 12px;
+          background: var(--color-canvas);
+          border: 1px dashed var(--color-hairline-strong);
+          border-radius: 2px;
+          cursor: pointer;
+          font-size: 13px;
+          color: var(--color-mute);
+          transition: border-color 80ms linear, background 80ms linear;
+        }
+        .auth-upload-drop:hover {
+          border-color: var(--color-primary);
+          background: rgba(118, 185, 0, 0.04);
+        }
+        .auth-upload-plus {
+          font-size: 22px;
+          font-weight: 700;
+          color: var(--color-primary);
+          line-height: 1;
+        }
+        .auth-upload-hint {
+          font-size: 11px;
+          color: var(--color-ash);
+        }
+        .auth-upload-preview {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          padding: 8px;
+          border: 1px solid var(--color-hairline-strong);
+          border-radius: 2px;
+          background: var(--color-canvas);
+        }
+        .auth-upload-preview img {
+          width: 100%;
+          max-height: 180px;
+          object-fit: contain;
+          border-radius: 2px;
+          background: var(--color-surface-soft);
+        }
+        .auth-upload-meta {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+        .auth-upload-name {
+          font-size: 12px;
+          color: var(--color-mute);
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .auth-upload-remove {
+          flex-shrink: 0;
+          background: none;
+          border: none;
+          padding: 0;
+          font-size: 12px;
+          font-weight: 700;
+          color: var(--color-error);
+          cursor: pointer;
+        }
+
         /* ── responsive ───────────────────────────────────────────────────── */
         @media (max-width: 768px) {
           .auth-dark { display: none; }
@@ -452,23 +738,20 @@ export default function AuthPage() {
           <div style={{ position: "relative", zIndex: 1 }}>
             <p className="auth-brand-tag">SWP SE1907</p>
             <h1 className="auth-brand-name">
-              Software
+              HACKATHON
               <br />
-              Project
-              <br />
-              Platform
+              FPT UNIVERSITY
             </h1>
             <p className="auth-brand-desc">
-              Nền tảng quản lý dự án phần mềm dành cho sinh viên và mentor tại
-              FPT University.
+              Nền tảng quản lý cuộc thi hackathon
             </p>
 
             <ul className="auth-feature-list">
               {[
-                "Quản lý dự án theo nhóm",
+                "Quản lý cuộc thi",
                 "Theo dõi tiến độ theo thời gian thực",
-                "Kết nối sinh viên và mentor",
-                "Đánh giá & phản hồi chuyên sâu",
+                "Giao diện trực quan, dễ sử dụng",
+                "Tối ưu trải nghiệm thi đấu",
               ].map((f) => (
                 <li key={f} className="auth-feature-item">
                   <span className="auth-feature-dot" />
@@ -607,6 +890,47 @@ export default function AuthPage() {
                   placeholder="ten@email.com"
                   autoComplete="email"
                 />
+                <Field
+                  label="Số điện thoại"
+                  type="tel"
+                  value={registerForm.phone}
+                  onChange={(e) =>
+                    setRegisterForm((f) => ({ ...f, phone: e.target.value }))
+                  }
+                  placeholder="09xxxxxxxx"
+                  autoComplete="tel"
+                />
+
+                <SchoolSelect
+                  value={registerForm.school}
+                  onChange={handleSchoolChange}
+                />
+
+                {/* "Khác" → typed school name, rendered ABOVE the card upload. */}
+                {isOther && (
+                  <Field
+                    label="Tên trường"
+                    value={registerForm.schoolName}
+                    onChange={(e) =>
+                      setRegisterForm((f) => ({
+                        ...f,
+                        schoolName: e.target.value,
+                      }))
+                    }
+                    placeholder="Nhập tên trường của bạn"
+                  />
+                )}
+
+                {/* Non-FPT schools must upload a student-card photo. */}
+                {needsCard && (
+                  <CardUpload
+                    preview={cardImage?.preview ?? null}
+                    fileName={cardImage?.name ?? null}
+                    onSelect={handleCardSelect}
+                    onClear={() => setCardImage(null)}
+                  />
+                )}
+
                 <Field
                   label="Mật khẩu"
                   type="password"

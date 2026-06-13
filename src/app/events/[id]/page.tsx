@@ -7,7 +7,7 @@ import { EventDashboard } from '@/features/events/components/EventDashboard/Even
 
 function EventDashboardPageContent() {
   const params = useParams();
-  const eventId = params.id as string;
+  const eventId = params?.id as string;
   // TODO: Get userId from auth context (for now use mock)
   const userId = 'user-001'; // Will be replaced with auth context
 
