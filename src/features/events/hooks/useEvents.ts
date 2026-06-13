@@ -1,0 +1,115 @@
+'use client';
+
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import eventService from '../api/eventService';
+
+export const useEvent = (eventId: string) => {
+  return useQuery({
+    queryKey: ['event', eventId],
+    queryFn: () => eventService.getEvent(eventId),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+};
+
+export const useAllEvents = () => {
+  return useQuery({
+    queryKey: ['events', 'all'],
+    queryFn: () => eventService.getAllEvents(),
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+};
+
+export const useMyEvents = () => {
+  return useQuery({
+    queryKey: ['events', 'my'],
+    queryFn: () => eventService.getMyEvents(),
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+};
+
+export const useEventTeams = (eventId: string) => {
+  return useQuery({
+    queryKey: ['eventTeams', eventId],
+    queryFn: () => eventService.getEventTeams(eventId),
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+};
+
+export const useUserTeam = (eventId: string, userId: string) => {
+  return useQuery({
+    queryKey: ['userTeam', eventId, userId],
+    queryFn: () => eventService.getUserTeam(eventId, userId),
+    staleTime: 5 * 60 * 1000,
+  });
+};
+
+export const useCreateTeam = (eventId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (teamData: { name: string; memberIds: string[] }) =>
+      eventService.createTeam(eventId, teamData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['eventTeams', eventId] });
+      // Invalidate with exact key for this event's user team
+      queryClient.invalidateQueries({ queryKey: ['userTeam', eventId] });
+    },
+  });
+};
+
+export const useTeamSubmissions = (teamId: string) => {
+  return useQuery({
+    queryKey: ['submissions', teamId],
+    queryFn: () => eventService.getTeamSubmissions(teamId),
+    staleTime: 1 * 60 * 1000, // 1 minute
+  });
+};
+
+/**
+ * Submit work for a competition team
+ * @param teamId - Team ID
+ * @param eventId - Event ID
+ * @returns Mutation for submitting work
+ *
+ * Usage:
+ * - ZIP: pass FormData with 'file' key containing the zip file
+ * - URL: pass string URL (GitHub, Google Drive, etc.)
+ */
+export const useSubmitWork = (teamId: string, eventId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (submissionData: { type: 'ZIP' | 'URL'; content: string | FormData }) =>
+      eventService.submitWork(teamId, eventId, submissionData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['submissions', teamId] });
+      queryClient.invalidateQueries({ queryKey: ['scores', eventId] });
+    },
+  });
+};
+
+export const useTeamScores = (eventId: string) => {
+  return useQuery({
+    queryKey: ['scores', eventId],
+    queryFn: () => eventService.getTeamScores(eventId),
+    staleTime: 2 * 60 * 1000,
+  });
+};
+
+export const useScoreBreakdown = (teamId: string, eventId: string) => {
+  return useQuery({
+    queryKey: ['scoreBreakdown', teamId, eventId],
+    queryFn: () => eventService.getScoreBreakdown(teamId, eventId),
+    staleTime: 5 * 60 * 1000,
+  });
+};
+
+export const useJoinEvent = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (eventId: string) =>
+      eventService.joinEvent(eventId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['events', 'my'] });
+      queryClient.invalidateQueries({ queryKey: ['events', 'all'] });
+    },
+  });
+};
