@@ -1,41 +1,45 @@
 import apiClient from "./client";
 import type {
-  AuthResponse,
+  BackendUserModel,
   LoginRequest,
+  LoginResponse,
+  RefreshTokenResponse,
   RegisterRequest,
-  UserProfile,
 } from "./types";
 
 export const authApi = {
-  login: async (payload: LoginRequest): Promise<AuthResponse> => {
-    const { data } = await apiClient.post<AuthResponse>("/auth/login", payload);
+  login: async (payload: LoginRequest): Promise<LoginResponse> => {
+    const { data } = await apiClient.post<LoginResponse>("/Auth/login", payload);
     return data;
   },
 
-  register: async (payload: RegisterRequest): Promise<AuthResponse> => {
-    const { data } = await apiClient.post<AuthResponse>(
-      "/auth/register",
+  /** Backend register returns the created user — NOT auth tokens. */
+  register: async (payload: RegisterRequest): Promise<BackendUserModel> => {
+    const { data } = await apiClient.post<BackendUserModel>(
+      "/Auth/register",
       payload,
     );
     return data;
   },
 
   logout: async (): Promise<void> => {
-    await apiClient.post("/auth/logout");
-  },
-
-  getMe: async (): Promise<UserProfile> => {
-    const { data } = await apiClient.get<UserProfile>("/auth/me");
-    return data;
+    await apiClient.post("/Auth/logout");
   },
 
   refreshToken: async (
     refreshToken: string,
-  ): Promise<Pick<AuthResponse, "accessToken">> => {
-    const { data } = await apiClient.post<Pick<AuthResponse, "accessToken">>(
-      "/auth/refresh",
+  ): Promise<RefreshTokenResponse> => {
+    const { data } = await apiClient.post<RefreshTokenResponse>(
+      "/Auth/refresh-token",
       { refreshToken },
     );
+    return data;
+  },
+
+  verifyEmail: async (token: string): Promise<boolean> => {
+    const { data } = await apiClient.get<boolean>("/Auth/verify-email", {
+      params: { token },
+    });
     return data;
   },
 };
