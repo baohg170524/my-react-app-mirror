@@ -27,7 +27,6 @@ interface RegisterForm {
   email: string;
   password: string;
   confirmPassword: string;
-  phone: string;
   /** Selected school ID (from backend `/Schools`). */
   schoolId: string;
   studentCode: string;
@@ -244,7 +243,6 @@ export default function AuthPage() {
     email: "",
     password: "",
     confirmPassword: "",
-    phone: "",
     schoolId: "",
     studentCode: "",
   });
@@ -356,14 +354,6 @@ export default function AuthPage() {
     setClientError("");
     setSuccessMessage("");
 
-    if (!registerForm.phone.trim()) {
-      setClientError("Vui lòng nhập số điện thoại.");
-      return;
-    }
-    if (!/^0\d{9}$/.test(registerForm.phone.trim())) {
-      setClientError("Số điện thoại phải gồm 10 chữ số và bắt đầu bằng 0.");
-      return;
-    }
     if (!registerForm.schoolId) {
       setClientError("Vui lòng chọn trường.");
       return;
@@ -385,6 +375,8 @@ export default function AuthPage() {
         password: registerForm.password,
         fullName: registerForm.fullName.trim(),
         isStudent: true,
+        // FPT status is derived from the selected school name (contains "FPT").
+        isFpt: isFptSchool,
       },
       {
         onSuccess: () => {
@@ -401,7 +393,6 @@ export default function AuthPage() {
             email: "",
             password: "",
             confirmPassword: "",
-            phone: "",
             schoolId: "",
             studentCode: "",
           });
@@ -980,16 +971,7 @@ export default function AuthPage() {
                   placeholder="ten@email.com"
                   autoComplete="email"
                 />
-                <Field
-                  label="Số điện thoại"
-                  type="tel"
-                  value={registerForm.phone}
-                  onChange={(e) =>
-                    setRegisterForm((f) => ({ ...f, phone: e.target.value }))
-                  }
-                  placeholder="09xxxxxxxx"
-                  autoComplete="tel"
-                />
+                
 
                 <SchoolSelect
                   value={registerForm.schoolId}

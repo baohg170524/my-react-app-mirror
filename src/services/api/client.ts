@@ -5,7 +5,7 @@ import axios, {
 } from "axios";
 import type { ApiError, BaseResponse } from "./types";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://api.sealswp391.xyz/api";
 
 const apiClient = axios.create({
   baseURL: BASE_URL,

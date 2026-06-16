@@ -99,7 +99,8 @@ export function useLogin() {
       const profile = loginResponseToProfile(data);
       persistUser(profile);
       queryClient.setQueryData(AUTH_KEYS.me, profile);
-      router.push("/");
+      // replace (not push) so Back doesn't return to the login screen
+      router.replace("/");
     },
   });
 }

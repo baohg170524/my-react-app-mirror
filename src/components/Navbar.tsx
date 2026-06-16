@@ -3,9 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
+import { useIsAuthenticated, useLogout } from "@/hooks/useAuth";
 
 export function Navbar() {
   const pathname = usePathname();
+  const isAuthenticated = useIsAuthenticated();
+  const logout = useLogout();
 
   // Focus main on route change for keyboard/a11y
   useEffect(() => {
@@ -29,9 +32,10 @@ export function Navbar() {
 
         <ul className="primary-nav__links">
           {[
-            { label: "Trang chủ", href: "/" },
-            { label: "Sự kiện", href: "/events" },
-            { label: "Dự án", href: "/projects" },
+            { label: "Sự kiện", href: "/" },
+            { label: "Tiêu chí chấm điểm", href: "/criteria" },
+            { label: "Người dùng", href: "/users" },
+            { label: "Khác", href: "/other" },
           ].map(({ label, href }) => (
             <li key={href}>
               <Link
@@ -53,9 +57,20 @@ export function Navbar() {
         </ul>
 
         <div className="primary-nav__cluster">
-          <Link href="/account" className="btn btn-outline-on-dark btn-sm">
-            Tài khoản
-          </Link>
+          {isAuthenticated ? (
+            <button
+              type="button"
+              onClick={() => logout.mutate()}
+              disabled={logout.isPending}
+              className="btn btn-outline-on-dark btn-sm"
+            >
+              {logout.isPending ? "Đang đăng xuất…" : "Đăng xuất"}
+            </button>
+          ) : (
+            <Link href="/auth" className="btn btn-outline-on-dark btn-sm">
+              Đăng nhập
+            </Link>
+          )}
         </div>
       </nav>
     </header>

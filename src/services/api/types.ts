@@ -33,6 +33,8 @@ export interface RegisterRequest {
   password: string;
   fullName: string;
   isStudent: boolean;
+  /** Derived from the selected school name (contains "FPT"). */
+  isFpt: boolean;
 }
 
 /** Matches backend LoginUserResponseModel (flat shape). */

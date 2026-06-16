@@ -139,32 +139,7 @@ export function UserProfileHeader() {
             ) : null}
           </div>
 
-          {/* Stats */}
-          {isLoading ? (
-            <div style={{ display: "flex", gap: 0 }}>
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="stat-block">
-                  <SkeletonPulse w="48px" h={32} />
-                  <SkeletonPulse w="64px" h={10} />
-                </div>
-              ))}
-            </div>
-          ) : profile ? (
-            <div style={{ display: "flex", gap: 0 }}>
-              <div className="stat-block">
-                <span className="stat-value">{profile.stats.eventsJoined}</span>
-                <span className="stat-label">Sự kiện</span>
-              </div>
-              <div className="stat-block">
-                <span className="stat-value">{profile.stats.projectScore}</span>
-                <span className="stat-label">Điểm DA</span>
-              </div>
-              <div className="stat-block">
-                <span className="stat-value">#{profile.stats.rank}</span>
-                <span className="stat-label">Xếp hạng</span>
-              </div>
-            </div>
-          ) : null}
+          
         </div>
       </div>
     </>

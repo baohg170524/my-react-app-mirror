@@ -3,7 +3,6 @@ import { UserProfileHeader } from "@/features/user/components/UserProfileHeader"
 import { AnnouncementBanner } from "@/features/user/components/AnnouncementBanner";
 import { ProjectSummaryCard } from "@/features/user/components/ProjectSummaryCard";
 import { EventSection } from "@/features/events/components/EventSection";
-import { LeaderboardSection } from "@/features/leaderboard/components/LeaderboardSection";
 
 export default function HomePage() {
   return (
@@ -13,9 +12,7 @@ export default function HomePage() {
       <main tabIndex={-1} style={{ outline: "none", minHeight: "100vh" }}>
         <UserProfileHeader />
         <AnnouncementBanner />
-        <ProjectSummaryCard />
         <EventSection />
-        <LeaderboardSection />
       </main>
     </>
   );
