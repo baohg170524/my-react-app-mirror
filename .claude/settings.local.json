@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//d/SWP302/scoring-system-v2/**)"
+    ]
+  }
+}
