@@ -55,10 +55,7 @@ export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
       </div>
 
       {/* Title — the only link on card */}
-      <Link
-        href={`/events/${event.id}`}
-        style={{ textDecoration: "none" }}
-      >
+      
         <h3
           className="card__title"
           style={{
@@ -71,7 +68,7 @@ export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
         >
           {event.title}
         </h3>
-      </Link>
+      
 
       {/* Start Date */}
       <p style={{ margin: 0, fontSize: "var(--fs-caption-md)", color: "var(--color-mute)", display: "flex", alignItems: "center", gap: 6 }}>
@@ -91,6 +88,10 @@ export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
 
       {/* Join button — sibling, NOT inside Link */}
       <div style={{ marginTop: "var(--space-sm)" }}>
+        <Link
+        href={`/events/${event.id}/manage`}
+        style={{ textDecoration: "none" }}
+      >
         <button
           className="btn btn-primary btn-sm"
           style={{ width: "100%", minHeight: 44 }}
@@ -100,6 +101,8 @@ export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
         >
           {isJoining ? "Đang xử lý…" : "Tham gia"}
         </button>
+        </Link>
+        
         {joinError && (
           <p style={{ margin: "6px 0 0", fontSize: "var(--fs-caption-sm)", color: "var(--color-error)" }}>
             {joinError}

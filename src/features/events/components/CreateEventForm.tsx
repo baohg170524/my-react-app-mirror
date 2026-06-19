@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, type ChangeEvent, type ReactNode } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type { AxiosError } from "axios";
+import { eventsApi, type CreateEventPayload } from "../api/events";
 
 // ─── Form state types (mirror the create-event payload) ───────────────────────
 
@@ -82,6 +85,32 @@ function toIso(local: string): string {
   if (!local) return "";
   const d = new Date(local);
   return Number.isNaN(d.getTime()) ? local : d.toISOString();
+}
+
+/** Backend 400 body: { message?, data?: [{ key, value: string[] }] }. */
+interface BackendFieldError {
+  key?: string;
+  value?: string[];
+}
+
+const GENERIC_ERROR = "Tạo sự kiện thất bại. Vui lòng thử lại.";
+
+/** Turn an Axios error into a user-facing message, surfacing field-level details. */
+function extractApiError(err: unknown): string {
+  const body = (err as AxiosError<{ message?: string; data?: BackendFieldError[] }>)
+    ?.response?.data;
+  if (!body) return GENERIC_ERROR;
+  if (Array.isArray(body.data)) {
+    const messages = body.data.flatMap((item) =>
+      Array.isArray(item.value) ? item.value : [],
+    );
+    if (messages.length) return messages.join(" ");
+  }
+  // Hide raw server exception strings ("Exception of type ... was thrown").
+  if (body.message && !/Exception|was thrown/i.test(body.message)) {
+    return body.message;
+  }
+  return GENERIC_ERROR;
 }
 
 // ─── Small field primitives ───────────────────────────────────────────────────
@@ -310,8 +339,8 @@ function TrackCard({
       }}
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span className="t-caption-md" style={{ color: "var(--color-primary)" }}>
-          Track {index + 1}
+        <span className="t-body-strong">
+          Hạng mục {index + 1}
         </span>
         {canRemove && (
           <button
@@ -320,12 +349,12 @@ function TrackCard({
             onClick={onRemove}
             style={{ cursor: "pointer" }}
           >
-            Xóa track
+            Xóa hạng mục
           </button>
         )}
       </div>
 
-      <TextField label="Tên track" value={track.trackName} onChange={(v) => onChange({ trackName: v })} />
+      <TextField label="Tên hạng mục" value={track.trackName} onChange={(v) => onChange({ trackName: v })} />
       <TextArea label="Mô tả" value={track.description} onChange={(v) => onChange({ description: v })} />
       <TextField label="Template ID" value={track.templateId} onChange={(v) => onChange({ templateId: v })} />
 
@@ -466,7 +495,7 @@ function RoundCard({
           onClick={onAddTrack}
           style={{ alignSelf: "flex-start", cursor: "pointer" }}
         >
-          + Thêm track
+          + Thêm hạng mục
         </button>
       </div>
     </div>
@@ -477,7 +506,16 @@ function RoundCard({
 
 export function CreateEventForm({ onCancel }: { onCancel: () => void }) {
   const [form, setForm] = useState<EventForm>(emptyEvent);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const createMutation = useMutation({
+    mutationFn: (payload: CreateEventPayload) => eventsApi.create(payload),
+    onSuccess: () => {
+      // Refresh any event listings once they move to the real API.
+      queryClient.invalidateQueries({ queryKey: ["events"] });
+    },
+  });
 
   // ── event-level field update (string fields only) ──
   type EventStringKey =
@@ -529,27 +567,32 @@ export function CreateEventForm({ onCancel }: { onCancel: () => void }) {
       ),
     }));
 
-  // ── submit (UI-only: build payload, log + preview) ──
-  function buildPayload() {
+  // ── build the API payload (CreateEventRequestModel) ──
+  // Note: the backend has no `eventCoordinatorIds` field, so it is collected in
+  // the UI for the future but NOT sent. Track submission link checkboxes are
+  // joined into the `submissionRuleDescription` string the API expects.
+  const linkLabel = (key: string) =>
+    SUBMISSION_LINK_OPTIONS.find((o) => o.key === key)?.label ?? key;
+
+  function buildPayload(): CreateEventPayload {
     return {
-      eventName: form.eventName,
-      season: form.season,
+      eventName: form.eventName.trim(),
+      season: form.season.trim(),
       year: Number(form.year) || 0,
       startDate: toIso(form.startDate),
       endDate: toIso(form.endDate),
-      description: form.description,
-      eventCoordinatorIds: form.eventCoordinatorIds,
+      description: form.description.trim(),
       rounds: form.rounds.map((r) => ({
-        roundName: r.roundName,
+        roundName: r.roundName.trim(),
         roundNumber: Number(r.roundNumber) || 0,
         startDate: toIso(r.startDate),
         endDate: toIso(r.endDate),
-        advancementRule: r.advancementRule,
+        advancementRule: r.advancementRule.trim(),
         tracks: r.tracks.map((t) => ({
-          trackName: t.trackName,
-          description: t.description,
-          templateId: t.templateId,
-          submissionLinks: t.submissionLinks,
+          trackName: t.trackName.trim(),
+          description: t.description.trim(),
+          templateId: t.templateId.trim(),
+          submissionRuleDescription: t.submissionLinks.map(linkLabel).join(", "),
           judgeUserIds: t.judgeUserIds,
           mentorUserIds: t.mentorUserIds,
         })),
@@ -557,13 +600,39 @@ export function CreateEventForm({ onCancel }: { onCancel: () => void }) {
     };
   }
 
+  /** Returns the first validation error, or null when the form is valid. */
+  function validate(): string | null {
+    if (!form.eventName.trim()) return "Vui lòng nhập tên sự kiện.";
+    if ((Number(form.year) || 0) <= 2000) return "Năm tổ chức phải lớn hơn 2000.";
+    if (!form.startDate) return "Vui lòng chọn ngày bắt đầu sự kiện.";
+    if (!form.endDate) return "Vui lòng chọn ngày kết thúc sự kiện.";
+    for (let i = 0; i < form.rounds.length; i++) {
+      const r = form.rounds[i];
+      if (!r.roundName.trim()) return `Vòng ${i + 1}: vui lòng nhập tên vòng.`;
+      if ((Number(r.roundNumber) || 0) <= 0)
+        return `Vòng ${i + 1}: số thứ tự vòng phải lớn hơn 0.`;
+      if (!r.startDate || !r.endDate)
+        return `Vòng ${i + 1}: vui lòng chọn ngày bắt đầu và kết thúc.`;
+      for (let j = 0; j < r.tracks.length; j++) {
+        if (!r.tracks[j].trackName.trim())
+          return `Vòng ${i + 1} – Hạng mục ${j + 1}: vui lòng nhập tên hạng mục.`;
+      }
+    }
+    return null;
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const payload = buildPayload();
-    // UI-only for now — not wired to an API.
-    console.log("[CreateEventForm] payload:", payload);
-    setPreview(JSON.stringify(payload, null, 2));
+    const error = validate();
+    setFormError(error);
+    if (error) return;
+
+    createMutation.mutate(buildPayload());
   }
+
+  const apiErrorMessage = createMutation.isError
+    ? extractApiError(createMutation.error)
+    : null;
 
   return (
     <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "var(--space-xl)" }}>
@@ -629,34 +698,50 @@ export function CreateEventForm({ onCancel }: { onCancel: () => void }) {
 
       {/* Actions */}
       <div style={{ display: "flex", gap: "var(--space-md)" }}>
-        <button type="submit" className="btn btn-primary" style={{ cursor: "pointer" }}>
-          Tạo sự kiện
+        <button
+          type="submit"
+          className="btn btn-primary"
+          disabled={createMutation.isPending}
+          style={{ cursor: createMutation.isPending ? "not-allowed" : "pointer", opacity: createMutation.isPending ? 0.6 : 1 }}
+        >
+          {createMutation.isPending ? "Đang tạo..." : "Tạo sự kiện"}
         </button>
         <button type="button" className="btn btn-outline" onClick={onCancel} style={{ cursor: "pointer" }}>
-          Hủy
+          {createMutation.isSuccess ? "Đóng" : "Hủy"}
         </button>
       </div>
 
-      {/* UI-only payload preview */}
-      {preview && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
-          <span className="t-caption-md" style={{ color: "var(--color-primary)" }}>
-            Payload (UI demo — chưa gửi API, xem thêm ở console)
-          </span>
-          <pre
-            style={{
-              margin: 0,
-              padding: "var(--space-md)",
-              background: "var(--color-surface-soft)",
-              border: "var(--border-hairline)",
-              borderRadius: "var(--radius-sm)",
-              fontSize: "var(--fs-caption-sm)",
-              overflowX: "auto",
-              whiteSpace: "pre-wrap",
-            }}
-          >
-            {preview}
-          </pre>
+      {/* Validation / API error */}
+      {(formError || apiErrorMessage) && !createMutation.isSuccess && (
+        <div
+          role="alert"
+          style={{
+            padding: "var(--space-md)",
+            background: "var(--color-surface-soft)",
+            border: "1px solid var(--color-error)",
+            borderRadius: "var(--radius-sm)",
+            color: "var(--color-error)",
+          }}
+          className="t-body-sm"
+        >
+          {formError ?? apiErrorMessage}
+        </div>
+      )}
+
+      {/* Success */}
+      {createMutation.isSuccess && (
+        <div
+          role="status"
+          style={{
+            padding: "var(--space-md)",
+            background: "var(--color-surface-soft)",
+            border: "1px solid var(--color-primary)",
+            borderRadius: "var(--radius-sm)",
+          }}
+          className="t-body-sm"
+        >
+          Đã tạo sự kiện{" "}
+          <strong>{createMutation.data?.eventName || form.eventName}</strong> thành công.
         </div>
       )}
     </form>

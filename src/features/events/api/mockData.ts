@@ -36,30 +36,30 @@ export const mockTeams: Record<string, Team[]> = {
   'evt-001': [
     {
       id: 'team-001',
-      name: 'Code Warriors',
-      leader: { id: 'user-1', name: 'Alice Johnson', email: 'alice@example.com' },
+      name: 'abc',
+      leader: { id: 'user-1', name: 'Candidate 1', email: 'candidate1@example.com' },
       members: [
-        { id: 'user-2', name: 'Bob Smith', email: 'bob@example.com' },
-        { id: 'user-3', name: 'Charlie Wilson', email: 'charlie@example.com' },
+        { id: 'user-2', name: 'Trần Thị Bình', email: 'binhtt@example.com' },
+        { id: 'user-3', name: 'Lê Văn Cường', email: 'cuonglv@example.com' },
       ],
       eventId: 'evt-001',
     },
     {
       id: 'team-002',
-      name: 'Frontend Ninjas',
-      leader: { id: 'user-4', name: 'Diana Lee', email: 'diana@example.com' },
+      name: 'xyz',
+      leader: { id: 'user-4', name: 'Candidate 2', email: 'candidate2@example.com' },
       members: [
-        { id: 'user-5', name: 'Eve Martinez', email: 'eve@example.com' },
+        { id: 'user-5', name: 'Hoàng Văn Em', email: 'emhv@example.com' },
       ],
       eventId: 'evt-001',
     },
     {
       id: 'team-003',
-      name: 'Design Innovators',
-      leader: { id: 'user-6', name: 'Frank Brown', email: 'frank@example.com' },
+      name: 'swp',
+      leader: { id: 'user-6', name: 'Candidate 3', email: 'phongvv@example.com' },
       members: [
-        { id: 'user-7', name: 'Grace Chen', email: 'grace@example.com' },
-        { id: 'user-8', name: 'Henry Davis', email: 'henry@example.com' },
+        { id: 'user-7', name: 'Đặng Thị Giang', email: 'giangdt@example.com' },
+        { id: 'user-8', name: 'Bùi Văn Hải', email: 'haibv@example.com' },
       ],
       eventId: 'evt-001',
     },
@@ -67,10 +67,10 @@ export const mockTeams: Record<string, Team[]> = {
   'evt-002': [
     {
       id: 'team-004',
-      name: 'Backend Masters',
-      leader: { id: 'user-9', name: 'Iris Williams', email: 'iris@example.com' },
+      name: 'def',
+      leader: { id: 'user-9', name: 'Ngô Thị Lan', email: 'lannt@example.com' },
       members: [
-        { id: 'user-10', name: 'Jack Anderson', email: 'jack@example.com' },
+        { id: 'user-10', name: 'Đỗ Văn Minh', email: 'minhdv@example.com' },
       ],
       eventId: 'evt-002',
     },
