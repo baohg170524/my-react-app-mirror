@@ -1,17 +1,42 @@
+//'use client';
+//import { useState, useEffect, useCallback } from 'react';
+//import { Navbar } from '@/components/Navbar';
+//import Notif from '@/components/Notif';
+//import CriteriaPage from '@/pages/CriteriaPage';
+//import { getCriteria } from '@/services/criteriaService';
+
+//export default function CriteriaRoute() {
+  //const [criteria, setCriteria] = useState([]);
+  //const [notif, setNotif]       = useState(null);
+
+  //useEffect(() => {
+  //  getCriteria().then(setCriteria).catch(console.error);
+  //}, []);
+
+  //const sn = useCallback((m, t = 's') => {
+  //  setNotif({ m, t });
+  //  setTimeout(() => setNotif(null), 3000);
+  //}, []);
+
+  //return (
+    //<>
+      //<Navbar />
+      //<Notif n={notif} />
+      //<main style={{ minHeight: '100vh', background: '#f7f7f7', padding: '28px 32px', fontFamily: 'Inter, sans-serif' }}>
+       // <CriteriaPage criteria={criteria} setCriteria={setCriteria} sn={sn} />
+      //</main>
+    //</>
+  //);
+//}
+
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Navbar } from '@/components/Navbar';
 import Notif from '@/components/Notif';
-import CriteriaPage from '@/pages/CriteriaPage';
-import { getCriteria } from '@/services/criteriaService';
+import TemplatePage from '@/pages/TemplatePage';
 
 export default function CriteriaRoute() {
-  const [criteria, setCriteria] = useState([]);
-  const [notif, setNotif]       = useState(null);
-
-  useEffect(() => {
-    getCriteria().then(setCriteria).catch(console.error);
-  }, []);
+  const [notif, setNotif] = useState(null);
 
   const sn = useCallback((m, t = 's') => {
     setNotif({ m, t });
@@ -23,7 +48,7 @@ export default function CriteriaRoute() {
       <Navbar />
       <Notif n={notif} />
       <main style={{ minHeight: '100vh', background: '#f7f7f7', padding: '28px 32px', fontFamily: 'Inter, sans-serif' }}>
-        <CriteriaPage criteria={criteria} setCriteria={setCriteria} sn={sn} />
+        <TemplatePage sn={sn} />
       </main>
     </>
   );

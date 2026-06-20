@@ -1,4 +1,4 @@
-import apiClient from './apiClient';
+import apiClient from './api/client';
 
 // Backend: /api/Criterias + /api/Templates/{id}
 // Client đã unwrap BaseResponse<T> → response.data = env.data trực tiếp.

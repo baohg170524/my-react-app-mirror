@@ -6,7 +6,7 @@ export default function ScoringPage({ teams, criteria, onEdit }) {
       <div className="mb-7">
         <h2 className="text-xl font-bold m-0" style={{ color: '#000' }}>Bảng chấm điểm</h2>
         <p className="text-sm mt-1" style={{ color: '#757575' }}>
-          Chấm và quản lý điểm số các đội thi · {criteria.length} tiêu chí
+          Chấm và quản lý điểm số các đội thi · {criteria.length} Bộ tiêu chí
         </p>
       </div>
 
@@ -20,7 +20,7 @@ export default function ScoringPage({ teams, criteria, onEdit }) {
                 <div className="text-xs font-bold uppercase tracking-wider" style={{ color: '#757575' }}>{t.id}</div>
                 <div className="text-right">
                   <div className="text-3xl font-black leading-none" style={{ color: '#76b900' }}>{score.toFixed(2)}</div>
-                  <div className="text-xs" style={{ color: '#757575' }}>/10 · {criteria.length} tiêu chí</div>
+                  <div className="text-xs" style={{ color: '#757575' }}>/10 · {criteria.length} Bộ tiêu chí</div>
                 </div>
               </div>
               <div className="text-sm font-bold mt-1" style={{ color: '#000' }}>{t.name}</div>
@@ -36,7 +36,7 @@ export default function ScoringPage({ teams, criteria, onEdit }) {
                   </div>
                 ))}
                 {criteria.length > 3 && (
-                  <div className="text-xs" style={{ color: '#757575' }}>+{criteria.length - 3} tiêu chí khác...</div>
+                  <div className="text-xs" style={{ color: '#757575' }}>+{criteria.length - 3} Bộ tiêu chí khác...</div>
                 )}
               </div>
 
