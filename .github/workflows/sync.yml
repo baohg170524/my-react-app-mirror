@@ -11,18 +11,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Debug token
-        env:
-          TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-        run: |
-          if [ -z "$TOKEN" ]; then
-            echo "TOKEN IS EMPTY - Secret chưa được set!"
-          else
-            echo "TOKEN OK - độ dài: ${#TOKEN} ký tự"
-          fi
-
-- name: Push to Personal Mirror Repo
+      - name: Push to Personal Mirror Repo
         env:
           TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
