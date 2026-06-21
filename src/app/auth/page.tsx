@@ -390,6 +390,11 @@ export default function AuthPage() {
       setClientError("Mật khẩu xác nhận không khớp.");
       return;
     }
+    // Student code is required for all student registrations (backend enforces it).
+    if (!registerForm.studentCode.trim()) {
+      setClientError("Vui lòng nhập mã số sinh viên.");
+      return;
+    }
 
     // FPT students: the student code MUST exist in the FPT system. An invalid
     // code makes the backend register endpoint throw a 500, so validate it here
@@ -1100,9 +1105,7 @@ export default function AuthPage() {
                 {registerForm.schoolChoice !== "" && (
                   <Field
                     label={
-                      isFptSchool
-                        ? "Mã số sinh viên (FPT)"
-                        : "Mã số sinh viên (tùy chọn)"
+                      isFptSchool ? "Mã số sinh viên (FPT)" : "Mã số sinh viên"
                     }
                     value={registerForm.studentCode}
                     onChange={(e) =>

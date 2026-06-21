@@ -10,10 +10,11 @@ export function Navbar() {
   const isAuthenticated = useIsAuthenticated();
   const logout = useLogout();
 
-  // Focus main on route change for keyboard/a11y
+  // Focus main on route change for keyboard/a11y.
+  // preventScroll keeps the page from jumping/pulling the navbar up on F5.
   useEffect(() => {
     const main = document.querySelector<HTMLElement>("main");
-    if (main) main.focus();
+    if (main) main.focus({ preventScroll: true });
   }, [pathname]);
 
   return (

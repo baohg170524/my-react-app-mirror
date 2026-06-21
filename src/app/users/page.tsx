@@ -1,11 +1,11 @@
 import { Navbar } from "@/components/Navbar";
-import { ComingSoon } from "@/components/ComingSoon";
+import { UsersList } from "@/features/user/components/UsersList";
 
 export default function UsersPage() {
   return (
     <>
       <Navbar />
-      <ComingSoon title="Người dùng" />
+      <UsersList />
     </>
   );
 }
