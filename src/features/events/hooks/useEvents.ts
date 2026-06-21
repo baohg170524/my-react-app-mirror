@@ -2,11 +2,14 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import eventService from '../api/eventService';
+import { eventsApi } from '../api/events';
+import { manageApi } from '../api/manage';
 
 export const useEvent = (eventId: string) => {
   return useQuery({
     queryKey: ['event', eventId],
-    queryFn: () => eventService.getEvent(eventId),
+    queryFn: () => eventsApi.getById(eventId), // real API: GET /api/Events/{id}
+    enabled: !!eventId,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 };
@@ -14,10 +17,56 @@ export const useEvent = (eventId: string) => {
 export const useAllEvents = () => {
   return useQuery({
     queryKey: ['events', 'all'],
-    queryFn: () => eventService.getAllEvents(),
+    queryFn: () => eventsApi.list(), // real API: GET /api/Events
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
 };
+
+// ─── Admin manage page (real API) ──────────────────────────────────────────────
+
+/** All roles (judge/mentor/competitor) in an event — admin manage page. */
+export const useEventRoles = (eventId: string) =>
+  useQuery({
+    queryKey: ['eventRoles', eventId],
+    queryFn: () => manageApi.listEventRoles(eventId),
+    enabled: !!eventId,
+    staleTime: 2 * 60 * 1000,
+  });
+
+/** All teams (scoped to an event client-side via event roles). */
+export const useTeams = () =>
+  useQuery({
+    queryKey: ['teams', 'all'],
+    queryFn: () => manageApi.listTeams(),
+    staleTime: 2 * 60 * 1000,
+  });
+
+/** Rounds of an event. */
+export const useEventRounds = (eventId: string) =>
+  useQuery({
+    queryKey: ['rounds', eventId],
+    queryFn: () => manageApi.listEventRounds(eventId),
+    enabled: !!eventId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+/** Tracks of an event (grouped by round client-side). */
+export const useEventTracks = (eventId: string) =>
+  useQuery({
+    queryKey: ['tracks', eventId],
+    queryFn: () => manageApi.listEventTracks(eventId),
+    enabled: !!eventId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+/** Final results (leaderboard) of a round. */
+export const useRoundFinalResults = (roundId: string | undefined) =>
+  useQuery({
+    queryKey: ['finalResults', roundId],
+    queryFn: () => manageApi.listRoundFinalResults(roundId as string),
+    enabled: !!roundId,
+    staleTime: 2 * 60 * 1000,
+  });
 
 export const useMyEvents = () => {
   return useQuery({

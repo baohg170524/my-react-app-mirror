@@ -1,3 +1,23 @@
+// ─── Backend envelope ─────────────────────────────────────────────────────────
+
+/** Every backend response is wrapped in this envelope. */
+export interface BaseResponse<T> {
+  data: T | null;
+  message: string;
+  statusCode: number;
+  success: boolean;
+}
+
+export interface PagedResult<T> {
+  data: T[];
+  currentPage: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
+}
+
 // ─── Auth Request / Response ──────────────────────────────────────────────────
 
 export interface LoginRequest {
@@ -5,29 +25,54 @@ export interface LoginRequest {
   password: string;
 }
 
+/** Matches backend RegisterUserRequestModel. */
 export interface RegisterRequest {
-  fullName: string;
+  schoolId: string;
+  studentCode?: string;
   email: string;
   password: string;
-  confirmPassword: string;
-  phone: string;
-  /** Selected school code (e.g. "FPT", "OTHER"). */
-  school: string;
-  /** Free-text school name, only set when `school === "OTHER"`. */
-  schoolName?: string;
+  fullName: string;
+  isStudent: boolean;
+  /** Derived from the selected school name (contains "FPT"). */
+  isFpt: boolean;
+  /** Required by the backend for non-FPT students (URL from `/Storage/upload`). */
+  photoStudentCardUrl?: string;
 }
 
-export interface AuthResponse {
+/** Matches backend LoginUserResponseModel (flat shape). */
+export interface LoginResponse {
   accessToken: string;
   refreshToken: string;
-  user: UserProfile;
+  userId: string;
+  email: string;
+  fullName: string;
+  isAdmin: boolean;
+  isStudent: boolean;
 }
 
-// ─── User ─────────────────────────────────────────────────────────────────────
+export interface RefreshTokenResponse {
+  accessToken: string;
+  refreshToken: string;
+}
+
+// ─── User (backend UserModel) ─────────────────────────────────────────────────
+
+export interface BackendUserModel {
+  id: string;
+  schoolId: string;
+  studentCode: string | null;
+  email: string;
+  fullName: string;
+  isStudent: boolean;
+  isAdmin: boolean;
+  isApproved: boolean;
+}
+
+// ─── In-app user profile (derived) ────────────────────────────────────────────
 
 export interface UserStats {
   eventsJoined: number;
-  projectScore: number;  // 0–100
+  projectScore: number;
   rank: number;
 }
 
@@ -41,7 +86,7 @@ export interface Announcement {
 export interface ProjectSummary {
   semesterName: string;
   projectName: string;
-  completionPct: number;  // 0–100
+  completionPct: number;
   teamSize: number;
 }
 
@@ -57,6 +102,28 @@ export interface UserProfile {
   projectSummary?: ProjectSummary;
 }
 
+// ─── Schools ──────────────────────────────────────────────────────────────────
+
+export interface SchoolModel {
+  id: string;
+  schoolName: string;
+  address: string | null;
+}
+
+/** Matches backend CreateSchoolRequestModel. */
+export interface CreateSchoolRequest {
+  schoolName: string;
+  address?: string | null;
+}
+
+/** Matches backend CreateSchoolResponseModel. */
+export interface CreateSchoolResponse {
+  id: string;
+  schoolName: string;
+  address: string | null;
+  createdTime: string;
+}
+
 // ─── API Error ────────────────────────────────────────────────────────────────
 
 export interface ApiError {
@@ -65,7 +132,7 @@ export interface ApiError {
   errors?: Record<string, string[]>;
 }
 
-// ─── Generic paginated response ───────────────────────────────────────────────
+// ─── Generic paginated response (legacy alias) ────────────────────────────────
 
 export interface PaginatedResponse<T> {
   data: T[];

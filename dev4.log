@@ -1,0 +1,17 @@
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.130:3000
+✓ Ready in 452ms
+=== path.relative bad args === {
+  from: 'D:\\FPT\\SU26\\SWP391\\su26-swp-se1907-frontend',
+  to: undefined
+}
+Error: path.relative call site
+    at path.relative (D:\FPT\SU26\SWP391\su26-swp-se1907-frontend\_trace.cjs:11:19)
+    at Watchpack.<anonymous> (D:\FPT\SU26\SWP391\su26-swp-se1907-frontend\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js:543:55)
+=== RAW UNHANDLED REJECTION ===
+TypeError: The "to" argument must be of type string. Received undefined
+    at Object.relative (node:path:554:5)
+    at path.relative (D:\FPT\SU26\SWP391\su26-swp-se1907-frontend\_trace.cjs:13:15)
+    at Watchpack.<anonymous> (D:\FPT\SU26\SWP391\su26-swp-se1907-frontend\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js:543:55)
+=== END ===
