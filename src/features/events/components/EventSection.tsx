@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { AxiosError } from "axios";
 import { useAllEvents, useMyEvents, useJoinEvent } from "../hooks/useEvents";
 import { useUserProfile } from "@/features/user/hooks/useUserProfile";
+import { useUserRole } from "@/hooks/useUserRole";
 import { EventFilterTabs } from "./EventFilterTabs";
 import { EventGrid } from "./EventGrid";
 import { CreateEventForm } from "./CreateEventForm";
@@ -18,8 +19,9 @@ export function EventSection() {
   const [joiningId, setJoiningId] = useState<string | null>(null);
   const [joinError, setJoinError] = useState<string | null>(null);
 
+  const role = useUserRole();
+  const isAdmin = role === "admin";
   const { data: profile } = useUserProfile();
-  const isAdmin = profile?.role === "ADMIN";
   // Admins don't have a "Của tôi" list — always show all events.
   const effectiveFilter: Filter = isAdmin ? "all" : filter;
 
@@ -53,16 +55,18 @@ export function EventSection() {
           <h2 className="t-heading-md" style={{ margin: 0 }}>
             {mode === "create" ? "Tạo sự kiện" : "Sự kiện"}
           </h2>
-          <button
-            className="btn btn-outline btn-sm"
-            onClick={() => setMode((m) => (m === "create" ? "list" : "create"))}
-            style={{ cursor: "pointer" }}
-          >
-            {mode === "create" ? "← Quay lại" : "+ Tạo sự kiện"}
-          </button>
+          {isAdmin && (
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={() => setMode((m) => (m === "create" ? "list" : "create"))}
+              style={{ cursor: "pointer" }}
+            >
+              {mode === "create" ? "← Quay lại" : "+ Tạo sự kiện"}
+            </button>
+          )}
         </div>
 
-        {mode === "create" ? (
+        {mode === "create" && isAdmin ? (
           <CreateEventForm onCancel={() => setMode("list")} />
         ) : (
           <>
