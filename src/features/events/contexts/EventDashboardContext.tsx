@@ -1,12 +1,11 @@
 'use client';
 
 import React, { createContext, useContext, useState } from 'react';
-
-type Tab = 'dashboard' | 'submission' | 'results';
+import type { EventTabId } from '@/lib/events/getEventTabs';
 
 interface EventDashboardContextType {
-  activeTab: Tab;
-  setActiveTab: (tab: Tab) => void;
+  activeTab: EventTabId;
+  setActiveTab: (tab: EventTabId) => void;
   isModalOpen: boolean;
   setIsModalOpen: (open: boolean) => void;
   isLoading: boolean;
@@ -16,7 +15,7 @@ interface EventDashboardContextType {
 const EventDashboardContext = createContext<EventDashboardContextType | undefined>(undefined);
 
 export function EventDashboardProvider({ children }: { children: React.ReactNode }) {
-  const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [activeTab, setActiveTab] = useState<EventTabId>('detail');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
