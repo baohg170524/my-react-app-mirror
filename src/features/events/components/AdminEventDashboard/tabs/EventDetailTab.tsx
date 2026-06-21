@@ -1,11 +1,13 @@
 'use client';
 
-import React from 'react';
-import { useEvent, useEventTeams } from '@/features/events/hooks/useEvents';
+import React, { useState } from 'react';
+import { useEvent, useEventRoles } from '@/features/events/hooks/useEvents';
+import { isJudgeRole, isMentorRole } from '@/features/events/api/manage';
 import { Card } from '../../EventDashboard/Card';
 import { Button } from '../../EventDashboard/Button';
 import { CardSkeleton } from '../../EventDashboard/SkeletonLoaders';
-import { mockJudges, mockMentors } from '../../../api/adminMockData';
+import { CreateEventForm } from '../../CreateEventForm';
+import { EventStructureView } from '../EventStructureView';
 
 interface EventDetailTabProps {
   eventId: string;
@@ -13,10 +15,16 @@ interface EventDetailTabProps {
 
 export function EventDetailTab({ eventId }: EventDetailTabProps) {
   const { data: event, isLoading, error } = useEvent(eventId);
-  const { data: teams } = useEventTeams(eventId);
+  const { data: roles = [] } = useEventRoles(eventId);
+  const [isEditing, setIsEditing] = useState(false);
 
-  const judges = mockJudges[eventId] ?? [];
-  const mentors = mockMentors[eventId] ?? [];
+  const teamCount = new Set(roles.map((r) => r.teamId).filter(Boolean)).size;
+  const judgeCount = new Set(
+    roles.filter(isJudgeRole).map((r) => r.userId).filter(Boolean),
+  ).size;
+  const mentorCount = new Set(
+    roles.filter(isMentorRole).map((r) => r.userId).filter(Boolean),
+  ).size;
 
   const formatDate = (date: string) =>
     new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -42,13 +50,22 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
 
   if (!event) return <div className="t-body-md text-mute">Không tìm thấy sự kiện</div>;
 
+  if (isEditing) {
+    return (
+      <Card title="Chỉnh sửa sự kiện">
+        <CreateEventForm eventId={eventId} onCancel={() => setIsEditing(false)} />
+      </Card>
+    );
+  }
+
   const stats = [
-    { label: 'Tổng số đội', value: teams?.length ?? 0 },
-    { label: 'Số judge', value: judges.length },
-    { label: 'Số mentor', value: mentors.length },
+    { label: 'Tổng số đội', value: teamCount },
+    { label: 'Số judge', value: judgeCount },
+    { label: 'Số mentor', value: mentorCount },
   ];
 
   return (
+    <div className="flex flex-col gap-4 md:gap-6">
     <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-3">
       <Card title="Chi tiết sự kiện" className="lg:col-span-2">
         <div className="space-y-4">
@@ -71,13 +88,6 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
                 {event.status === 'open' ? 'Mở' : 'Đóng'}
               </span>
             </div>
-            <div className="flex justify-between items-baseline border-t border-hairline pt-3">
-              <span className="t-body-sm text-mute">Loại nộp bài</span>
-              <span className="t-body-strong text-ink">{event.submissionType}</span>
-            </div>
-          </div>
-          <div className="pt-2">
-            <Button variant="secondary" size="md">Chỉnh sửa sự kiện</Button>
           </div>
         </div>
       </Card>
@@ -95,6 +105,15 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
           ))}
         </div>
       </Card>
+    </div>
+
+      <EventStructureView eventId={eventId} />
+
+      <div className="pt-2">
+        <Button variant="secondary" size="md" onClick={() => setIsEditing(true)}>
+          Chỉnh sửa sự kiện
+        </Button>
+      </div>
     </div>
   );
 }

@@ -8,7 +8,6 @@ export const MOCK_EVENTS: Event[] = [
     endDate: "2026-06-20T12:00:00.000Z",
     description: "Learn clean architecture principles and best practices using Spring Boot in this hands-on workshop.",
     status: "open",
-    submissionType: "URL",
   },
   {
     id: "evt-002",
@@ -17,7 +16,6 @@ export const MOCK_EVENTS: Event[] = [
     endDate: "2026-06-23T17:00:00.000Z",
     description: "Intensive bootcamp covering design thinking methodology and prototyping with Figma.",
     status: "open",
-    submissionType: "Both",
   },
   {
     id: "evt-003",
@@ -26,7 +24,6 @@ export const MOCK_EVENTS: Event[] = [
     endDate: "2026-06-18T14:00:00.000Z",
     description: "Essential Agile and Scrum practices designed for student teams and projects.",
     status: "closed",
-    submissionType: "ZIP",
   },
   {
     id: "evt-004",
@@ -35,7 +32,6 @@ export const MOCK_EVENTS: Event[] = [
     endDate: "2026-06-26T18:00:00.000Z",
     description: "Deep dive into React 19 and Next.js 16 features with advanced patterns and optimization techniques.",
     status: "open",
-    submissionType: "Both",
   },
   {
     id: "evt-005",
@@ -44,7 +40,6 @@ export const MOCK_EVENTS: Event[] = [
     endDate: "2026-06-28T13:00:00.000Z",
     description: "Master git workflows and effective code review strategies for team collaboration.",
     status: "open",
-    submissionType: "URL",
   },
 ];
 

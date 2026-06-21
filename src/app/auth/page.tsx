@@ -10,12 +10,15 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useLogin, useRegister } from "@/hooks/useAuth";
 import type { AxiosError } from "axios";
-import { schoolsApi } from "@/services/api";
-import type { ApiError, SchoolModel } from "@/services/api";
+import { fptMockApi, schoolsApi, storageApi } from "@/services/api";
+import type { ApiError } from "@/services/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Mode = "login" | "register";
+
+/** School picker has only two choices: FPT or "Khác" (other). */
+type SchoolChoice = "" | "FPT" | "OTHER";
 
 interface LoginForm {
   email: string;
@@ -27,8 +30,10 @@ interface RegisterForm {
   email: string;
   password: string;
   confirmPassword: string;
-  /** Selected school ID (from backend `/Schools`). */
-  schoolId: string;
+  /** FPT or "Khác" (other). */
+  schoolChoice: SchoolChoice;
+  /** Free-text school name — required when "Khác" is selected. */
+  schoolName: string;
   studentCode: string;
 }
 
@@ -98,28 +103,15 @@ function FieldLabel({ children }: { children: ReactNode }) {
 function SchoolSelect({
   value,
   onChange,
-  schools,
-  isLoading,
   isError,
-  isEmpty,
   onRetry,
 }: {
-  value: string;
+  value: SchoolChoice;
   onChange: (e: ChangeEvent<HTMLSelectElement>) => void;
-  schools: SchoolModel[];
-  isLoading: boolean;
+  /** FPT school info failed to load — only blocks the FPT option. */
   isError: boolean;
-  isEmpty: boolean;
   onRetry: () => void;
 }) {
-  const placeholder = isLoading
-    ? "Đang tải danh sách trường…"
-    : isError
-      ? "Không tải được danh sách trường"
-      : isEmpty
-        ? "Chưa có trường nào trong hệ thống"
-        : "— Chọn trường —";
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <FieldLabel>Trường</FieldLabel>
@@ -127,49 +119,43 @@ function SchoolSelect({
         className="auth-select"
         value={value}
         onChange={onChange}
-        disabled={isLoading || isError || isEmpty}
         style={{ color: value === "" ? "var(--color-mute)" : "var(--color-ink)" }}
       >
         <option value="" disabled style={{ color: "var(--color-ink)" }}>
-          {placeholder}
+          — Chọn trường —
         </option>
-        {schools.map((s) => (
-          <option key={s.id} value={s.id} style={{ color: "var(--color-ink)" }}>
-            {s.schoolName}
-          </option>
-        ))}
+        <option value="FPT" style={{ color: "var(--color-ink)" }}>
+          FPT
+        </option>
+        <option value="OTHER" style={{ color: "var(--color-ink)" }}>
+          Khác
+        </option>
       </select>
-      {(isError || isEmpty) && (
+      {isError && (
         <div
           style={{
             fontSize: 12,
-            color: isError ? "var(--color-error)" : "var(--color-mute)",
+            color: "var(--color-error)",
             display: "flex",
             justifyContent: "space-between",
             gap: 8,
           }}
         >
-          <span>
-            {isError
-              ? "Không kết nối được tới máy chủ."
-              : "Vui lòng liên hệ admin để được thêm trường."}
-          </span>
-          {isError && (
-            <button
-              type="button"
-              onClick={onRetry}
-              style={{
-                background: "none",
-                border: "none",
-                padding: 0,
-                color: "var(--color-primary)",
-                fontWeight: 700,
-                cursor: "pointer",
-              }}
-            >
-              Thử lại
-            </button>
-          )}
+          <span>Không tải được thông tin trường FPT.</span>
+          <button
+            type="button"
+            onClick={onRetry}
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              color: "var(--color-primary)",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Thử lại
+          </button>
         </div>
       )}
     </div>
@@ -229,6 +215,16 @@ function CardUpload({
   );
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Find an existing school by name (case-insensitive) — used to reuse a school
+ *  that the backend reports as already existing instead of failing registration. */
+async function findSchoolByName(name: string) {
+  const target = name.trim().toLowerCase();
+  const res = await schoolsApi.list(1000);
+  return res.data.find((s) => s.schoolName.trim().toLowerCase() === target);
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AuthPage() {
@@ -243,13 +239,18 @@ export default function AuthPage() {
     email: "",
     password: "",
     confirmPassword: "",
-    schoolId: "",
+    schoolChoice: "",
+    schoolName: "",
     studentCode: "",
   });
-  // Student-card image is UI-only (preview), not sent in the register payload.
+  const [isCreatingSchool, setIsCreatingSchool] = useState(false);
+  const [isUploadingCard, setIsUploadingCard] = useState(false);
+  const [isValidatingCode, setIsValidatingCode] = useState(false);
+  // Student-card image: preview for the UI + the File uploaded for non-FPT students.
   const [cardImage, setCardImage] = useState<{
     preview: string;
     name: string;
+    file: File;
   } | null>(null);
   const [clientError, setClientError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -265,12 +266,19 @@ export default function AuthPage() {
     staleTime: 5 * 60_000,
   });
   const schools = schoolsQuery.data?.data ?? [];
-  const selectedSchool = schools.find((s) => s.id === registerForm.schoolId);
-  // Treat any school whose name contains "FPT" as the FPT-University case
-  // (no student-card upload required, student code recommended).
-  const isFptSchool = !!selectedSchool?.schoolName.toUpperCase().includes("FPT");
+  // The real FPT school id (school whose name contains "FPT") — used when the
+  // user picks the "FPT" option in the two-choice dropdown.
+  const fptSchoolId = schools.find((s) =>
+    s.schoolName.toUpperCase().includes("FPT"),
+  )?.id;
+  const isFptSchool = registerForm.schoolChoice === "FPT";
 
-  const isPending = loginMutation.isPending || registerMutation.isPending;
+  const isPending =
+    loginMutation.isPending ||
+    registerMutation.isPending ||
+    isCreatingSchool ||
+    isUploadingCard ||
+    isValidatingCode;
   const serverError =
     (loginMutation.error as AxiosError<ApiError>)?.response?.data?.message ||
     (registerMutation.error as AxiosError<ApiError>)?.response?.data?.message;
@@ -318,15 +326,19 @@ export default function AuthPage() {
     loginMutation.mutate(loginForm);
   }
 
-  // Card upload is required for non-FPT schools (UI-only — not sent yet).
-  const needsCard = registerForm.schoolId !== "" && !isFptSchool;
+  // "Khác" requires the student to type their school name + upload a card.
+  const needsSchoolName = registerForm.schoolChoice === "OTHER";
+  const needsCard = registerForm.schoolChoice === "OTHER";
 
   function handleSchoolChange(e: ChangeEvent<HTMLSelectElement>) {
-    const value = e.target.value;
-    setRegisterForm((f) => ({ ...f, schoolId: value }));
-    const next = schools.find((s) => s.id === value);
-    const nextIsFpt = !!next?.schoolName.toUpperCase().includes("FPT");
-    if (value === "" || nextIsFpt) setCardImage(null);
+    const value = e.target.value as SchoolChoice;
+    setRegisterForm((f) => ({
+      ...f,
+      schoolChoice: value,
+      // Reset the typed name unless "Khác" is selected.
+      schoolName: value === "OTHER" ? f.schoolName : "",
+    }));
+    if (value !== "OTHER") setCardImage(null);
   }
 
   function handleCardSelect(e: ChangeEvent<HTMLInputElement>) {
@@ -344,7 +356,11 @@ export default function AuthPage() {
     const reader = new FileReader();
     reader.onload = () => {
       setClientError("");
-      setCardImage({ preview: reader.result as string, name: file.name });
+      setCardImage({
+        preview: reader.result as string,
+        name: file.name,
+        file,
+      });
     };
     reader.readAsDataURL(file);
   }
@@ -354,8 +370,16 @@ export default function AuthPage() {
     setClientError("");
     setSuccessMessage("");
 
-    if (!registerForm.schoolId) {
+    if (!registerForm.schoolChoice) {
       setClientError("Vui lòng chọn trường.");
+      return;
+    }
+    if (isFptSchool && !fptSchoolId) {
+      setClientError("Không tìm thấy trường FPT trong hệ thống.");
+      return;
+    }
+    if (needsSchoolName && !registerForm.schoolName.trim()) {
+      setClientError("Vui lòng nhập tên trường của bạn.");
       return;
     }
     if (needsCard && !cardImage) {
@@ -367,16 +391,82 @@ export default function AuthPage() {
       return;
     }
 
+    // FPT students: the student code MUST exist in the FPT system. An invalid
+    // code makes the backend register endpoint throw a 500, so validate it here
+    // and surface a clean message instead.
+    if (isFptSchool) {
+      const code = registerForm.studentCode.trim();
+      if (!code) {
+        setClientError("Vui lòng nhập mã số sinh viên FPT.");
+        return;
+      }
+      try {
+        setIsValidatingCode(true);
+        const student = await fptMockApi.validateStudent(code);
+        if (!student.isValid) {
+          setClientError("Mã số sinh viên không hợp lệ.");
+          return;
+        }
+      } catch (err) {
+        const status = (err as AxiosError)?.response?.status;
+        setClientError(
+          status === 404
+            ? "Mã số sinh viên không tồn tại trong hệ thống FPT."
+            : "Không kiểm tra được mã số sinh viên. Vui lòng thử lại.",
+        );
+        return;
+      } finally {
+        setIsValidatingCode(false);
+      }
+    }
+
+    // FPT → use the real FPT school id. "Khác" → upload the student-card photo
+    // (required by the backend), create the typed school, then register.
+    let schoolId = fptSchoolId ?? "";
+    let photoStudentCardUrl: string | undefined;
+    if (needsSchoolName || needsCard) {
+      try {
+        if (needsCard && cardImage) {
+          setIsUploadingCard(true);
+          photoStudentCardUrl = await storageApi.upload(cardImage.file);
+          setIsUploadingCard(false);
+        }
+        if (needsSchoolName) {
+          const schoolName = registerForm.schoolName.trim();
+          setIsCreatingSchool(true);
+          try {
+            const created = await schoolsApi.create({ schoolName });
+            schoolId = created.id;
+          } catch (createErr) {
+            // School already exists → reuse it instead of blocking registration.
+            const existing = await findSchoolByName(schoolName);
+            if (!existing) throw createErr;
+            schoolId = existing.id;
+          }
+          setIsCreatingSchool(false);
+        }
+      } catch (err) {
+        setIsUploadingCard(false);
+        setIsCreatingSchool(false);
+        const message = (err as AxiosError<ApiError>)?.response?.data?.message;
+        setClientError(
+          message || "Không thể chuẩn bị dữ liệu đăng ký. Vui lòng thử lại.",
+        );
+        return;
+      }
+    }
+
     registerMutation.mutate(
       {
-        schoolId: registerForm.schoolId,
+        schoolId,
         studentCode: registerForm.studentCode.trim() || undefined,
         email: registerForm.email.trim(),
         password: registerForm.password,
         fullName: registerForm.fullName.trim(),
         isStudent: true,
-        // FPT status is derived from the selected school name (contains "FPT").
+        // isFpt reflects the FPT / Khác choice.
         isFpt: isFptSchool,
+        photoStudentCardUrl,
       },
       {
         onSuccess: () => {
@@ -393,7 +483,8 @@ export default function AuthPage() {
             email: "",
             password: "",
             confirmPassword: "",
-            schoolId: "",
+            schoolChoice: "",
+            schoolName: "",
             studentCode: "",
           });
           setCardImage(null);
@@ -538,10 +629,17 @@ export default function AuthPage() {
           height: 100%;
           background: var(--color-canvas);
           display: flex;
-          align-items: center;
           justify-content: center;
           z-index: 10;
           transition: ${EASE};
+          /* allow scrolling when the (taller) register form overflows … */
+          overflow-y: auto;
+          /* … but hide the scrollbar */
+          scrollbar-width: none; /* Firefox */
+          -ms-overflow-style: none; /* IE/Edge */
+        }
+        .auth-form-panel::-webkit-scrollbar {
+          display: none; /* Chrome/Safari */
         }
 
         /* ── switching spinner overlay ────────────────────────────────────── */
@@ -576,7 +674,10 @@ export default function AuthPage() {
         .auth-form-inner {
           width: 100%;
           max-width: 380px;
-          padding: 0 32px;
+          /* margin:auto centers vertically when it fits, and lets the panel
+             scroll without clipping the top when content overflows */
+          margin: auto;
+          padding: 40px 32px;
           display: flex;
           flex-direction: column;
           gap: 20px;
@@ -974,21 +1075,29 @@ export default function AuthPage() {
                 
 
                 <SchoolSelect
-                  value={registerForm.schoolId}
+                  value={registerForm.schoolChoice}
                   onChange={handleSchoolChange}
-                  schools={schools}
-                  isLoading={schoolsQuery.isLoading}
                   isError={schoolsQuery.isError}
-                  isEmpty={
-                    !schoolsQuery.isLoading &&
-                    !schoolsQuery.isError &&
-                    schools.length === 0
-                  }
                   onRetry={() => schoolsQuery.refetch()}
                 />
 
+                {/* "Khác" → student types their actual school name. */}
+                {needsSchoolName && (
+                  <Field
+                    label="Tên trường"
+                    value={registerForm.schoolName}
+                    onChange={(e) =>
+                      setRegisterForm((f) => ({
+                        ...f,
+                        schoolName: e.target.value,
+                      }))
+                    }
+                    placeholder="VD: Đại học Bách Khoa"
+                  />
+                )}
+
                 {/* Optional student code — most relevant for FPT students. */}
-                {registerForm.schoolId !== "" && (
+                {registerForm.schoolChoice !== "" && (
                   <Field
                     label={
                       isFptSchool
@@ -1006,7 +1115,7 @@ export default function AuthPage() {
                   />
                 )}
 
-                {/* Non-FPT schools must upload a student-card photo (UI-only). */}
+                {/* Non-FPT schools must upload a student-card photo (sent to backend). */}
                 {needsCard && (
                   <CardUpload
                     preview={cardImage?.preview ?? null}
@@ -1048,7 +1157,15 @@ export default function AuthPage() {
                   className="auth-submit"
                   disabled={isPending}
                 >
-                  {registerMutation.isPending ? "Đang đăng ký…" : "Tạo tài khoản"}
+                  {isValidatingCode
+                    ? "Đang kiểm tra MSSV…"
+                    : isUploadingCard
+                      ? "Đang tải ảnh thẻ…"
+                      : isCreatingSchool
+                        ? "Đang tạo trường…"
+                        : registerMutation.isPending
+                          ? "Đang đăng ký…"
+                          : "Tạo tài khoản"}
                 </button>
               </form>
             )}

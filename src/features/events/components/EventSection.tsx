@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { AxiosError } from "axios";
 import { useAllEvents, useMyEvents, useJoinEvent } from "../hooks/useEvents";
+import { useUserProfile } from "@/features/user/hooks/useUserProfile";
 import { EventFilterTabs } from "./EventFilterTabs";
 import { EventGrid } from "./EventGrid";
 import { CreateEventForm } from "./CreateEventForm";
@@ -17,10 +18,15 @@ export function EventSection() {
   const [joiningId, setJoiningId] = useState<string | null>(null);
   const [joinError, setJoinError] = useState<string | null>(null);
 
+  const { data: profile } = useUserProfile();
+  const isAdmin = profile?.role === "ADMIN";
+  // Admins don't have a "Của tôi" list — always show all events.
+  const effectiveFilter: Filter = isAdmin ? "all" : filter;
+
   const allQuery = useAllEvents();
   const myQuery  = useMyEvents();
 
-  const active = filter === "all" ? allQuery : myQuery;
+  const active = effectiveFilter === "all" ? allQuery : myQuery;
   const events   = active.data ?? [];
   const isLoading = active.isLoading;
 
@@ -61,7 +67,7 @@ export function EventSection() {
         ) : (
           <>
             {/* Tabs */}
-            <EventFilterTabs active={filter} onChange={setFilter} />
+            <EventFilterTabs active={effectiveFilter} onChange={setFilter} hideMy={isAdmin} />
 
             {/* Grid */}
             <EventGrid

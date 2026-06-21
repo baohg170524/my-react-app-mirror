@@ -61,7 +61,7 @@ export function AdminEventDashboard({ eventId, role = 'Admin' }: AdminEventDashb
 
       <header className="fixed top-0 left-0 right-0 h-auto md:h-20 bg-canvas border-b border-hairline flex items-center px-4 md:px-6 gap-3 md:gap-4 lg:left-60 z-40 py-4 md:py-0">
         <button
-          onClick={() => router.push('/events')}
+          onClick={() => router.push('/')}
           className="flex items-center justify-center w-9 h-9 rounded-sm border border-hairline text-ink hover:bg-surface-soft transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary flex-shrink-0"
           aria-label="Quay lại danh sách sự kiện"
         >

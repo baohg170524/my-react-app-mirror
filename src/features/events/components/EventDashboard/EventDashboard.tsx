@@ -65,7 +65,6 @@ export function EventDashboard({ eventId, userId }: EventDashboardProps) {
         title={event.title}
         subtitle="Team Competition"
         status={event.status}
-        submissionType={event.submissionType}
       />
       <main className="fixed top-24 md:top-20 left-0 right-0 bottom-0 overflow-hidden bg-canvas lg:left-60">
         <div className="h-full overflow-y-auto p-3 md:p-6">

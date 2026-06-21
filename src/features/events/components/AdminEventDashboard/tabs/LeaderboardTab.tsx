@@ -1,7 +1,11 @@
 'use client';
 
 import React from 'react';
-import { useTeamScores, useEventTeams } from '@/features/events/hooks/useEvents';
+import {
+  useEventRounds,
+  useRoundFinalResults,
+  useTeams,
+} from '@/features/events/hooks/useEvents';
 import { Card } from '../../EventDashboard/Card';
 import { CardSkeleton } from '../../EventDashboard/SkeletonLoaders';
 
@@ -10,8 +14,15 @@ interface LeaderboardTabProps {
 }
 
 export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
-  const { data: scores, isLoading: scoresLoading, error } = useTeamScores(eventId);
-  const { data: teams, isLoading: teamsLoading } = useEventTeams(eventId);
+  const { data: rounds = [], isLoading: roundsLoading } = useEventRounds(eventId);
+  // Leaderboard reflects the latest round (highest round number).
+  const latestRound = [...rounds].sort((a, b) => b.roundNumber - a.roundNumber)[0];
+  const {
+    data: results = [],
+    isLoading: resultsLoading,
+    error,
+  } = useRoundFinalResults(latestRound?.id);
+  const { data: teams = [], isLoading: teamsLoading } = useTeams();
 
   if (error) {
     return (
@@ -21,10 +32,14 @@ export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
     );
   }
 
-  if (scoresLoading || teamsLoading) return <CardSkeleton />;
+  if (roundsLoading || resultsLoading || teamsLoading) return <CardSkeleton />;
 
-  const teamName = (teamId: string) => teams?.find((t) => t.id === teamId)?.name ?? teamId;
-  const ranked = [...(scores ?? [])].sort((a, b) => b.score - a.score);
+  const teamName = (teamId: string | null) =>
+    teams.find((t) => t.id === teamId)?.name ?? teamId ?? '—';
+  // Use backend rank when present, otherwise sort by score desc.
+  const ranked = [...results].sort(
+    (a, b) => (a.rank || 9999) - (b.rank || 9999) || b.finalScore - a.finalScore,
+  );
 
   const rankStyle = (rank: number) => {
     if (rank === 1) return 'bg-primary text-on-primary';
@@ -34,7 +49,7 @@ export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
   };
 
   return (
-    <Card title="Bảng xếp hạng">
+    <Card title={`Bảng xếp hạng${latestRound?.roundName ? ` — ${latestRound.roundName}` : ''}`}>
       {ranked.length > 0 ? (
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
@@ -43,14 +58,14 @@ export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
                 <th className="t-caption-md text-mute font-bold uppercase py-3 px-2 text-center w-16">Hạng</th>
                 <th className="t-caption-md text-mute font-bold uppercase py-3 px-2">Tên đội</th>
                 <th className="t-caption-md text-mute font-bold uppercase py-3 px-2 text-center">Điểm</th>
-                <th className="t-caption-md text-mute font-bold uppercase py-3 px-2 text-right">Trạng thái chấm</th>
+                <th className="t-caption-md text-mute font-bold uppercase py-3 px-2 text-right">Vào vòng tiếp</th>
               </tr>
             </thead>
             <tbody>
               {ranked.map((row, idx) => {
-                const rank = idx + 1;
+                const rank = row.rank || idx + 1;
                 return (
-                  <tr key={row.teamId} className="border-b border-hairline last:border-b-0">
+                  <tr key={row.id} className="border-b border-hairline last:border-b-0">
                     <td className="py-3 px-2 text-center">
                       <span
                         className={`inline-flex items-center justify-center w-8 h-8 rounded-full t-body-strong font-bold ${rankStyle(rank)}`}
@@ -59,14 +74,14 @@ export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
                       </span>
                     </td>
                     <td className="t-body-sm font-bold text-ink py-3 px-2">{teamName(row.teamId)}</td>
-                    <td className="t-heading-sm text-primary font-bold py-3 px-2 text-center">{row.score}</td>
+                    <td className="t-heading-sm text-primary font-bold py-3 px-2 text-center">{row.finalScore}</td>
                     <td className="py-3 px-2 text-right">
                       <span
                         className={`inline-block px-3 py-1 rounded-sm t-caption-sm font-bold uppercase ${
-                          row.status === 'graded' ? 'bg-primary text-on-primary' : 'bg-surface-soft text-warning border border-warning'
+                          row.isAdvanced ? 'bg-primary text-on-primary' : 'bg-surface-soft text-warning border border-warning'
                         }`}
                       >
-                        {row.status === 'graded' ? 'Đã chấm' : 'Chờ chấm'}
+                        {row.isAdvanced ? 'Có' : 'Không'}
                       </span>
                     </td>
                   </tr>

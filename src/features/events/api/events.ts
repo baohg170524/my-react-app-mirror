@@ -1,5 +1,35 @@
 import { apiClient } from "@/services/api";
+import type { PagedResult } from "@/services/api";
 import type { Event } from "../types/event.types";
+
+// ─── Backend list model (CreateEventResponse / EventModel) ─────────────────────
+
+/** Matches backend EventModel returned by GET /api/Events. */
+export interface EventModel {
+  id: string;
+  eventName: string | null;
+  season: string | null;
+  year: number;
+  startDate: string;
+  endDate: string;
+  description: string | null;
+  createdTime: string;
+  lastUpdatedTime: string;
+}
+
+/** Map a backend EventModel to the card UI `Event` shape. */
+function toUiEvent(e: EventModel): Event {
+  // Backend has no status — derive it from the end date.
+  const open = new Date(e.endDate).getTime() >= Date.now();
+  return {
+    id: e.id,
+    title: e.eventName?.trim() || "(Chưa đặt tên)",
+    startDate: e.startDate,
+    endDate: e.endDate,
+    status: open ? "open" : "closed",
+    description: e.description ?? "",
+  };
+}
 
 // ─── Create-event payload (matches backend CreateEventRequestModel) ────────────
 
@@ -7,7 +37,8 @@ import type { Event } from "../types/event.types";
 export interface CreateTrackPayload {
   trackName: string;
   description: string;
-  templateId: string;
+  /** Template GUID, or null when no template is selected (avoids a 500). */
+  templateId: string | null;
   submissionRuleDescription: string;
   judgeUserIds: string[];
   mentorUserIds: string[];
@@ -34,6 +65,16 @@ export interface CreateEventPayload {
   rounds: CreateRoundPayload[];
 }
 
+/** Full update-event body — matches UpdateEventRequestModel (event-level only). */
+export interface UpdateEventPayload {
+  eventName: string;
+  season: string;
+  year: number;
+  startDate: string; // ISO 8601
+  endDate: string;
+  description: string;
+}
+
 /** Subset of CreateEventResponseModel we care about. */
 export interface CreateEventResponse {
   id: string;
@@ -47,11 +88,38 @@ export interface CreateEventResponse {
 }
 
 export const eventsApi = {
-  getAll: (): Promise<Event[]> =>
-    apiClient.get<Event[]>("/events").then((r) => r.data),
+  /** GET /api/Events — list events (public), mapped to the card UI shape. */
+  list: async (): Promise<Event[]> => {
+    const { data } = await apiClient.get<PagedResult<EventModel>>("/Events", {
+      params: { PageNumber: 1, PageSize: 100, SortBy: "createdTime", IsAscending: false },
+    });
+    return (data.data ?? []).map(toUiEvent);
+  },
 
-  getMine: (): Promise<Event[]> =>
-    apiClient.get<Event[]>("/events?filter=mine").then((r) => r.data),
+  /** GET /api/Events/{id} — single event by its real id, mapped to UI shape. */
+  getById: async (id: string): Promise<Event> => {
+    const { data } = await apiClient.get<EventModel>(
+      `/Events/${encodeURIComponent(id)}`,
+    );
+    return toUiEvent(data);
+  },
+
+  /** GET /api/Events/{id} — raw backend model (for prefilling the edit form). */
+  getModelById: async (id: string): Promise<EventModel> => {
+    const { data } = await apiClient.get<EventModel>(
+      `/Events/${encodeURIComponent(id)}`,
+    );
+    return data;
+  },
+
+  /** PUT /api/Events/{id} — update event-level fields. */
+  update: async (id: string, payload: UpdateEventPayload): Promise<EventModel> => {
+    const { data } = await apiClient.put<EventModel>(
+      `/Events/${encodeURIComponent(id)}`,
+      payload,
+    );
+    return data;
+  },
 
   join: (id: string): Promise<void> =>
     apiClient.post(`/events/${id}/join`).then(() => undefined),

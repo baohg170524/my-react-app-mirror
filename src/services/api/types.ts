@@ -35,6 +35,8 @@ export interface RegisterRequest {
   isStudent: boolean;
   /** Derived from the selected school name (contains "FPT"). */
   isFpt: boolean;
+  /** Required by the backend for non-FPT students (URL from `/Storage/upload`). */
+  photoStudentCardUrl?: string;
 }
 
 /** Matches backend LoginUserResponseModel (flat shape). */
@@ -106,6 +108,20 @@ export interface SchoolModel {
   id: string;
   schoolName: string;
   address: string | null;
+}
+
+/** Matches backend CreateSchoolRequestModel. */
+export interface CreateSchoolRequest {
+  schoolName: string;
+  address?: string | null;
+}
+
+/** Matches backend CreateSchoolResponseModel. */
+export interface CreateSchoolResponse {
+  id: string;
+  schoolName: string;
+  address: string | null;
+  createdTime: string;
 }
 
 // ─── API Error ────────────────────────────────────────────────────────────────

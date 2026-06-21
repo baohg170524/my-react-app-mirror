@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
+import { manageApi } from "../api/manage";
 import type { Event } from "../types/event.types";
 
 interface Props {
@@ -8,6 +10,20 @@ interface Props {
   onJoin: (id: string) => void;
   isJoining: boolean;
   joinError?: string | null;
+}
+
+/** Number of distinct teams in an event (from its roles). Only runs when
+ *  authenticated — the roles endpoint requires a token. */
+function useEventTeamCount(eventId: string): number {
+  const enabled =
+    typeof window !== "undefined" && !!localStorage.getItem("accessToken");
+  const { data } = useQuery({
+    queryKey: ["eventTeamCount", eventId],
+    queryFn: () => manageApi.listEventRoles(eventId),
+    enabled,
+    staleTime: 2 * 60_000,
+  });
+  return new Set((data ?? []).map((r) => r.teamId).filter(Boolean)).size;
 }
 
 function formatDate(iso: string) {
@@ -22,6 +38,7 @@ function formatDate(iso: string) {
 
 export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
   const joinDisabled = event.status === "closed" || isJoining;
+  const teamCount = useEventTeamCount(event.id);
 
   return (
     <article
@@ -79,10 +96,10 @@ export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
         {formatDate(event.startDate)}
       </p>
 
-      {/* Submission Type Badge */}
+      {/* Team count badge */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-xs)", flex: 1 }}>
         <span className="badge-tag" style={{ fontSize: "var(--fs-utility-xs)" }}>
-          {event.submissionType}
+          {teamCount} đội tham gia
         </span>
       </div>
 
