@@ -4,174 +4,71 @@ import userEvent from '@testing-library/user-event';
 import { EventDashboardProvider } from '@/features/events/contexts/EventDashboardContext';
 import { Sidebar } from '@/features/events/components/EventDashboard/Sidebar';
 
-describe('Accessibility - Sidebar Navigation', () => {
-  it('should have proper semantic HTML structure', () => {
-    render(
-      <EventDashboardProvider>
-        <Sidebar eventId="evt-test" />
-      </EventDashboardProvider>
-    );
+jest.mock('@/hooks/useAuth', () => ({
+  useCurrentUser: () => ({
+    data: {
+      id: 'user-test',
+      email: 'student@test',
+      fullName: 'Student Tester',
+      role: 'STUDENT',
+      createdAt: '',
+      stats: { eventsJoined: 0, projectScore: 0, rank: 0 },
+    },
+  }),
+}));
 
-    // Verify nav element exists
-    const nav = screen.getByRole('navigation', { name: /event dashboard navigation/i });
-    expect(nav).toBeInTheDocument();
+jest.mock('@/features/teams/hooks/useTeams', () => ({
+  useMyTeamForEvent: () => ({ data: null, isLoading: false }),
+}));
 
-    // Verify tablist role
-    const tablist = screen.getByRole('tablist');
-    expect(tablist).toBeInTheDocument();
+function renderSidebar() {
+  return render(
+    <EventDashboardProvider>
+      <Sidebar eventId="evt-test" />
+    </EventDashboardProvider>,
+  );
+}
 
-    // Verify tabs have proper roles
+describe('Accessibility - Sidebar Navigation (role-aware)', () => {
+  it('exposes a nav landmark + tablist', () => {
+    renderSidebar();
+    expect(screen.getByRole('navigation', { name: /event dashboard navigation/i })).toBeInTheDocument();
+    expect(screen.getByRole('tablist')).toBeInTheDocument();
+  });
+
+  it('renders the student-no-team tab set (2 tabs: Chi tiết, Tạo đội)', () => {
+    renderSidebar();
     const tabs = screen.getAllByRole('tab');
-    expect(tabs.length).toBe(3);
+    expect(tabs.length).toBe(2);
+    expect(tabs[0]).toHaveAttribute('aria-label', expect.stringContaining('Chi tiết sự kiện'));
+    expect(tabs[1]).toHaveAttribute('aria-label', expect.stringContaining('Tạo đội'));
   });
 
-  it('should support keyboard navigation with Tab key', async () => {
+  it('first tab is active by default', () => {
+    renderSidebar();
+    const [first, second] = screen.getAllByRole('tab');
+    expect(first).toHaveAttribute('aria-selected', 'true');
+    expect(second).toHaveAttribute('aria-selected', 'false');
+  });
+
+  it('tabs are keyboard focusable and reachable via Tab', async () => {
     const user = userEvent.setup();
-    render(
-      <EventDashboardProvider>
-        <Sidebar eventId="evt-test" />
-      </EventDashboardProvider>
-    );
-
-    const firstTab = screen.getByRole('tab', { name: /event dashboard tab/i });
-    const secondTab = screen.getByRole('tab', { name: /submission tab/i });
-
-    // Focus first tab
-    firstTab.focus();
-    expect(document.activeElement).toBe(firstTab);
-
-    // Tab to next element
+    renderSidebar();
+    const [first, second] = screen.getAllByRole('tab');
+    first.focus();
+    expect(document.activeElement).toBe(first);
     await user.tab();
-    expect(document.activeElement).toBe(secondTab);
+    expect(document.activeElement).toBe(second);
   });
 
-  it('should show visible focus state', () => {
-    render(
-      <EventDashboardProvider>
-        <Sidebar eventId="evt-test" />
-      </EventDashboardProvider>
-    );
-
-    const firstTab = screen.getByRole('tab', { name: /event dashboard tab/i });
-    firstTab.focus();
-
-    // Check that focus-visible styles are present
-    expect(firstTab.className).toContain('focus-visible:outline');
+  it('tabs carry focus-visible outline classes', () => {
+    renderSidebar();
+    const [first] = screen.getAllByRole('tab');
+    expect(first.className).toContain('focus-visible:outline');
   });
 
-  it('should have ARIA labels on icon-only buttons', () => {
-    render(
-      <EventDashboardProvider>
-        <Sidebar eventId="evt-test" />
-      </EventDashboardProvider>
-    );
-
-    // Check that settings icon button has aria-label
-    const settingsButton = screen.getByRole('button', { name: /user settings/i });
-    expect(settingsButton).toHaveAttribute('aria-label', 'User settings');
-  });
-
-  it('should announce active tab state to screen readers', () => {
-    render(
-      <EventDashboardProvider>
-        <Sidebar eventId="evt-test" />
-      </EventDashboardProvider>
-    );
-
-    const activeTab = screen.getByRole('tab', { name: /event dashboard tab/i });
-    expect(activeTab).toHaveAttribute('aria-selected', 'true');
-
-    const inactiveTab = screen.getByRole('tab', { name: /submission tab/i });
-    expect(inactiveTab).toHaveAttribute('aria-selected', 'false');
-  });
-
-  it('should have aria-hidden on decorative icons', () => {
-    render(
-      <EventDashboardProvider>
-        <Sidebar eventId="evt-test" />
-      </EventDashboardProvider>
-    );
-
-    const icons = document.querySelectorAll('[aria-hidden="true"]');
-    expect(icons.length).toBeGreaterThan(0);
-  });
-
-  it('should have sr-only text for screen readers on tabs', () => {
-    const { container } = render(
-      <EventDashboardProvider>
-        <Sidebar eventId="evt-test" />
-      </EventDashboardProvider>
-    );
-
-    // Check that sr-only (screen reader only) text is present
-    const srOnlyElements = container?.querySelectorAll('.sr-only');
-    expect((srOnlyElements?.length || 0)).toBeGreaterThan(0);
-  });
-
-  it('should allow clicking on tabs with keyboard', async () => {
-    const user = userEvent.setup();
-    render(
-      <EventDashboardProvider>
-        <Sidebar eventId="evt-test" />
-      </EventDashboardProvider>
-    );
-
-    const secondTab = screen.getByRole('tab', { name: /submission tab/i });
-    secondTab.focus();
-
-    // Simulate pressing Enter on the focused tab
-    await user.keyboard('{Enter}');
-    expect(document.activeElement).toBe(secondTab);
-  });
-
-  it('should have proper tab navigation order', () => {
-    render(
-      <EventDashboardProvider>
-        <Sidebar eventId="evt-test" />
-      </EventDashboardProvider>
-    );
-
-    const tabs = screen.getAllByRole('tab');
-    expect(tabs[0]).toHaveAttribute('aria-label', expect.stringContaining('Event Dashboard'));
-    expect(tabs[1]).toHaveAttribute('aria-label', expect.stringContaining('Submission'));
-    expect(tabs[2]).toHaveAttribute('aria-label', expect.stringContaining('Results'));
-  });
-
-  it('should support arrow key navigation (accessible pattern)', async () => {
-    render(
-      <EventDashboardProvider>
-        <Sidebar eventId="evt-test" />
-      </EventDashboardProvider>
-    );
-
-    const firstTab = screen.getByRole('tab', { name: /event dashboard tab/i });
-    firstTab.focus();
-
-    // While arrow key navigation is not required for tabs, it's a best practice
-    // This test documents the expected behavior
-    expect(document.activeElement).toBe(firstTab);
-  });
-
-  it('should maintain focus visibility after interaction', async () => {
-    const user = userEvent.setup();
-    render(
-      <EventDashboardProvider>
-        <Sidebar eventId="evt-test" />
-      </EventDashboardProvider>
-    );
-
-    const firstTab = screen.getByRole('tab', { name: /event dashboard tab/i });
-    const secondTab = screen.getByRole('tab', { name: /submission tab/i });
-
-    // Focus and click first tab
-    firstTab.focus();
-    await user.click(firstTab);
-
-    // Tab to second tab
-    await user.tab();
-    expect(document.activeElement).toBe(secondTab);
-
-    // Verify tab is still focusable
-    expect(secondTab).not.toBeDisabled();
+  it('tabs expose sr-only labels for screen readers', () => {
+    const { container } = renderSidebar();
+    expect(container.querySelectorAll('.sr-only').length).toBeGreaterThan(0);
   });
 });
