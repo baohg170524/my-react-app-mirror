@@ -103,10 +103,10 @@ export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
         </span>
       </div>
 
-      {/* Join button — sibling, NOT inside Link */}
+      {/* Open event — role-aware dashboard at /events/[id] handles admin redirect to /manage */}
       <div style={{ marginTop: "var(--space-sm)" }}>
         <Link
-        href={`/events/${event.id}/manage`}
+        href={`/events/${event.id}`}
         style={{ textDecoration: "none" }}
       >
         <button
