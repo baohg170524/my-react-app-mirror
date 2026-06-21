@@ -4,14 +4,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { useIsAuthenticated, useLogout } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
+import { getNavLinksFor } from "@/lib/nav/getNavLinksFor";
 
 export function Navbar() {
   const pathname = usePathname();
   const isAuthenticated = useIsAuthenticated();
   const logout = useLogout();
+  const role = useUserRole();
+  const links = getNavLinksFor(role);
 
-  // Focus main on route change for keyboard/a11y.
-  // preventScroll keeps the page from jumping/pulling the navbar up on F5.
   useEffect(() => {
     const main = document.querySelector<HTMLElement>("main");
     if (main) main.focus({ preventScroll: true });
@@ -32,20 +34,12 @@ export function Navbar() {
         </Link>
 
         <ul className="primary-nav__links">
-          {[
-            { label: "Sự kiện", href: "/" },
-            { label: "Tiêu chí chấm điểm", href: "/criteria" },
-            { label: "Người dùng", href: "/users" },
-            { label: "Khác", href: "/other" },
-          ].map(({ label, href }) => (
+          {links.map(({ label, href }) => (
             <li key={href}>
               <Link
                 href={href}
                 style={{
-                  color:
-                    pathname === href
-                      ? "var(--color-primary)"
-                      : "var(--color-on-dark)",
+                  color: pathname === href ? "var(--color-primary)" : "var(--color-on-dark)",
                   fontWeight: pathname === href ? 700 : 400,
                   fontSize: "var(--fs-body-md)",
                   textDecoration: "none",
