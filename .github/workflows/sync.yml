@@ -1,10 +1,8 @@
 name: Sync to Personal Repo
-
 on:
   push:
     branches:
       - main
-
 jobs:
   git-sync:
     runs-on: ubuntu-latest
@@ -14,6 +12,16 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Debug token
+        env:
+          TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "TOKEN IS EMPTY - Secret chưa được set!"
+          else
+            echo "TOKEN OK - độ dài: ${#TOKEN} ký tự"
+          fi
+
       - name: Push to Personal Mirror Repo
         env:
           TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
@@ -21,4 +29,4 @@ jobs:
           git config --global user.name "GitHub Action Bot"
           git config --global user.email "actions@github.com"
           git remote add mirror https://x-access-token:${TOKEN}@github.com/baohg170524/my-react-app-mirror.git
-          git push --force mirror main 
+          git push --force mirror main
