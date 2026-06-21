@@ -3,30 +3,26 @@
 import React from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
-import { Modal } from './Modal';
-import { DashboardTab } from './tabs/Dashboard';
+import { EventDetailTab } from './tabs/EventDetail';
+import { CreateTeamTab } from './tabs/CreateTeam';
+import { MyTeamTab } from './tabs/MyTeam';
 import { SubmissionTab } from './tabs/Submission';
 import { ResultsTab } from './tabs/Results';
-import { TeamRegistrationForm } from './TeamRegistrationForm';
+import { LeaderboardTab } from './tabs/Leaderboard';
+import { JudgeAssignedTeamsTab } from './tabs/JudgeAssignedTeams';
 import { useEventDashboard } from '@/features/events/contexts/EventDashboardContext';
-import { useEvent, useUserTeam, useEventTeams } from '@/features/events/hooks/useEvents';
+import { useEvent } from '@/features/events/hooks/useEvents';
+import { useMyTeamForEvent } from '@/features/teams/hooks/useTeams';
+import Link from 'next/link';
 
-interface EventDashboardProps {
-  eventId: string;
-  userId: string;
-}
+interface EventDashboardProps { eventId: string; userId: string; }
 
 export function EventDashboard({ eventId, userId }: EventDashboardProps) {
-  const { activeTab, isModalOpen, setIsModalOpen } = useEventDashboard();
-
-  // Fetch real data
+  const { activeTab } = useEventDashboard();
   const { data: event, isLoading: eventLoading } = useEvent(eventId);
-  const { data: userTeam, isLoading: userTeamLoading } = useUserTeam(eventId, userId);
-  const { isLoading: teamsLoading } = useEventTeams(eventId);
+  const { data: team, isLoading: teamLoading } = useMyTeamForEvent(eventId, userId);
 
-  const isLoading = eventLoading || userTeamLoading || teamsLoading;
-
-  if (isLoading) {
+  if (eventLoading || teamLoading) {
     return (
       <div className="min-h-screen bg-canvas flex items-center justify-center">
         <div className="text-center">
@@ -36,7 +32,6 @@ export function EventDashboard({ eventId, userId }: EventDashboardProps) {
       </div>
     );
   }
-
   if (!event) {
     return (
       <div className="min-h-screen bg-canvas flex items-center justify-center">
@@ -45,35 +40,37 @@ export function EventDashboard({ eventId, userId }: EventDashboardProps) {
     );
   }
 
+  const teamId = team?.id ?? '';
+
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'dashboard':
-        return <DashboardTab eventId={eventId} userId={userId} />;
-      case 'submission':
-        return userTeam ? <SubmissionTab teamId={userTeam.id} eventId={eventId} /> : <div className="t-body-md text-mute p-6">Please register a team first</div>;
-      case 'results':
-        return userTeam ? <ResultsTab teamId={userTeam.id} eventId={eventId} /> : <div className="t-body-md text-mute p-6">Results available after submission</div>;
-      default:
-        return null;
+      case 'detail':        return <EventDetailTab eventId={eventId} userId={userId} />;
+      case 'createTeam':    return <CreateTeamTab  eventId={eventId} userId={userId} />;
+      case 'myTeam':        return <MyTeamTab      eventId={eventId} userId={userId} />;
+      case 'submission':    return teamId
+        ? <SubmissionTab teamId={teamId} eventId={eventId} />
+        : <div className="t-body-md text-mute p-6">Bạn cần tạo đội trước.</div>;
+      case 'results':       return teamId
+        ? <ResultsTab teamId={teamId} eventId={eventId} />
+        : <div className="t-body-md text-mute p-6">Chưa có kết quả.</div>;
+      case 'leaderboard':   return <LeaderboardTab        eventId={eventId} userId={userId} />;
+      case 'judgeAssigned': return <JudgeAssignedTeamsTab eventId={eventId} userId={userId} />;
+      case 'manage':        return (
+        <div className="p-6"><Link href={`/events/${eventId}/manage`} className="btn btn-primary">Mở trang quản lý</Link></div>
+      );
+      default: return null;
     }
   };
 
   return (
     <div className="min-h-screen bg-canvas">
-      <Sidebar />
-      <Header
-        title={event.title}
-        subtitle="Team Competition"
-        status={event.status}
-      />
+      <Sidebar eventId={eventId} />
+      <Header title={event.title} subtitle="Team Competition" status={event.status} />
       <main className="fixed top-24 md:top-20 left-0 right-0 bottom-0 overflow-hidden bg-canvas lg:left-60">
         <div className="h-full overflow-y-auto p-3 md:p-6">
           <div className="animate-fadeIn">{renderTabContent()}</div>
         </div>
       </main>
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Create New Team">
-        <TeamRegistrationForm eventId={eventId} userId={userId} />
-      </Modal>
     </div>
   );
 }

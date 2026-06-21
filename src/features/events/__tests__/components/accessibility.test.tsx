@@ -8,7 +8,7 @@ describe('Accessibility - Sidebar Navigation', () => {
   it('should have proper semantic HTML structure', () => {
     render(
       <EventDashboardProvider>
-        <Sidebar />
+        <Sidebar eventId="evt-test" />
       </EventDashboardProvider>
     );
 
@@ -29,7 +29,7 @@ describe('Accessibility - Sidebar Navigation', () => {
     const user = userEvent.setup();
     render(
       <EventDashboardProvider>
-        <Sidebar />
+        <Sidebar eventId="evt-test" />
       </EventDashboardProvider>
     );
 
@@ -48,7 +48,7 @@ describe('Accessibility - Sidebar Navigation', () => {
   it('should show visible focus state', () => {
     render(
       <EventDashboardProvider>
-        <Sidebar />
+        <Sidebar eventId="evt-test" />
       </EventDashboardProvider>
     );
 
@@ -62,7 +62,7 @@ describe('Accessibility - Sidebar Navigation', () => {
   it('should have ARIA labels on icon-only buttons', () => {
     render(
       <EventDashboardProvider>
-        <Sidebar />
+        <Sidebar eventId="evt-test" />
       </EventDashboardProvider>
     );
 
@@ -74,7 +74,7 @@ describe('Accessibility - Sidebar Navigation', () => {
   it('should announce active tab state to screen readers', () => {
     render(
       <EventDashboardProvider>
-        <Sidebar />
+        <Sidebar eventId="evt-test" />
       </EventDashboardProvider>
     );
 
@@ -88,7 +88,7 @@ describe('Accessibility - Sidebar Navigation', () => {
   it('should have aria-hidden on decorative icons', () => {
     render(
       <EventDashboardProvider>
-        <Sidebar />
+        <Sidebar eventId="evt-test" />
       </EventDashboardProvider>
     );
 
@@ -99,7 +99,7 @@ describe('Accessibility - Sidebar Navigation', () => {
   it('should have sr-only text for screen readers on tabs', () => {
     const { container } = render(
       <EventDashboardProvider>
-        <Sidebar />
+        <Sidebar eventId="evt-test" />
       </EventDashboardProvider>
     );
 
@@ -112,7 +112,7 @@ describe('Accessibility - Sidebar Navigation', () => {
     const user = userEvent.setup();
     render(
       <EventDashboardProvider>
-        <Sidebar />
+        <Sidebar eventId="evt-test" />
       </EventDashboardProvider>
     );
 
@@ -127,7 +127,7 @@ describe('Accessibility - Sidebar Navigation', () => {
   it('should have proper tab navigation order', () => {
     render(
       <EventDashboardProvider>
-        <Sidebar />
+        <Sidebar eventId="evt-test" />
       </EventDashboardProvider>
     );
 
@@ -140,7 +140,7 @@ describe('Accessibility - Sidebar Navigation', () => {
   it('should support arrow key navigation (accessible pattern)', async () => {
     render(
       <EventDashboardProvider>
-        <Sidebar />
+        <Sidebar eventId="evt-test" />
       </EventDashboardProvider>
     );
 
@@ -156,7 +156,7 @@ describe('Accessibility - Sidebar Navigation', () => {
     const user = userEvent.setup();
     render(
       <EventDashboardProvider>
-        <Sidebar />
+        <Sidebar eventId="evt-test" />
       </EventDashboardProvider>
     );
 
