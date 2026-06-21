@@ -29,26 +29,31 @@ function RoundRow({ teamId, roundId, roundName, finalScore, rank, isAdvanced }: 
       {open ? (
         <div className="p-3 space-y-3">
           {isLoading ? <p className="t-body-sm text-mute">Đang tải chi tiết…</p> : null}
-          {(breakdown ?? []).map(({ score, details }) => (
-            <div key={score.id} className="space-y-1">
-              <p className="t-body-sm text-mute">Tổng từ giám khảo: <b>{score.totalScore.toFixed(2)}</b></p>
-              <table className="w-full text-sm">
-                <thead className="text-left">
-                  <tr><th>Tiêu chí</th><th>Điểm</th><th>Tối đa</th><th>Trọng số</th></tr>
-                </thead>
-                <tbody>
-                  {details.map((d) => (
-                    <tr key={d.id} className="border-t border-hairline">
-                      <td>{d.criteriaName ?? d.criteriaId}</td>
-                      <td>{d.value.toFixed(2)}</td>
-                      <td>{d.maxScore ?? '—'}</td>
-                      <td>{d.weight ?? '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ))}
+          {(breakdown ?? []).map(({ score, details }) => {
+            const weightedSum = details.reduce((acc, d) => acc + d.value * (d.weight ?? 1), 0);
+            return (
+              <div key={score.id} className="space-y-1">
+                <p className="t-body-sm text-mute">Tổng từ giám khảo: <b>{score.totalScore.toFixed(2)}</b></p>
+                <table className="w-full text-sm">
+                  <thead className="text-left">
+                    <tr><th>Tiêu chí</th><th>Điểm</th><th>Tối đa</th><th>Trọng số</th><th>Điểm có trọng số</th></tr>
+                  </thead>
+                  <tbody>
+                    {details.map((d) => (
+                      <tr key={d.id} className="border-t border-hairline">
+                        <td>{d.criteriaName ?? d.criteriaId}</td>
+                        <td>{d.value.toFixed(2)}</td>
+                        <td>{d.maxScore ?? '—'}</td>
+                        <td>{d.weight ?? '—'}</td>
+                        <td>{(d.value * (d.weight ?? 1)).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="t-body-sm text-mute">Tổng có trọng số: <b>{weightedSum.toFixed(2)}</b></p>
+              </div>
+            );
+          })}
         </div>
       ) : null}
     </div>

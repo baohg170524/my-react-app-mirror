@@ -19,7 +19,7 @@ export function SubmissionTab({ teamId, eventId }: Props) {
   const create = useCreateSubmission(teamId);
 
   const tracksForRound = useMemo(
-    () => (tracks as Array<{ id: string; roundId: string; trackName: string }>).filter((t) => t.roundId === roundId),
+    () => (tracks as Array<{ id: string; roundId: string; trackName: string | null }>).filter((t) => t.roundId === roundId),
     [tracks, roundId],
   );
 
@@ -40,8 +40,8 @@ export function SubmissionTab({ teamId, eventId }: Props) {
           <span className="t-body-sm font-bold">Vòng</span>
           <select required value={roundId} onChange={(e) => { setRoundId(e.target.value); setTrackId(''); }} className="input w-full mt-1">
             <option value="">— Chọn vòng —</option>
-            {(rounds as Array<{ id: string; roundName: string }>).map((r) => (
-              <option key={r.id} value={r.id}>{r.roundName}</option>
+            {(rounds as Array<{ id: string; roundName: string | null }>).map((r) => (
+              <option key={r.id} value={r.id}>{r.roundName ?? 'Vòng ' + r.id.slice(0, 4)}</option>
             ))}
           </select>
         </label>
@@ -50,7 +50,7 @@ export function SubmissionTab({ teamId, eventId }: Props) {
           <span className="t-body-sm font-bold">Track</span>
           <select required value={trackId} onChange={(e) => setTrackId(e.target.value)} className="input w-full mt-1" disabled={!roundId}>
             <option value="">— Chọn track —</option>
-            {tracksForRound.map((t) => <option key={t.id} value={t.id}>{t.trackName}</option>)}
+            {tracksForRound.map((t) => <option key={t.id} value={t.id}>{t.trackName ?? 'Track ' + t.id.slice(0, 4)}</option>)}
           </select>
         </label>
 

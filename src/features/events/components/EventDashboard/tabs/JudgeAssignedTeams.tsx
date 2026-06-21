@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { useJudgeAssignedTeams } from '@/features/teams/hooks/useTeams';
 
 interface Props { eventId: string; userId: string; }
@@ -16,13 +17,17 @@ export function JudgeAssignedTeamsTab({ eventId, userId }: Props) {
       <h2 className="t-heading-md">Đội được phân công</h2>
       <ul className="divide-y divide-hairline">
         {teams.map((t) => (
-          <li key={t.id} className="py-3">
-            <p className="t-body-md font-bold">{t.teamName}</p>
-            <p className="t-body-sm text-mute">{t.members.length} thành viên</p>
+          <li key={t.id} className="py-3 flex items-center justify-between">
+            <div>
+              <p className="t-body-md font-bold">{t.teamName}</p>
+              <p className="t-body-sm text-mute">{t.members.length} thành viên</p>
+            </div>
+            <Link href={`/events/${eventId}/manage?team=${t.id}`} className="btn btn-primary btn-sm">
+              Mở chấm điểm
+            </Link>
           </li>
         ))}
       </ul>
-      <p className="t-body-sm text-mute">Vào trang chấm điểm hiện có để nhập điểm cho từng đội.</p>
     </section>
   );
 }

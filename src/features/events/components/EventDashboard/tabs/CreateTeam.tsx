@@ -53,7 +53,7 @@ export function CreateTeamTab({ eventId, userId }: Props) {
         >
           <option value="">— Chọn track —</option>
           {(tracks ?? []).map((t) => (
-            <option key={t.id} value={t.id}>{t.trackName || 'Track'}</option>
+            <option key={t.id} value={t.id}>{t.trackName ?? 'Track ' + t.id.slice(0, 4)}</option>
           ))}
         </select>
       </label>

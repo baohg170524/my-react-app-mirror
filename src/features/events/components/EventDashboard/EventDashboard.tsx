@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { EventDetailTab } from './tabs/EventDetail';
@@ -13,14 +13,24 @@ import { JudgeAssignedTeamsTab } from './tabs/JudgeAssignedTeams';
 import { useEventDashboard } from '@/features/events/contexts/EventDashboardContext';
 import { useEvent } from '@/features/events/hooks/useEvents';
 import { useMyTeamForEvent } from '@/features/teams/hooks/useTeams';
+import { useUserRole } from '@/hooks/useUserRole';
 import Link from 'next/link';
 
 interface EventDashboardProps { eventId: string; userId: string; }
 
 export function EventDashboard({ eventId, userId }: EventDashboardProps) {
-  const { activeTab } = useEventDashboard();
+  const { activeTab, setActiveTab } = useEventDashboard();
   const { data: event, isLoading: eventLoading } = useEvent(eventId);
   const { data: team, isLoading: teamLoading } = useMyTeamForEvent(eventId, userId);
+  const role = useUserRole();
+  const adminRedirected = useRef(false);
+
+  useEffect(() => {
+    if (!adminRedirected.current && role === 'admin' && activeTab === 'detail') {
+      adminRedirected.current = true;
+      setActiveTab('manage');
+    }
+  }, [role, activeTab, setActiveTab]);
 
   if (eventLoading || teamLoading) {
     return (

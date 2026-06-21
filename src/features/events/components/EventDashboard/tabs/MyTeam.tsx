@@ -2,10 +2,12 @@
 
 import React, { useState } from 'react';
 import { useMyTeamForEvent, useInviteToTeam, useLeaveTeam } from '@/features/teams/hooks/useTeams';
+import { useEventDashboard } from '@/features/events/contexts/EventDashboardContext';
 
 interface Props { eventId: string; userId: string; }
 
 export function MyTeamTab({ eventId, userId }: Props) {
+  const { setActiveTab } = useEventDashboard();
   const { data: team, isLoading } = useMyTeamForEvent(eventId, userId);
   const teamId = team?.id ?? '';
   const invite = useInviteToTeam(teamId);
@@ -53,7 +55,7 @@ export function MyTeamTab({ eventId, userId }: Props) {
 
       <button
         type="button"
-        onClick={() => { if (confirm('Bạn chắc chắn rời đội?')) leave.mutate(); }}
+        onClick={() => { if (confirm('Bạn chắc chắn rời đội?')) leave.mutate(undefined, { onSuccess: () => setActiveTab('createTeam') }); }}
         disabled={leave.isPending}
         className="btn btn-outline-danger"
       >
