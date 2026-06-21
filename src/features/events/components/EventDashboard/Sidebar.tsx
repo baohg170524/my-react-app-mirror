@@ -1,17 +1,34 @@
 'use client';
 
 import React from 'react';
-import { BarChart3, Upload, Trophy, Settings } from 'lucide-react';
+import {
+  BarChart3, Upload, Trophy, Users, UserPlus, ClipboardList, FileText, Settings,
+} from 'lucide-react';
 import { useEventDashboard } from '@/features/events/contexts/EventDashboardContext';
+import { useUserRole } from '@/hooks/useUserRole';
+import { useCurrentUser } from '@/hooks/useAuth';
+import { useMyTeamForEvent } from '@/features/teams/hooks/useTeams';
+import { getEventTabs, type EventTabId } from '@/lib/events/getEventTabs';
 
-const tabs = [
-  { id: 'dashboard' as const, label: 'Event Dashboard', icon: BarChart3 },
-  { id: 'submission' as const, label: 'Submission', icon: Upload },
-  { id: 'results' as const, label: 'Results', icon: Trophy },
-];
+interface SidebarProps { eventId: string; }
 
-export function Sidebar() {
+const ICON: Record<EventTabId, React.ComponentType<{ size?: number; className?: string }>> = {
+  detail:        BarChart3,
+  createTeam:    UserPlus,
+  myTeam:        Users,
+  submission:    Upload,
+  results:       FileText,
+  leaderboard:   Trophy,
+  judgeAssigned: ClipboardList,
+  manage:        Settings,
+};
+
+export function Sidebar({ eventId }: SidebarProps) {
   const { activeTab, setActiveTab } = useEventDashboard();
+  const role = useUserRole();
+  const { data: user } = useCurrentUser();
+  const { data: team } = useMyTeamForEvent(eventId, user?.id ?? '');
+  const tabs = getEventTabs({ role, hasTeam: !!team });
 
   return (
     <aside
@@ -19,13 +36,11 @@ export function Sidebar() {
       role="navigation"
       aria-label="Event dashboard navigation"
     >
-      {/* Tabs */}
       <nav className="flex-1 pt-0" role="tablist">
         <ul className="list-none p-0 m-0">
           {tabs.map((tab) => {
-            const Icon = tab.icon;
+            const Icon = ICON[tab.id];
             const isActive = activeTab === tab.id;
-
             return (
               <li key={tab.id} role="presentation">
                 <button
@@ -39,11 +54,7 @@ export function Sidebar() {
                   } focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary`}
                   aria-label={`${tab.label} tab`}
                 >
-                  <Icon
-                    size={18}
-                    className={isActive ? 'text-primary opacity-100' : 'text-on-dark opacity-75'}
-                    aria-hidden="true"
-                  />
+                  <Icon size={18} className={isActive ? 'text-primary' : 'text-on-dark opacity-75'} />
                   <span className="text-body-strong text-sm font-bold hidden md:inline">{tab.label}</span>
                   <span className="sr-only">{tab.label}</span>
                 </button>
@@ -53,28 +64,16 @@ export function Sidebar() {
         </ul>
       </nav>
 
-      {/* User Section */}
       <div className="border-t border-hairline-strong p-4 flex items-center gap-3 bg-surface-dark">
-        {/* Avatar */}
         <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-          KT
+          {user?.fullName?.slice(0, 2).toUpperCase() ?? '?'}
         </div>
-
-        {/* User Info - Hidden on Mobile */}
         <div className="hidden md:flex flex-col flex-1 min-w-0">
-          <p className="text-on-dark text-body-sm font-bold truncate text-opacity-100">Kim Test</p>
+          <p className="text-on-dark text-body-sm font-bold truncate">{user?.fullName ?? '—'}</p>
           <span className="inline-block bg-primary/20 text-primary text-caption-xs px-2 py-1 rounded-full text-xs mt-1 w-fit font-semibold">
-            Leader
+            {role ?? 'guest'}
           </span>
         </div>
-
-        {/* Settings Icon - Visible on Mobile */}
-        <button
-          className="md:hidden p-2 text-on-dark opacity-75 hover:opacity-100 hover:bg-[rgba(255,255,255,0.08)] rounded-sm transition-all duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-          aria-label="User settings"
-        >
-          <Settings size={18} aria-hidden="true" />
-        </button>
       </div>
     </aside>
   );
