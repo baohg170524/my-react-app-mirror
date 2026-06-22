@@ -124,6 +124,16 @@ export interface CreateSchoolResponse {
   createdTime: string;
 }
 
+// ─── User Rejections (backend UserRejectionModel) ─────────────────────────────
+
+export interface UserRejectionModel {
+  id: string;
+  userId: string;
+  rejectedBy: string;
+  reason: string | null;
+  createdTime: string;
+}
+
 // ─── API Error ────────────────────────────────────────────────────────────────
 
 export interface ApiError {

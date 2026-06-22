@@ -18,4 +18,5 @@ export type {
   RegisterRequest,
   SchoolModel,
   UserProfile,
+  UserRejectionModel,
 } from "./types";
