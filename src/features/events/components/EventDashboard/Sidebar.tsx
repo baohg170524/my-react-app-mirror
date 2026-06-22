@@ -2,18 +2,20 @@
 
 import React from 'react';
 import {
-  BarChart3, Upload, Trophy, Users, UserPlus, ClipboardList, FileText, Settings,
+  BarChart3, Upload, Trophy, Users, UserPlus, ClipboardList, FileText, Settings, ClipboardCheck,
 } from 'lucide-react';
 import { useEventDashboard } from '@/features/events/contexts/EventDashboardContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useCurrentUser } from '@/hooks/useAuth';
 import { useMyTeamForEvent } from '@/features/teams/hooks/useTeams';
 import { getEventTabs, type EventTabId } from '@/lib/events/getEventTabs';
+import { useRegistration } from '@/features/registration/hooks/useRegistration';
 
 interface SidebarProps { eventId: string; }
 
 const ICON: Record<EventTabId, React.ComponentType<{ size?: number; className?: string }>> = {
   detail:        BarChart3,
+  register:      ClipboardCheck,
   createTeam:    UserPlus,
   myTeam:        Users,
   submission:    Upload,
@@ -28,7 +30,8 @@ export function Sidebar({ eventId }: SidebarProps) {
   const role = useUserRole();
   const { data: user } = useCurrentUser();
   const { data: team } = useMyTeamForEvent(eventId, user?.id ?? '');
-  const tabs = getEventTabs({ role, hasTeam: !!team });
+  const { status: registrationStatus } = useRegistration(eventId, user?.id ?? '');
+  const tabs = getEventTabs({ role, hasTeam: !!team, registrationStatus });
 
   return (
     <aside

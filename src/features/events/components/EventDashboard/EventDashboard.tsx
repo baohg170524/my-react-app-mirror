@@ -10,6 +10,7 @@ import { SubmissionTab } from './tabs/Submission';
 import { ResultsTab } from './tabs/Results';
 import { LeaderboardTab } from './tabs/Leaderboard';
 import { JudgeAssignedTeamsTab } from './tabs/JudgeAssignedTeams';
+import { CompetitionRegistrationTab } from '@/features/registration/components/CompetitionRegistrationTab';
 import { useEventDashboard } from '@/features/events/contexts/EventDashboardContext';
 import { useEvent } from '@/features/events/hooks/useEvents';
 import { useMyTeamForEvent } from '@/features/teams/hooks/useTeams';
@@ -57,6 +58,7 @@ export function EventDashboard({ eventId, userId }: EventDashboardProps) {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'detail':        return <EventDetailTab eventId={eventId} />;
+      case 'register':      return <CompetitionRegistrationTab eventId={eventId} userId={userId} />;
       case 'createTeam':    return <CreateTeamTab  eventId={eventId} userId={userId} />;
       case 'myTeam':        return <MyTeamTab      eventId={eventId} userId={userId} />;
       case 'submission':    return teamId

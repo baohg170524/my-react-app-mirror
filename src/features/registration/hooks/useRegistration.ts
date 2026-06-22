@@ -43,17 +43,11 @@ export function useRegistration(eventId: string, userId: string) {
     qc.invalidateQueries({ queryKey: REGISTRATION_KEYS.record(userId, eventId) });
   };
 
-  const resubmit = () => {
-    registrationStore.remove(userId, eventId);
-    qc.invalidateQueries({ queryKey: REGISTRATION_KEYS.record(userId, eventId) });
-  };
-
   return {
     status: resolved.status,
     reason: resolved.reason,
     record: recordQ.data ?? null,
     isLoading: recordQ.isLoading || rejectionsQ.isLoading,
     submit,
-    resubmit,
   };
 }
