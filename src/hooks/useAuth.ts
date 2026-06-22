@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { authApi } from "@/services/api";
+import { USER_PROFILE_KEY } from "@/features/user/hooks/useUserProfile";
 import type {
   LoginRequest,
   LoginResponse,
@@ -98,7 +99,10 @@ export function useLogin() {
       persistTokens(data.accessToken, data.refreshToken);
       const profile = loginResponseToProfile(data);
       persistUser(profile);
+      // Seed BOTH user caches so the navbar (auth/me) and the home profile
+      // header (user/profile) update immediately — without a reload.
       queryClient.setQueryData(AUTH_KEYS.me, profile);
+      queryClient.setQueryData(USER_PROFILE_KEY, profile);
       // replace (not push) so Back doesn't return to the login screen
       router.replace("/");
     },

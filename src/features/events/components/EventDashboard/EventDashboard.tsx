@@ -3,7 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
-import { EventDetailTab } from './tabs/EventDetail';
+import { EventDetailTab } from '../AdminEventDashboard/tabs/EventDetailTab';
 import { CreateTeamTab } from './tabs/CreateTeam';
 import { MyTeamTab } from './tabs/MyTeam';
 import { SubmissionTab } from './tabs/Submission';
@@ -14,25 +14,27 @@ import { useEventDashboard } from '@/features/events/contexts/EventDashboardCont
 import { useEvent } from '@/features/events/hooks/useEvents';
 import { useMyTeamForEvent } from '@/features/teams/hooks/useTeams';
 import { useUserRole } from '@/hooks/useUserRole';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface EventDashboardProps { eventId: string; userId: string; }
 
 export function EventDashboard({ eventId, userId }: EventDashboardProps) {
-  const { activeTab, setActiveTab } = useEventDashboard();
+  const router = useRouter();
+  const { activeTab } = useEventDashboard();
   const { data: event, isLoading: eventLoading } = useEvent(eventId);
-  const { data: team, isLoading: teamLoading } = useMyTeamForEvent(eventId, userId);
+  const { data: team } = useMyTeamForEvent(eventId, userId);
   const role = useUserRole();
   const adminRedirected = useRef(false);
 
+  // Admins manage an event on its dedicated page — skip the dashboard entirely.
   useEffect(() => {
-    if (!adminRedirected.current && role === 'admin' && activeTab === 'detail') {
+    if (!adminRedirected.current && role === 'admin') {
       adminRedirected.current = true;
-      setActiveTab('manage');
+      router.replace(`/events/${eventId}/manage`);
     }
-  }, [role, activeTab, setActiveTab]);
+  }, [role, eventId, router]);
 
-  if (eventLoading || teamLoading) {
+  if (eventLoading) {
     return (
       <div className="min-h-screen bg-canvas flex items-center justify-center">
         <div className="text-center">
@@ -54,7 +56,7 @@ export function EventDashboard({ eventId, userId }: EventDashboardProps) {
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'detail':        return <EventDetailTab eventId={eventId} userId={userId} />;
+      case 'detail':        return <EventDetailTab eventId={eventId} />;
       case 'createTeam':    return <CreateTeamTab  eventId={eventId} userId={userId} />;
       case 'myTeam':        return <MyTeamTab      eventId={eventId} userId={userId} />;
       case 'submission':    return teamId
@@ -65,9 +67,6 @@ export function EventDashboard({ eventId, userId }: EventDashboardProps) {
         : <div className="t-body-md text-mute p-6">Chưa có kết quả.</div>;
       case 'leaderboard':   return <LeaderboardTab        eventId={eventId} userId={userId} />;
       case 'judgeAssigned': return <JudgeAssignedTeamsTab eventId={eventId} userId={userId} />;
-      case 'manage':        return (
-        <div className="p-6"><Link href={`/events/${eventId}/manage`} className="btn btn-primary">Mở trang quản lý</Link></div>
-      );
       default: return null;
     }
   };

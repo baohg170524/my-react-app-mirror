@@ -34,13 +34,12 @@ export const useTeam = (teamId: string | undefined) =>
     staleTime: 60_000,
   });
 
-export const useCreateTeam = (eventId: string, userId: string) => {
-  const qc = useQueryClient();
+export const useCreateTeam = (_eventId: string, _userId: string) => {
+  // The caller seeds the freshly-created team into the myTeam cache so the team
+  // view shows immediately; invalidating here would race a refetch that could
+  // overwrite that seed before the backend roster is consistent.
   return useMutation({
     mutationFn: (p: CreateTeamPayload) => teamsApi.create(p),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: TEAM_KEYS.myTeam(eventId, userId) });
-    },
   });
 };
 

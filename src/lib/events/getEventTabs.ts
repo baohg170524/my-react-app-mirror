@@ -19,10 +19,10 @@ const TAB: Record<EventTabId, EventTab> = {
 
 export function getEventTabs(args: { role: AppRole | null; hasTeam: boolean }): EventTab[] {
   const { role, hasTeam } = args;
-  if (role === 'admin')   return [TAB.detail, TAB.manage];
+  if (role === 'admin')   return [TAB.detail];
   if (role === 'judge')   return [TAB.detail, TAB.judgeAssigned, TAB.leaderboard];
   if (role === 'student') return hasTeam
     ? [TAB.detail, TAB.myTeam, TAB.submission, TAB.results, TAB.leaderboard]
-    : [TAB.detail, TAB.createTeam];
+    : [TAB.detail, TAB.createTeam, TAB.leaderboard];
   return [TAB.detail];
 }

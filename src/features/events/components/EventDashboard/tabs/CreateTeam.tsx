@@ -1,31 +1,46 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useEventTracks } from '@/features/events/hooks/useEvents';
-import { useCreateTeam } from '@/features/teams/hooks/useTeams';
+import { useQueryClient } from '@tanstack/react-query';
+import { useCreateTeam, TEAM_KEYS } from '@/features/teams/hooks/useTeams';
 import { useEventDashboard } from '@/features/events/contexts/EventDashboardContext';
+import { useCurrentUser } from '@/hooks/useAuth';
 
 interface Props { eventId: string; userId: string; }
 
 export function CreateTeamTab({ eventId, userId }: Props) {
-  const { data: tracks, isLoading: tracksLoading } = useEventTracks(eventId);
+  const qc = useQueryClient();
   const { setActiveTab } = useEventDashboard();
+  const { data: me } = useCurrentUser();
   const create = useCreateTeam(eventId, userId);
 
   const [teamName, setTeamName] = useState('');
   const [description, setDescription] = useState('');
-  const [trackId, setTrackId] = useState('');
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     create.mutate(
-      { teamName, description, eventId, trackId },
-      { onSuccess: () => setActiveTab('myTeam') },
+      { name: teamName, description, eventId, leaderId: userId },
+      {
+        onSuccess: (created) => {
+          // Show the team immediately with the creator as leader — the real
+          // roster reconciles on the next fetch.
+          qc.setQueryData(TEAM_KEYS.myTeam(eventId, userId), {
+            id: created.id,
+            teamName: created.name?.trim() || teamName,
+            description: created.description ?? description,
+            members: me
+              ? [{ userId: me.id, fullName: me.fullName, email: me.email, isLeader: true }]
+              : [],
+          });
+          setActiveTab('myTeam');
+        },
+      },
     );
   };
 
   return (
-    <form onSubmit={submit} className="p-6 max-w-xl mx-auto space-y-4">
+    <form onSubmit={submit} className="p-6 w-full max-w-[36rem] mx-auto space-y-4 border border-hairline rounded-sm bg-canvas">
       <h2 className="t-heading-md">Tạo đội</h2>
 
       <label className="block">
@@ -43,19 +58,6 @@ export function CreateTeamTab({ eventId, userId }: Props) {
           value={description} onChange={(e) => setDescription(e.target.value)}
           rows={3} className="input w-full mt-1"
         />
-      </label>
-
-      <label className="block">
-        <span className="t-body-sm font-bold">Track</span>
-        <select
-          required value={trackId} onChange={(e) => setTrackId(e.target.value)}
-          className="input w-full mt-1" disabled={tracksLoading}
-        >
-          <option value="">— Chọn track —</option>
-          {(tracks ?? []).map((t) => (
-            <option key={t.id} value={t.id}>{t.trackName ?? 'Track ' + t.id.slice(0, 4)}</option>
-          ))}
-        </select>
       </label>
 
       {create.error ? <p className="t-body-sm text-error">Tạo đội thất bại. Vui lòng thử lại.</p> : null}

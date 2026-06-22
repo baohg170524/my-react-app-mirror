@@ -26,7 +26,7 @@ export function EventSection() {
   const effectiveFilter: Filter = isAdmin ? "all" : filter;
 
   const allQuery = useAllEvents();
-  const myQuery  = useMyEvents();
+  const myQuery  = useMyEvents(profile?.id);
 
   const active = effectiveFilter === "all" ? allQuery : myQuery;
   const events   = active.data ?? [];

@@ -46,11 +46,11 @@ function SkeletonPulse({ w, h }: { w: string; h: number }) {
   );
 }
 
-const ROLE_LABEL: Record<string, string> = {
-  STUDENT: "Sinh viên",
-  MENTOR: "Mentor",
-  ADMIN: "Quản trị viên",
-};
+/** The home header only distinguishes admin vs. regular user; detailed roles
+ *  (student / mentor / judge) only matter inside an event. */
+function homeRoleLabel(role: string): string {
+  return role === "ADMIN" ? "admin" : "user";
+}
 
 export function UserProfileHeader() {
   const { data: profile, isLoading, error } = useUserProfile();
@@ -133,7 +133,7 @@ export function UserProfileHeader() {
                   aria-label={profile.role}
                   style={{ marginTop: 6, display: "inline-block", background: "rgba(118,185,0,0.15)", color: "var(--color-primary)", border: "1px solid var(--color-primary)" }}
                 >
-                  {ROLE_LABEL[profile.role] ?? profile.role}
+                  {homeRoleLabel(profile.role)}
                 </span>
               </>
             ) : null}

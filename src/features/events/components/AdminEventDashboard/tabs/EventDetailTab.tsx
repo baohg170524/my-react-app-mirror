@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useEvent, useEventRoles } from '@/features/events/hooks/useEvents';
+import { useUserRole } from '@/hooks/useUserRole';
 import { isJudgeRole, isMentorRole } from '@/features/events/api/manage';
 import { Card } from '../../EventDashboard/Card';
 import { Button } from '../../EventDashboard/Button';
@@ -17,6 +18,8 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
   const { data: event, isLoading, error } = useEvent(eventId);
   const { data: roles = [] } = useEventRoles(eventId);
   const [isEditing, setIsEditing] = useState(false);
+  // Every role sees the same event detail; only admins may edit it.
+  const canEdit = useUserRole() === 'admin';
 
   const teamCount = new Set(roles.map((r) => r.teamId).filter(Boolean)).size;
   const judgeCount = new Set(
@@ -50,7 +53,7 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
 
   if (!event) return <div className="t-body-md text-mute">Không tìm thấy sự kiện</div>;
 
-  if (isEditing) {
+  if (isEditing && canEdit) {
     return (
       <Card title="Chỉnh sửa sự kiện">
         <CreateEventForm eventId={eventId} onCancel={() => setIsEditing(false)} />
@@ -109,11 +112,13 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
 
       <EventStructureView eventId={eventId} />
 
-      <div className="pt-2">
-        <Button variant="secondary" size="md" onClick={() => setIsEditing(true)}>
-          Chỉnh sửa sự kiện
-        </Button>
-      </div>
+      {canEdit && (
+        <div className="pt-2">
+          <Button variant="secondary" size="md" onClick={() => setIsEditing(true)}>
+            Chỉnh sửa sự kiện
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

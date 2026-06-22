@@ -234,6 +234,22 @@ button, input, select, textarea {
   color: var(--color-ink);
 }
 
+.btn-outline-danger {
+  background: transparent;
+  color: var(--color-error);
+  border: 1px solid var(--color-error);
+  padding: 10px 23px;
+}
+.btn-outline-danger:hover {
+  background: var(--color-error);
+  color: #fff;
+}
+.btn-outline-danger:active,
+.btn-outline-danger.is-active {
+  background: var(--color-error-deep);
+  color: #fff;
+}
+
 .btn-ghost-link {
   background: transparent;
   color: var(--color-primary);
@@ -297,10 +313,11 @@ button, input, select, textarea {
 
 /* ============ INPUTS ============ */
 
-.text-input {
+.text-input,
+.input {
   display: block;
   width: 100%;
-  height: var(--h-control);
+  min-height: var(--h-control);
   padding: 12px 16px;
   background: var(--color-canvas);
   color: var(--color-ink);
@@ -309,7 +326,8 @@ button, input, select, textarea {
   border-radius: var(--radius-sm);
   outline: none;
 }
-.text-input:focus {
+.text-input:focus,
+.input:focus {
   border: var(--border-primary-2);
   padding: 11px 15px;
 }

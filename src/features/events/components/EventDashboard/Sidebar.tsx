@@ -47,15 +47,16 @@ export function Sidebar({ eventId }: SidebarProps) {
                   role="tab"
                   aria-selected={isActive}
                   onClick={() => setActiveTab(tab.id)}
+                  style={{ color: 'var(--color-on-dark)' }}
                   className={`w-full px-4 py-4 flex items-center gap-3 border-b border-hairline-strong transition-colors duration-150 cursor-pointer min-h-12 ${
                     isActive
-                      ? 'bg-surface-dark text-on-dark border-l-4 border-l-primary'
-                      : 'bg-surface-dark text-on-dark hover:bg-[rgba(255,255,255,0.08)] border-l-4 border-l-transparent'
+                      ? 'bg-surface-dark border-l-4 border-l-primary'
+                      : 'bg-surface-dark hover:bg-[rgba(255,255,255,0.08)] border-l-4 border-l-transparent'
                   } focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary`}
                   aria-label={`${tab.label} tab`}
                 >
-                  <Icon size={18} className={isActive ? 'text-primary' : 'text-on-dark opacity-75'} />
-                  <span className="text-body-strong text-sm font-bold hidden md:inline">{tab.label}</span>
+                  <Icon size={18} className={isActive ? 'text-primary' : 'opacity-75'} />
+                  <span className="text-sm font-bold hidden md:inline">{tab.label}</span>
                   <span className="sr-only">{tab.label}</span>
                 </button>
               </li>
