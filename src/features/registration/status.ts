@@ -15,6 +15,9 @@ export function resolveRegistrationStatus(
     ? [...rejections].sort((a, b) => b.createdTime.localeCompare(a.createdTime))[0]
     : null;
 
+  // UserRejectionModel không có eventId — rejection là account-level, áp dụng cho mọi sự kiện.
+  // Vì vậy, dù người dùng đăng ký lại (submittedAt mới hơn), trạng thái vẫn là pending chứ không
+  // phải rejected — chỉ khi rejection mới hơn hoặc bằng submittedAt thì mới coi là bị từ chối.
   // Bị từ chối nếu có rejection và nó KHÔNG cũ hơn lần gửi gần nhất.
   if (latest && (!record || latest.createdTime >= record.submittedAt)) {
     return { status: 'rejected', reason: latest.reason };

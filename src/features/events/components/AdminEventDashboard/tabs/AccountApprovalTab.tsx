@@ -85,9 +85,10 @@ export function AccountApprovalTab({ eventId }: AccountApprovalTabProps) {
   // Reject = record a UserRejection with reason, then remove the user's registration(s) from this event.
   const rejectMutation = useMutation({
     mutationFn: async ({ r, reason }: { r: Registrant; reason: string }) => {
-      if (admin?.id) {
-        await userRejectionsApi.create({ userId: r.userId, rejectedBy: admin.id, reason });
+      if (!admin?.id) {
+        throw new Error('Phiên đăng nhập admin không hợp lệ. Vui lòng đăng nhập lại.');
       }
+      await userRejectionsApi.create({ userId: r.userId, rejectedBy: admin.id, reason });
       await Promise.all(r.roleIds.map((id) => manageApi.removeRole(id)));
     },
     onSuccess: () => {
