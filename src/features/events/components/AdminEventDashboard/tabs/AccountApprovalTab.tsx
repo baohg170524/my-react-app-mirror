@@ -4,8 +4,6 @@ import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import type { AxiosError } from 'axios';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCurrentUser } from '@/hooks/useAuth';
-import { userRejectionsApi } from '@/features/registration/api/userRejections';
 import { useEventRoles } from '@/features/events/hooks/useEvents';
 import { manageApi, type EventRoleUser } from '@/features/events/api/manage';
 import { usersApi, schoolsApi } from '@/services/api';
@@ -37,7 +35,6 @@ interface AccountApprovalTabProps {
 }
 
 export function AccountApprovalTab({ eventId }: AccountApprovalTabProps) {
-  const { data: admin } = useCurrentUser();
   const { data: roles = [], isLoading, error } = useEventRoles(eventId);
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
@@ -62,19 +59,9 @@ export function AccountApprovalTab({ eventId }: AccountApprovalTabProps) {
   };
   const onErr = (e: unknown) => setActionError(errMsg(e));
 
-  // Approve = activate the account globally (PUT /Users/{id} with isApproved=true).
+  // Approve = activate the account globally (POST /Users/{id}/approve).
   const approveMutation = useMutation({
-    mutationFn: (r: Registrant) =>
-      usersApi.update(r.userId, {
-        schoolId: r.user.schoolId ?? null,
-        studentCode: r.user.studentCode ?? null,
-        fullName: r.user.fullName ?? null,
-        isStudent: r.user.isStudent ?? true,
-        isAdmin: r.user.isAdmin ?? false,
-        isApproved: true,
-        isFpt: r.user.isFpt ?? false,
-        photoStudentCardUrl: r.user.photoStudentCardUrl ?? null,
-      }),
+    mutationFn: (r: Registrant) => usersApi.approve(r.userId),
     onSuccess: () => {
       setActionError(null);
       invalidate();
@@ -82,13 +69,11 @@ export function AccountApprovalTab({ eventId }: AccountApprovalTabProps) {
     onError: onErr,
   });
 
-  // Reject = record a UserRejection with reason, then remove the user's registration(s) from this event.
+  // Reject = reject the account via dedicated endpoint (POST /Users/{id}/reject), then remove
+  // the user's registration(s) from this event so they leave the pending list.
   const rejectMutation = useMutation({
     mutationFn: async ({ r, reason }: { r: Registrant; reason: string }) => {
-      if (!admin?.id) {
-        throw new Error('Phiên đăng nhập admin không hợp lệ. Vui lòng đăng nhập lại.');
-      }
-      await userRejectionsApi.create({ userId: r.userId, rejectedBy: admin.id, reason });
+      await usersApi.reject(r.userId, reason);
       await Promise.all(r.roleIds.map((id) => manageApi.removeRole(id)));
     },
     onSuccess: () => {
