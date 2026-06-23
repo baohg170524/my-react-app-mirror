@@ -7,7 +7,7 @@ import { RegistrationStatusCard } from './RegistrationStatusCard';
 import { useCurrentUser } from '@/hooks/useAuth';
 import { useEventDashboard } from '@/features/events/contexts/EventDashboardContext';
 
-interface Props { eventId: string; userId: string; }
+interface Props { userId: string; }
 
 export function CompetitionRegistrationTab({ userId }: Props) {
   const { data: user } = useCurrentUser();

@@ -56,6 +56,7 @@ export function AccountApprovalTab({ eventId }: AccountApprovalTabProps) {
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['eventRoles', eventId] });
     queryClient.invalidateQueries({ queryKey: ['users', 'list'] });
+    queryClient.invalidateQueries({ queryKey: ['users', 'profile'] });
   };
   const onErr = (e: unknown) => setActionError(errMsg(e));
 
@@ -192,6 +193,10 @@ export function AccountApprovalTab({ eventId }: AccountApprovalTabProps) {
                                   '',
                                 );
                                 if (reason === null) return; // hủy
+                                if (!reason.trim()) {
+                                  setActionError('Vui lòng nhập lý do từ chối.');
+                                  return;
+                                }
                                 setActionError(null);
                                 rejectMutation.mutate({ r, reason: reason.trim() });
                               }}

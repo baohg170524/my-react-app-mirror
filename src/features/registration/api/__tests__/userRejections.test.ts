@@ -22,12 +22,6 @@ describe('userRejectionsApi', () => {
     expect(await userRejectionsApi.listForUser('u1')).toEqual([]);
   });
 
-  test('create posts the payload', async () => {
-    mocked.post.mockResolvedValue({ data: {} } as never);
-    await userRejectionsApi.create({ userId: 'u1', rejectedBy: 'a1', reason: 'sai MSSV' });
-    expect(mocked.post).toHaveBeenCalledWith('/UserRejections', { userId: 'u1', rejectedBy: 'a1', reason: 'sai MSSV' });
-  });
-
   test('remove DELETEs /UserRejections/{id} and returns void', async () => {
     mocked.delete.mockResolvedValue({ data: {} } as never);
     const result = await userRejectionsApi.remove('r1');

@@ -58,7 +58,7 @@ export function EventDashboard({ eventId, userId }: EventDashboardProps) {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'detail':        return <EventDetailTab eventId={eventId} />;
-      case 'register':      return <CompetitionRegistrationTab eventId={eventId} userId={userId} />;
+      case 'register':      return <CompetitionRegistrationTab userId={userId} />;
       case 'createTeam':    return <CreateTeamTab  eventId={eventId} userId={userId} />;
       case 'myTeam':        return <MyTeamTab      eventId={eventId} userId={userId} />;
       case 'submission':    return teamId

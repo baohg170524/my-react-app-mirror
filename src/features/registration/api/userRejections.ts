@@ -10,10 +10,6 @@ export const userRejectionsApi = {
     return data.data ?? [];
   },
 
-  /** POST /api/UserRejections — record a rejection (admin action). */
-  create: (payload: { userId: string; rejectedBy: string; reason?: string }): Promise<void> =>
-    apiClient.post('/UserRejections', payload).then(() => undefined),
-
   /** DELETE /api/UserRejections/{id} — soft-delete a rejection record. */
   remove: (id: string): Promise<void> =>
     apiClient.delete(`/UserRejections/${encodeURIComponent(id)}`).then(() => undefined),
