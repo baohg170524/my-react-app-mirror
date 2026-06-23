@@ -1,24 +1,21 @@
 'use client';
 
 import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
-import { storageApi } from '@/services/api';
-import type { RegistrationFormValues } from '../types';
+import { storageApi, schoolsApi, type UpdateStudentProfileCommand } from '@/services/api';
 
 interface Props {
-  defaults: { fullName: string; email: string };
-  onSubmit: (values: RegistrationFormValues) => void;
+  defaults: { fullName: string };
+  onSubmit: (cmd: UpdateStudentProfileCommand) => void | Promise<void>;
 }
 
 export function RegistrationForm({ defaults, onSubmit }: Props) {
   const [fullName, setFullName] = useState(defaults.fullName);
-  const [email, setEmail] = useState(defaults.email);
   const [schoolChoice, setSchoolChoice] = useState<'FPT' | 'OTHER'>('FPT');
   const [schoolName, setSchoolName] = useState('');
   const [studentCode, setStudentCode] = useState('');
-  const [note, setNote] = useState('');
   const [card, setCard] = useState<{ preview: string; file: File } | null>(null);
   const [error, setError] = useState('');
-  const [uploading, setUploading] = useState(false);
+  const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const needsCard = schoolChoice === 'OTHER';
@@ -41,44 +38,72 @@ export function RegistrationForm({ defaults, onSubmit }: Props) {
     if (needsCard && !schoolName.trim()) { setError('Vui lòng nhập tên trường của bạn.'); return; }
     if (needsCard && !card) { setError('Vui lòng tải ảnh thẻ sinh viên.'); return; }
 
-    let photoStudentCardUrl: string | null = null;
-    if (card) {
-      try {
-        setUploading(true);
-        photoStudentCardUrl = await storageApi.upload(card.file);
-      } catch {
-        setUploading(false);
-        setError('Không tải được ảnh thẻ. Vui lòng thử lại.');
-        return;
+    setBusy(true);
+    try {
+      // Resolve schoolId
+      let schoolId: string | null = null;
+      if (schoolChoice === 'FPT') {
+        const res = await schoolsApi.list();
+        const fpt = res.data.find((s) => s.schoolName.toUpperCase().includes('FPT'));
+        schoolId = fpt?.id ?? null;
+      } else {
+        const name = schoolName.trim();
+        try {
+          const created = await schoolsApi.create({ schoolName: name });
+          schoolId = created.id;
+        } catch {
+          // School already exists — find it by name (case-insensitive).
+          const res = await schoolsApi.list(1000);
+          const existing = res.data.find(
+            (s) => s.schoolName.trim().toLowerCase() === name.toLowerCase(),
+          );
+          if (existing) schoolId = existing.id;
+        }
       }
-      setUploading(false);
-    }
 
-    onSubmit({
-      fullName: fullName.trim(),
-      email: email.trim(),
-      schoolChoice,
-      schoolName: needsCard ? schoolName.trim() : null,
-      studentCode: studentCode.trim(),
-      photoStudentCardUrl,
-      note: note.trim() || null,
-    });
+      // Upload card for non-FPT students.
+      let photoStudentCardUrl: string | null = null;
+      if (card) {
+        photoStudentCardUrl = await storageApi.upload(card.file);
+      }
+
+      await onSubmit({
+        schoolId,
+        studentCode: studentCode.trim(),
+        photoStudentCardUrl,
+        isFpt: schoolChoice === 'FPT',
+        fullName: fullName.trim(),
+      });
+    } catch {
+      setError('Đã xảy ra lỗi. Vui lòng thử lại.');
+    } finally {
+      setBusy(false);
+    }
   }
 
-  const labelStyle = { fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--color-mute)' };
+  const labelStyle = {
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase' as const,
+    color: 'var(--color-mute)',
+  };
 
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4 max-w-[36rem]">
-      {error && <p className="t-caption-sm" style={{ color: 'var(--color-error)', margin: 0 }}>{error}</p>}
+      {error && (
+        <p className="t-caption-sm" style={{ color: 'var(--color-error)', margin: 0 }}>
+          {error}
+        </p>
+      )}
 
       <label className="flex flex-col gap-1.5">
         <span style={labelStyle}>Họ và tên</span>
-        <input className="text-input" value={fullName} onChange={(e) => setFullName(e.target.value)} />
-      </label>
-
-      <label className="flex flex-col gap-1.5">
-        <span style={labelStyle}>Email</span>
-        <input className="text-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input
+          className="text-input"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+        />
       </label>
 
       <label className="flex flex-col gap-1.5">
@@ -96,13 +121,23 @@ export function RegistrationForm({ defaults, onSubmit }: Props) {
       {needsCard && (
         <label className="flex flex-col gap-1.5">
           <span style={labelStyle}>Tên trường</span>
-          <input className="text-input" value={schoolName} onChange={(e) => setSchoolName(e.target.value)} placeholder="VD: Đại học Bách Khoa" />
+          <input
+            className="text-input"
+            value={schoolName}
+            onChange={(e) => setSchoolName(e.target.value)}
+            placeholder="VD: Đại học Bách Khoa"
+          />
         </label>
       )}
 
       <label className="flex flex-col gap-1.5">
         <span style={labelStyle}>Mã số sinh viên</span>
-        <input className="text-input" value={studentCode} onChange={(e) => setStudentCode(e.target.value)} placeholder="VD: SE123456" />
+        <input
+          className="text-input"
+          value={studentCode}
+          onChange={(e) => setStudentCode(e.target.value)}
+          placeholder="VD: SE123456"
+        />
       </label>
 
       {needsCard && (
@@ -111,23 +146,41 @@ export function RegistrationForm({ defaults, onSubmit }: Props) {
           {card ? (
             <div className="flex items-center gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={card.preview} alt="Ảnh thẻ sinh viên" className="w-24 h-16 object-cover rounded-sm border border-hairline" />
-              <button type="button" className="t-caption-sm font-bold" style={{ color: 'var(--color-error)', background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setCard(null)}>Xóa</button>
+              <img
+                src={card.preview}
+                alt="Ảnh thẻ sinh viên"
+                className="w-24 h-16 object-cover rounded-sm border border-hairline"
+              />
+              <button
+                type="button"
+                className="t-caption-sm font-bold"
+                style={{ color: 'var(--color-error)', background: 'none', border: 'none', cursor: 'pointer' }}
+                onClick={() => setCard(null)}
+              >
+                Xóa
+              </button>
             </div>
           ) : (
-            <button type="button" className="btn btn-secondary btn-sm w-fit" onClick={() => fileRef.current?.click()}>Tải ảnh thẻ</button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm w-fit"
+              onClick={() => fileRef.current?.click()}
+            >
+              Tải ảnh thẻ
+            </button>
           )}
-          <input ref={fileRef} type="file" accept="image/*" onChange={selectCard} style={{ display: 'none' }} />
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            onChange={selectCard}
+            style={{ display: 'none' }}
+          />
         </div>
       )}
 
-      <label className="flex flex-col gap-1.5">
-        <span style={labelStyle}>Ghi chú (tùy chọn)</span>
-        <textarea className="text-input" rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
-      </label>
-
-      <button type="submit" className="btn btn-primary w-fit" disabled={uploading}>
-        {uploading ? 'Đang tải ảnh…' : 'Gửi đăng ký'}
+      <button type="submit" className="btn btn-primary w-fit" disabled={busy}>
+        {busy ? 'Đang xử lý…' : 'Gửi đăng ký'}
       </button>
     </form>
   );

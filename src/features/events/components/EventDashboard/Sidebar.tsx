@@ -30,7 +30,7 @@ export function Sidebar({ eventId }: SidebarProps) {
   const role = useUserRole();
   const { data: user } = useCurrentUser();
   const { data: team } = useMyTeamForEvent(eventId, user?.id ?? '');
-  const { status: registrationStatus } = useRegistration(eventId, user?.id ?? '');
+  const { status: registrationStatus } = useRegistration(user?.id ?? '');
   const tabs = getEventTabs({ role, hasTeam: !!team, registrationStatus });
 
   return (

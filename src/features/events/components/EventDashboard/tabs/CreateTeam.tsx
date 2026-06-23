@@ -14,7 +14,7 @@ export function CreateTeamTab({ eventId, userId }: Props) {
   const { setActiveTab } = useEventDashboard();
   const { data: me } = useCurrentUser();
   const create = useCreateTeam(eventId, userId);
-  const { status: registrationStatus } = useRegistration(eventId, userId);
+  const { status: registrationStatus } = useRegistration(userId);
 
   const [teamName, setTeamName] = useState('');
   const [description, setDescription] = useState('');

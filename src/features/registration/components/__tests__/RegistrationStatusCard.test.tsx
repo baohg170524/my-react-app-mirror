@@ -1,31 +1,70 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { RegistrationStatusCard } from '../RegistrationStatusCard';
-import type { RegistrationRecord } from '../../types';
+import type { UserSummary } from '@/services/api';
 
-const rec: RegistrationRecord = {
-  userId: 'u1', eventId: 'e1', fullName: 'Nguyễn Văn A', email: 'a@e.com', schoolChoice: 'FPT',
-  schoolName: null, studentCode: 'SE123', photoStudentCardUrl: null, note: null,
-  status: 'pending', submittedAt: '2026-06-23T00:00:00Z', decidedAt: null,
+const profile: UserSummary = {
+  id: 'u1',
+  email: 'a@e.com',
+  fullName: 'Nguyễn Văn A',
+  isStudent: true,
+  isAdmin: false,
+  isApproved: false,
+  isFpt: true,
+  studentCode: 'SE123',
+  schoolId: 'fpt-1',
+  photoStudentCardUrl: null,
 };
 
+const noop = jest.fn();
+
 describe('RegistrationStatusCard', () => {
-  test('pending shows chờ xét duyệt + submitted info', () => {
-    render(<RegistrationStatusCard status="pending" reason={null} record={rec} onRegisterTeam={jest.fn()} onResubmit={jest.fn()} />);
+  test('pending shows Chờ xét duyệt + Cập nhật hồ sơ button (onEdit)', () => {
+    const onEdit = jest.fn();
+    render(
+      <RegistrationStatusCard
+        status="pending"
+        reason={null}
+        profile={profile}
+        onRegisterTeam={noop}
+        onEdit={onEdit}
+        onResubmit={noop}
+      />,
+    );
     expect(screen.getByText(/Chờ xét duyệt/i)).toBeInTheDocument();
     expect(screen.getByText('SE123')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Cập nhật hồ sơ/i }));
+    expect(onEdit).toHaveBeenCalled();
   });
 
-  test('approved shows CTA that calls onRegisterTeam', () => {
+  test('approved shows Đã được duyệt + Đăng ký đội button (onRegisterTeam)', () => {
     const onRegisterTeam = jest.fn();
-    render(<RegistrationStatusCard status="approved" reason={null} record={rec} onRegisterTeam={onRegisterTeam} onResubmit={jest.fn()} />);
+    render(
+      <RegistrationStatusCard
+        status="approved"
+        reason={null}
+        profile={profile}
+        onRegisterTeam={onRegisterTeam}
+        onEdit={noop}
+        onResubmit={noop}
+      />,
+    );
     expect(screen.getByText(/Đã được duyệt/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Đăng ký đội/i }));
     expect(onRegisterTeam).toHaveBeenCalled();
   });
 
-  test('rejected shows reason + resubmit', () => {
+  test('rejected shows Tài khoản bị từ chối + reason + Gửi lại (onResubmit)', () => {
     const onResubmit = jest.fn();
-    render(<RegistrationStatusCard status="rejected" reason="Ảnh thẻ không rõ" record={rec} onRegisterTeam={jest.fn()} onResubmit={onResubmit} />);
+    render(
+      <RegistrationStatusCard
+        status="rejected"
+        reason="Ảnh thẻ không rõ"
+        profile={profile}
+        onRegisterTeam={noop}
+        onEdit={noop}
+        onResubmit={onResubmit}
+      />,
+    );
     expect(screen.getByText(/Tài khoản bị từ chối/i)).toBeInTheDocument();
     expect(screen.getByText(/Ảnh thẻ không rõ/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Gửi lại/i }));

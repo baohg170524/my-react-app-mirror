@@ -1,10 +1,23 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { RegistrationForm } from '../RegistrationForm';
 
+// Mock @/services/api so network calls never fire in tests.
+jest.mock('@/services/api', () => ({
+  schoolsApi: {
+    list: jest.fn().mockResolvedValue({
+      data: [{ id: 'fpt-1', schoolName: 'FPT University' }],
+    }),
+    create: jest.fn(),
+  },
+  storageApi: {
+    upload: jest.fn().mockResolvedValue('https://cdn.example.com/card.jpg'),
+  },
+}));
+
 describe('RegistrationForm', () => {
-  test('prefills name/email and submits FPT values without upload', async () => {
+  test('FPT path: submits UpdateStudentProfileCommand with resolved schoolId', async () => {
     const onSubmit = jest.fn();
-    render(<RegistrationForm defaults={{ fullName: 'Nguyễn Văn A', email: 'a@e.com' }} onSubmit={onSubmit} />);
+    render(<RegistrationForm defaults={{ fullName: 'Nguyễn Văn A' }} onSubmit={onSubmit} />);
 
     expect((screen.getByLabelText(/Họ và tên/i) as HTMLInputElement).value).toBe('Nguyễn Văn A');
 
@@ -12,15 +25,20 @@ describe('RegistrationForm', () => {
     fireEvent.click(screen.getByRole('button', { name: /Gửi đăng ký/i }));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
-    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
-      fullName: 'Nguyễn Văn A', email: 'a@e.com', schoolChoice: 'FPT', studentCode: 'SE123',
-      photoStudentCardUrl: null,
-    }));
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        isFpt: true,
+        schoolId: 'fpt-1',
+        studentCode: 'SE123',
+        photoStudentCardUrl: null,
+        fullName: 'Nguyễn Văn A',
+      }),
+    );
   });
 
   test('blocks submit when MSSV empty', () => {
     const onSubmit = jest.fn();
-    render(<RegistrationForm defaults={{ fullName: 'A', email: 'a@e.com' }} onSubmit={onSubmit} />);
+    render(<RegistrationForm defaults={{ fullName: 'A' }} onSubmit={onSubmit} />);
     fireEvent.click(screen.getByRole('button', { name: /Gửi đăng ký/i }));
     expect(onSubmit).not.toHaveBeenCalled();
     expect(screen.getByText(/Vui lòng nhập mã số sinh viên/i)).toBeInTheDocument();

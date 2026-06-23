@@ -1,19 +1,20 @@
 'use client';
 
-import type { RegistrationRecord } from '../types';
+import type { UserSummary } from '@/services/api';
 
 interface Props {
   status: 'pending' | 'approved' | 'rejected';
   reason: string | null;
-  record: RegistrationRecord | null;
+  profile: UserSummary | null;
   onRegisterTeam: () => void;
-  onResubmit: () => void;
+  onEdit: () => void;
+  onResubmit: () => Promise<void> | void;
 }
 
 const BADGE: Record<Props['status'], { label: string; bg: string; fg: string; bd: string }> = {
-  pending:  { label: 'Chờ xét duyệt',      bg: 'var(--color-surface-soft)', fg: 'var(--color-stone)',   bd: 'var(--color-hairline-strong)' },
-  approved: { label: 'Đã được duyệt',      bg: 'rgba(118,185,0,0.1)',       fg: 'var(--color-primary)', bd: 'var(--color-primary)' },
-  rejected: { label: 'Tài khoản bị từ chối', bg: 'rgba(229,32,32,0.08)',     fg: 'var(--color-error)',   bd: 'var(--color-error)' },
+  pending:  { label: 'Chờ xét duyệt',        bg: 'var(--color-surface-soft)', fg: 'var(--color-stone)',   bd: 'var(--color-hairline-strong)' },
+  approved: { label: 'Đã được duyệt',         bg: 'rgba(118,185,0,0.1)',       fg: 'var(--color-primary)', bd: 'var(--color-primary)' },
+  rejected: { label: 'Tài khoản bị từ chối',  bg: 'rgba(229,32,32,0.08)',      fg: 'var(--color-error)',   bd: 'var(--color-error)' },
 };
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -25,42 +26,66 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function RegistrationStatusCard({ status, reason, record, onRegisterTeam, onResubmit }: Props) {
+export function RegistrationStatusCard({
+  status,
+  reason,
+  profile,
+  onRegisterTeam,
+  onEdit,
+  onResubmit,
+}: Props) {
   const badge = BADGE[status];
   return (
     <div className="card flex flex-col gap-4" style={{ padding: 'var(--space-xl)', maxWidth: '40rem' }}>
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h2 className="t-heading-md m-0">Đăng ký thi đấu</h2>
-        <span className="badge-tag" style={{ background: badge.bg, color: badge.fg, border: `1px solid ${badge.bd}` }}>
+        <span
+          className="badge-tag"
+          style={{ background: badge.bg, color: badge.fg, border: `1px solid ${badge.bd}` }}
+        >
           {badge.label}
         </span>
       </div>
 
       {status === 'rejected' && reason && (
-        <p className="t-body-sm m-0" style={{ color: 'var(--color-error)' }}>Lý do: {reason}</p>
+        <p className="t-body-sm m-0" style={{ color: 'var(--color-error)' }}>
+          Lý do: {reason}
+        </p>
       )}
 
-      {record && (
+      {profile && (
         <div className="flex flex-col">
-          <Row label="Họ và tên" value={record.fullName || '—'} />
-          <Row label="Email" value={record.email || '—'} />
-          <Row label="Trường" value={record.schoolChoice === 'FPT' ? 'FPT University' : record.schoolName || '—'} />
-          <Row label="MSSV" value={record.studentCode || '—'} />
-          {record.note && <Row label="Ghi chú" value={record.note} />}
-          {record.photoStudentCardUrl && (
+          <Row label="Họ và tên"  value={profile.fullName  || '—'} />
+          <Row label="Email"       value={profile.email      || '—'} />
+          <Row label="MSSV"        value={profile.studentCode || '—'} />
+          <Row label="Trường"      value={profile.isFpt ? 'FPT University' : '—'} />
+          {profile.photoStudentCardUrl && (
             <div className="py-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={record.photoStudentCardUrl} alt="Ảnh thẻ sinh viên" className="w-40 h-28 object-cover rounded-sm border border-hairline" />
+              <img
+                src={profile.photoStudentCardUrl}
+                alt="Ảnh thẻ sinh viên"
+                className="w-40 h-28 object-cover rounded-sm border border-hairline"
+              />
             </div>
           )}
         </div>
       )}
 
+      {status === 'pending' && (
+        <button type="button" className="btn btn-secondary w-fit" onClick={onEdit}>
+          Cập nhật hồ sơ
+        </button>
+      )}
       {status === 'approved' && (
-        <button type="button" className="btn btn-primary w-fit" onClick={onRegisterTeam}>Đăng ký đội</button>
+        <button type="button" className="btn btn-primary w-fit" onClick={onRegisterTeam}>
+          Đăng ký đội
+        </button>
       )}
       {status === 'rejected' && (
-        <button type="button" className="btn btn-secondary w-fit" onClick={onResubmit}>Gửi lại</button>
+        <button type="button" className="btn btn-secondary w-fit" onClick={onResubmit}>
+          Gửi lại
+        </button>
       )}
     </div>
   );
