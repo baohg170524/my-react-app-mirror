@@ -27,4 +27,17 @@ describe('userRejectionsApi', () => {
     await userRejectionsApi.create({ userId: 'u1', rejectedBy: 'a1', reason: 'sai MSSV' });
     expect(mocked.post).toHaveBeenCalledWith('/UserRejections', { userId: 'u1', rejectedBy: 'a1', reason: 'sai MSSV' });
   });
+
+  test('remove DELETEs /UserRejections/{id} and returns void', async () => {
+    mocked.delete.mockResolvedValue({ data: {} } as never);
+    const result = await userRejectionsApi.remove('r1');
+    expect(mocked.delete).toHaveBeenCalledWith('/UserRejections/r1');
+    expect(result).toBeUndefined();
+  });
+
+  test('remove URL-encodes the id', async () => {
+    mocked.delete.mockResolvedValue({ data: {} } as never);
+    await userRejectionsApi.remove('r/special id');
+    expect(mocked.delete).toHaveBeenCalledWith('/UserRejections/r%2Fspecial%20id');
+  });
 });

@@ -12,6 +12,7 @@ export interface UserSummary {
   isAdmin: boolean;
   isApproved: boolean;
   isFpt: boolean;
+  photoStudentCardUrl?: string | null;
 }
 
 export interface UserListParams {
@@ -64,4 +65,18 @@ export const usersApi = {
   /** PUT /api/Users/{id} — update a user (admin only). */
   update: (id: string, payload: UpdateUserPayload): Promise<void> =>
     apiClient.put(`/Users/${encodeURIComponent(id)}`, payload).then(() => undefined),
+
+  /** GET /api/Users/profile — the current logged-in user's profile. */
+  getProfile: async (): Promise<UserSummary> => {
+    const { data } = await apiClient.get<UserSummary>("/Users/profile");
+    return data;
+  },
+
+  /** POST /api/Users/{id}/approve — approve a student profile (admin/EC). */
+  approve: (id: string): Promise<void> =>
+    apiClient.post(`/Users/${encodeURIComponent(id)}/approve`).then(() => undefined),
+
+  /** POST /api/Users/{id}/reject — reject a student profile with a reason (admin/EC). */
+  reject: (id: string, reason: string): Promise<void> =>
+    apiClient.post(`/Users/${encodeURIComponent(id)}/reject`, { reason }).then(() => undefined),
 };

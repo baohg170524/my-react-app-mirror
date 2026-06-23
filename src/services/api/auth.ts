@@ -5,6 +5,7 @@ import type {
   LoginResponse,
   RefreshTokenResponse,
   RegisterRequest,
+  UpdateStudentProfileCommand,
 } from "./types";
 
 export const authApi = {
@@ -42,4 +43,8 @@ export const authApi = {
     });
     return data;
   },
+
+  /** POST /api/Auth/student-profiles — submit/update the caller's student proof. */
+  submitStudentProfile: (payload: UpdateStudentProfileCommand): Promise<void> =>
+    apiClient.post("/Auth/student-profiles", payload).then(() => undefined),
 };

@@ -134,6 +134,16 @@ export interface UserRejectionModel {
   createdTime: string;
 }
 
+// ─── Student profile submission ───────────────────────────────────────────────
+
+export interface UpdateStudentProfileCommand {
+  schoolId?: string | null;
+  studentCode?: string | null;
+  photoStudentCardUrl?: string | null;
+  isFpt: boolean;
+  fullName?: string | null;
+}
+
 // ─── API Error ────────────────────────────────────────────────────────────────
 
 export interface ApiError {
