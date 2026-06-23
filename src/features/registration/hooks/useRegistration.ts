@@ -1,53 +1,56 @@
 'use client';
-
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { registrationStore } from '../api/registrationStore';
+import { usersApi, authApi, type UserSummary, type UpdateStudentProfileCommand } from '@/services/api';
 import { userRejectionsApi } from '../api/userRejections';
 import { resolveRegistrationStatus } from '../status';
-import type { RegistrationFormValues } from '../types';
 
 export const REGISTRATION_KEYS = {
-  record: (userId: string, eventId: string) => ['registration', userId, eventId] as const,
+  profile: ['users', 'profile'] as const,
   rejections: (userId: string) => ['userRejections', userId] as const,
 };
 
-export function useRegistration(eventId: string, userId: string) {
+export function useRegistration(userId: string) {
   const qc = useQueryClient();
-  const enabled = !!eventId && !!userId;
+  const enabled = typeof window !== 'undefined' && !!localStorage.getItem('accessToken');
 
-  const recordQ = useQuery({
-    queryKey: REGISTRATION_KEYS.record(userId, eventId),
-    queryFn: async () => registrationStore.get(userId, eventId),
+  const profileQ = useQuery({
+    queryKey: REGISTRATION_KEYS.profile,
+    queryFn: () => usersApi.getProfile(),
     enabled,
-    staleTime: 0,
+    staleTime: 30_000,
   });
-
   const rejectionsQ = useQuery({
     queryKey: REGISTRATION_KEYS.rejections(userId),
     queryFn: () => userRejectionsApi.listForUser(userId),
-    enabled,
-    staleTime: 60_000,
+    enabled: enabled && !!userId,
+    staleTime: 30_000,
   });
 
-  const resolved = resolveRegistrationStatus(recordQ.data ?? null, rejectionsQ.data ?? []);
+  const { status, reason } = resolveRegistrationStatus(profileQ.data ?? null, rejectionsQ.data ?? []);
 
-  const submit = (values: RegistrationFormValues, submittedAt: string) => {
-    registrationStore.save({
-      ...values,
-      userId,
-      eventId,
-      status: 'pending',
-      submittedAt,
-      decidedAt: null,
-    });
-    qc.invalidateQueries({ queryKey: REGISTRATION_KEYS.record(userId, eventId) });
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: REGISTRATION_KEYS.profile });
+    qc.invalidateQueries({ queryKey: REGISTRATION_KEYS.rejections(userId) });
+  };
+
+  const submit = async (cmd: UpdateStudentProfileCommand) => {
+    await authApi.submitStudentProfile(cmd);
+    invalidate();
+  };
+
+  /** Re-apply after a rejection: clear prior rejection records (best-effort) then invalidate. */
+  const clearRejections = async () => {
+    const rows = rejectionsQ.data ?? [];
+    await Promise.allSettled(rows.map((r) => userRejectionsApi.remove(r.id)));
+    invalidate();
   };
 
   return {
-    status: resolved.status,
-    reason: resolved.reason,
-    record: recordQ.data ?? null,
-    isLoading: recordQ.isLoading || rejectionsQ.isLoading,
+    profile: (profileQ.data ?? null) as UserSummary | null,
+    status,
+    reason,
+    isLoading: profileQ.isLoading || rejectionsQ.isLoading,
     submit,
+    clearRejections,
   };
 }

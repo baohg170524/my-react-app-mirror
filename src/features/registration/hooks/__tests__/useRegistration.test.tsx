@@ -1,55 +1,92 @@
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import React from 'react';
+import React, { useState } from 'react';
 import { useRegistration } from '../useRegistration';
-import { registrationStore } from '../../api/registrationStore';
+
+// Mock @/services/api
+jest.mock('@/services/api', () => ({
+  usersApi: { getProfile: jest.fn() },
+  authApi: { submitStudentProfile: jest.fn() },
+}));
+// Mock userRejections api
+jest.mock('../../api/userRejections', () => ({
+  userRejectionsApi: { listForUser: jest.fn(), remove: jest.fn() },
+}));
+
+import { usersApi, authApi } from '@/services/api';
 import { userRejectionsApi } from '../../api/userRejections';
 
-jest.mock('../../api/userRejections');
-const mockRejections = userRejectionsApi as jest.Mocked<typeof userRejectionsApi>;
+const mockGetProfile = usersApi.getProfile as jest.MockedFunction<typeof usersApi.getProfile>;
+const mockSubmit = authApi.submitStudentProfile as jest.MockedFunction<typeof authApi.submitStudentProfile>;
+const mockListForUser = userRejectionsApi.listForUser as jest.MockedFunction<typeof userRejectionsApi.listForUser>;
 
 function wrapper({ children }: { children: React.ReactNode }) {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const [qc] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: false } } }));
   return <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
 }
 
 describe('useRegistration', () => {
   beforeEach(() => {
     localStorage.clear();
+    // Set token so `enabled` is true
+    localStorage.setItem('accessToken', 'test-token');
     jest.resetAllMocks();
-    mockRejections.listForUser.mockResolvedValue([]);
+    mockListForUser.mockResolvedValue([]);
   });
 
-  test('no record → status null (chưa đăng ký)', async () => {
-    const { result } = renderHook(() => useRegistration('e1', 'u1'), { wrapper });
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-    expect(result.current.status).toBeNull();
-  });
-
-  test('submit saves a pending record', async () => {
-    const { result } = renderHook(() => useRegistration('e1', 'u1'), { wrapper });
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-    act(() => {
-      result.current.submit(
-        { fullName: 'A', email: 'a@e.com', schoolChoice: 'FPT', schoolName: null, studentCode: 'SE1', photoStudentCardUrl: null, note: null },
-        '2026-06-23T00:00:00Z',
-      );
+  test('approved profile → status approved', async () => {
+    mockGetProfile.mockResolvedValue({
+      id: 'u1', email: 'a@e.com', fullName: 'A', studentCode: 'SE1',
+      schoolId: 's1', isStudent: true, isAdmin: false, isApproved: true,
+      isFpt: true, photoStudentCardUrl: null,
     });
-    await waitFor(() => expect(result.current.status).toBe('pending'));
-    expect(registrationStore.get('u1', 'e1')?.studentCode).toBe('SE1');
+    const { result } = renderHook(() => useRegistration('u1'), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.status).toBe('approved');
+    expect(result.current.reason).toBeNull();
   });
 
-  test('rejection from API → status rejected with reason', async () => {
-    registrationStore.save({
-      userId: 'u1', eventId: 'e1', fullName: 'A', email: 'a@e.com', schoolChoice: 'FPT',
-      schoolName: null, studentCode: 'SE1', photoStudentCardUrl: null, note: null,
-      status: 'pending', submittedAt: '2026-06-23T00:00:00Z', decidedAt: null,
+  test('not-approved + rejection → status rejected with reason', async () => {
+    mockGetProfile.mockResolvedValue({
+      id: 'u1', email: 'a@e.com', fullName: 'A', studentCode: 'SE1',
+      schoolId: 's1', isStudent: true, isAdmin: false, isApproved: false,
+      isFpt: true, photoStudentCardUrl: null,
     });
-    mockRejections.listForUser.mockResolvedValue([
+    mockListForUser.mockResolvedValue([
       { id: 'r1', userId: 'u1', rejectedBy: 'admin', reason: 'sai MSSV', createdTime: '2026-06-24T00:00:00Z' },
     ]);
-    const { result } = renderHook(() => useRegistration('e1', 'u1'), { wrapper });
-    await waitFor(() => expect(result.current.status).toBe('rejected'));
+    const { result } = renderHook(() => useRegistration('u1'), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.status).toBe('rejected');
     expect(result.current.reason).toBe('sai MSSV');
+  });
+
+  test('not-approved no rejection → status pending', async () => {
+    mockGetProfile.mockResolvedValue({
+      id: 'u1', email: 'a@e.com', fullName: 'A', studentCode: 'SE1',
+      schoolId: 's1', isStudent: true, isAdmin: false, isApproved: false,
+      isFpt: true, photoStudentCardUrl: null,
+    });
+    mockListForUser.mockResolvedValue([]);
+    const { result } = renderHook(() => useRegistration('u1'), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.status).toBe('pending');
+    expect(result.current.reason).toBeNull();
+  });
+
+  test('submit(cmd) calls authApi.submitStudentProfile', async () => {
+    mockGetProfile.mockResolvedValue({
+      id: 'u1', email: 'a@e.com', fullName: 'A', studentCode: 'SE1',
+      schoolId: 's1', isStudent: true, isAdmin: false, isApproved: false,
+      isFpt: true, photoStudentCardUrl: null,
+    });
+    mockSubmit.mockResolvedValue(undefined);
+    const { result } = renderHook(() => useRegistration('u1'), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    const cmd = { isFpt: true, studentCode: 'SE123', fullName: 'A', schoolId: 's1', photoStudentCardUrl: null };
+    await act(async () => {
+      await result.current.submit(cmd);
+    });
+    expect(mockSubmit).toHaveBeenCalledWith(cmd);
   });
 });
