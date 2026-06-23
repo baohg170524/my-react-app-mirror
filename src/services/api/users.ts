@@ -23,6 +23,17 @@ export interface UserListParams {
   isApproved?: boolean;
 }
 
+/** Matches backend CreateUserRequestModel. */
+export interface CreateUserPayload {
+  schoolId: string;
+  studentCode?: string | null;
+  email: string;
+  password: string;
+  fullName: string;
+  isStudent: boolean;
+  isAdmin: boolean;
+}
+
 /** Matches backend UpdateUserRequestModel. */
 export interface UpdateUserPayload {
   schoolId?: string | null;
@@ -61,6 +72,10 @@ export const usersApi = {
     });
     return data;
   },
+
+  /** POST /api/Users — create a user (admin only). */
+  create: (payload: CreateUserPayload): Promise<void> =>
+    apiClient.post("/Users", payload).then(() => undefined),
 
   /** PUT /api/Users/{id} — update a user (admin only). */
   update: (id: string, payload: UpdateUserPayload): Promise<void> =>
