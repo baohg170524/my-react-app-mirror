@@ -27,16 +27,9 @@ export interface LoginRequest {
 
 /** Matches backend RegisterUserRequestModel. */
 export interface RegisterRequest {
-  schoolId: string;
-  studentCode?: string;
   email: string;
   password: string;
   fullName: string;
-  isStudent: boolean;
-  /** Derived from the selected school name (contains "FPT"). */
-  isFpt: boolean;
-  /** Required by the backend for non-FPT students (URL from `/Storage/upload`). */
-  photoStudentCardUrl?: string;
 }
 
 /** Matches backend LoginUserResponseModel (flat shape). */
@@ -122,6 +115,26 @@ export interface CreateSchoolResponse {
   schoolName: string;
   address: string | null;
   createdTime: string;
+}
+
+// ─── User Rejections (backend UserRejectionModel) ─────────────────────────────
+
+export interface UserRejectionModel {
+  id: string;
+  userId: string;
+  rejectedBy: string;
+  reason: string | null;
+  createdTime: string;
+}
+
+// ─── Student profile submission ───────────────────────────────────────────────
+
+export interface UpdateStudentProfileCommand {
+  schoolId?: string | null;
+  studentCode?: string | null;
+  photoStudentCardUrl?: string | null;
+  isFpt: boolean;
+  fullName?: string | null;
 }
 
 // ─── API Error ────────────────────────────────────────────────────────────────
