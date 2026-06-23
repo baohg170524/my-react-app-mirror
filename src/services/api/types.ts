@@ -27,16 +27,9 @@ export interface LoginRequest {
 
 /** Matches backend RegisterUserRequestModel. */
 export interface RegisterRequest {
-  schoolId: string;
-  studentCode?: string;
   email: string;
   password: string;
   fullName: string;
-  isStudent: boolean;
-  /** Derived from the selected school name (contains "FPT"). */
-  isFpt: boolean;
-  /** Required by the backend for non-FPT students (URL from `/Storage/upload`). */
-  photoStudentCardUrl?: string;
 }
 
 /** Matches backend LoginUserResponseModel (flat shape). */

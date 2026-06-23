@@ -119,6 +119,31 @@ export function useRegister() {
   });
 }
 
+/**
+ * Verify-email query — runs the one-shot `/Auth/verify-email?token=` check when
+ * the user lands on the verification page from their email link. `enabled` only
+ * when a token is present; never retried (a bad/expired token won't fix itself).
+ */
+export function useVerifyEmail(token: string | null) {
+  return useQuery({
+    queryKey: ["auth", "verify-email", token],
+    queryFn: () => authApi.verifyEmail(token as string),
+    enabled: !!token,
+    retry: false,
+    staleTime: Infinity,
+  });
+}
+
+/**
+ * Resend-verification mutation — re-sends the confirmation email to an
+ * unverified account (used when the original link expired).
+ */
+export function useResendVerification() {
+  return useMutation({
+    mutationFn: (email: string) => authApi.resendVerification(email),
+  });
+}
+
 export function useLogout() {
   const queryClient = useQueryClient();
   const router = useRouter();
