@@ -133,8 +133,10 @@ Tái dùng token màu/Card hiện có (`Card`, `Badge`).
 `rejectedBy` lấy từ `useCurrentUser().id` (admin đang đăng nhập). "Duyệt" giữ nguyên (`isApproved=true`).
 
 ## 9. Hạn chế đã biết (future backend work)
-- **Đồng bộ "đã được duyệt" cross-device:** student không đọc được `isApproved` (Users admin-only; login không trả). Nên khi admin duyệt ở máy khác, store local của student **không tự cập nhật**. Khắc phục: backend trả `isApproved` trong login **hoặc** thêm `GET /Users/me`. Resolver (§5) tách riêng để cắm nguồn approved thật về sau mà không đổi UI.
-- **Resubmit sau khi bị từ chối:** bản ghi `UserRejections` cũ vẫn tồn tại ⇒ resolver so `createdTime` của rejection với `submittedAt` của record mới để không hiện "từ chối" nhầm cho lần gửi lại. Nếu backend mong muốn, có thể `DELETE /UserRejections/{id}` khi gửi lại (tùy chọn, không bắt buộc đợt này).
+
+- **Flow đã backed by real APIs (R1–R4):** Live Swagger (newer than repo `API_DOCS.md`) cung cấp `GET /Users/profile` (đọc `isApproved` của user hiện tại), `POST /Auth/student-profiles` (submit hồ sơ), `POST /Users/{id}/approve` và `POST /Users/{id}/reject` (admin). localStorage đã được xóa hoàn toàn — không còn hạn chế "can't read isApproved".
+- **Repo `API_DOCS.md` lỗi thời** so với live Swagger tại `https://api.sealswp391.xyz/swagger/v1/swagger.json` — dùng live Swagger làm nguồn tham khảo chính.
+- **Resubmit sau khi bị từ chối:** `clearRejections()` gọi `DELETE /UserRejections/{id}` cho từng bản ghi từ chối trước khi cho nhập lại form.
 - Đăng ký không tạo `EventRole` thật (student không có quyền) ⇒ admin "thấy" đăng ký qua dữ liệu sẵn có/seed, không qua submission này.
 
 ## 10. Testing

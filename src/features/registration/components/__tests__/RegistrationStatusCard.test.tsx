@@ -1,6 +1,15 @@
 import { render, screen, fireEvent } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import React from 'react';
 import { RegistrationStatusCard } from '../RegistrationStatusCard';
 import type { UserSummary } from '@/services/api';
+
+// Mock schoolsApi so useQuery in the component resolves immediately
+jest.mock('@/services/api', () => ({
+  schoolsApi: {
+    list: jest.fn().mockResolvedValue({ data: [], currentPage: 1, pageSize: 100, totalItems: 0, totalPages: 1, hasPreviousPage: false, hasNextPage: false }),
+  },
+}));
 
 const profile: UserSummary = {
   id: 'u1',
@@ -17,10 +26,15 @@ const profile: UserSummary = {
 
 const noop = jest.fn();
 
+function withQuery(ui: React.ReactElement) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
+}
+
 describe('RegistrationStatusCard', () => {
   test('pending shows Chờ xét duyệt + Cập nhật hồ sơ button (onEdit)', () => {
     const onEdit = jest.fn();
-    render(
+    withQuery(
       <RegistrationStatusCard
         status="pending"
         reason={null}
@@ -38,7 +52,7 @@ describe('RegistrationStatusCard', () => {
 
   test('approved shows Đã được duyệt + Đăng ký đội button (onRegisterTeam)', () => {
     const onRegisterTeam = jest.fn();
-    render(
+    withQuery(
       <RegistrationStatusCard
         status="approved"
         reason={null}
@@ -55,7 +69,7 @@ describe('RegistrationStatusCard', () => {
 
   test('rejected shows Tài khoản bị từ chối + reason + Gửi lại (onResubmit)', () => {
     const onResubmit = jest.fn();
-    render(
+    withQuery(
       <RegistrationStatusCard
         status="rejected"
         reason="Ảnh thẻ không rõ"

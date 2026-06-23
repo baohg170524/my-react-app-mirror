@@ -1,6 +1,7 @@
 'use client';
 
-import type { UserSummary } from '@/services/api';
+import { useQuery } from '@tanstack/react-query';
+import { schoolsApi, type UserSummary } from '@/services/api';
 
 interface Props {
   status: 'pending' | 'approved' | 'rejected';
@@ -35,6 +36,20 @@ export function RegistrationStatusCard({
   onResubmit,
 }: Props) {
   const badge = BADGE[status];
+
+  const { data: schoolsData } = useQuery({
+    queryKey: ['schools'],
+    queryFn: () => schoolsApi.list(),
+    staleTime: 5 * 60_000,
+  });
+  const schools = schoolsData?.data ?? [];
+
+  const schoolLabel = profile
+    ? profile.isFpt
+      ? 'FPT University'
+      : (schools.find((s) => s.id === profile.schoolId)?.schoolName ?? '—')
+    : '—';
+
   return (
     <div className="card flex flex-col gap-4" style={{ padding: 'var(--space-xl)', maxWidth: '40rem' }}>
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -58,7 +73,7 @@ export function RegistrationStatusCard({
           <Row label="Họ và tên"  value={profile.fullName  || '—'} />
           <Row label="Email"       value={profile.email      || '—'} />
           <Row label="MSSV"        value={profile.studentCode || '—'} />
-          <Row label="Trường"      value={profile.isFpt ? 'FPT University' : '—'} />
+          <Row label="Trường"      value={schoolLabel} />
           {profile.photoStudentCardUrl && (
             <div className="py-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -10,7 +10,7 @@ jest.mock('@/services/api', () => ({
 }));
 // Mock userRejections api
 jest.mock('../../api/userRejections', () => ({
-  userRejectionsApi: { listForUser: jest.fn(), remove: jest.fn() },
+  userRejectionsApi: { listForUser: jest.fn(), remove: jest.fn().mockResolvedValue(undefined) },
 }));
 
 import { usersApi, authApi } from '@/services/api';
@@ -19,6 +19,7 @@ import { userRejectionsApi } from '../../api/userRejections';
 const mockGetProfile = usersApi.getProfile as jest.MockedFunction<typeof usersApi.getProfile>;
 const mockSubmit = authApi.submitStudentProfile as jest.MockedFunction<typeof authApi.submitStudentProfile>;
 const mockListForUser = userRejectionsApi.listForUser as jest.MockedFunction<typeof userRejectionsApi.listForUser>;
+const mockRemove = userRejectionsApi.remove as jest.MockedFunction<typeof userRejectionsApi.remove>;
 
 function wrapper({ children }: { children: React.ReactNode }) {
   const [qc] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: false } } }));
@@ -32,6 +33,7 @@ describe('useRegistration', () => {
     localStorage.setItem('accessToken', 'test-token');
     jest.resetAllMocks();
     mockListForUser.mockResolvedValue([]);
+    mockRemove.mockResolvedValue(undefined);
   });
 
   test('approved profile → status approved', async () => {
@@ -88,5 +90,24 @@ describe('useRegistration', () => {
       await result.current.submit(cmd);
     });
     expect(mockSubmit).toHaveBeenCalledWith(cmd);
+  });
+
+  test('clearRejections calls userRejectionsApi.remove for each rejection', async () => {
+    mockGetProfile.mockResolvedValue({
+      id: 'u1', email: 'a@e.com', fullName: 'A', studentCode: 'SE1',
+      schoolId: 's1', isStudent: true, isAdmin: false, isApproved: false,
+      isFpt: true, photoStudentCardUrl: null,
+    });
+    mockListForUser.mockResolvedValue([
+      { id: 'r1', userId: 'u1', rejectedBy: 'admin', reason: 'bad photo', createdTime: '2026-06-23T00:00:00Z' },
+      { id: 'r2', userId: 'u1', rejectedBy: 'admin', reason: 'wrong id', createdTime: '2026-06-22T00:00:00Z' },
+    ]);
+    const { result } = renderHook(() => useRegistration('u1'), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await act(async () => {
+      await result.current.clearRejections();
+    });
+    expect(mockRemove).toHaveBeenCalledWith('r1');
+    expect(mockRemove).toHaveBeenCalledWith('r2');
   });
 });
