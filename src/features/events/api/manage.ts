@@ -81,6 +81,16 @@ export const manageApi = {
     return data.data ?? [];
   },
 
+  /** GET /api/EventRoles/user — every role the user holds across all events.
+   *  Mirrors the `/EventRoles/event` query-param convention used above. */
+  listUserEventRoles: async (userId: string): Promise<EventRole[]> => {
+    const { data } = await apiClient.get<PagedResult<EventRole>>(
+      "/EventRoles/user",
+      { params: { UserId: userId, PageNumber: 1, PageSize: 200 } },
+    );
+    return data.data ?? [];
+  },
+
   /** GET /api/Teams — all teams (no event filter server-side; scoped via roles). */
   listTeams: async (): Promise<TeamItem[]> => {
     const { data } = await apiClient.get<PagedResult<TeamItem>>("/Teams", {

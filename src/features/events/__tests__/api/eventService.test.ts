@@ -58,35 +58,6 @@ describe('eventService', () => {
     });
   });
 
-  describe('getMyEvents', () => {
-    it('should fetch user joined events', async () => {
-      const mockEvents: Event[] = [
-        {
-          id: 'event-1',
-          title: 'React Challenge',
-          startDate: '2026-06-15T10:00:00Z',
-          endDate: '2026-06-22T10:00:00Z',
-          status: 'open',
-          submissionType: 'ZIP',
-          description: 'Build a React app',
-        },
-      ];
-
-      (apiClient.get as jest.Mock).mockResolvedValueOnce({ data: mockEvents });
-
-      const result = await eventService.getMyEvents();
-      expect(result).toEqual(mockEvents);
-      expect(apiClient.get).toHaveBeenCalledWith('/events/me');
-    });
-
-    it('should return empty array when user has no events', async () => {
-      (apiClient.get as jest.Mock).mockResolvedValueOnce({ data: null });
-
-      const result = await eventService.getMyEvents();
-      expect(result).toEqual([]);
-    });
-  });
-
   describe('getEvent', () => {
     it('should fetch a single event by ID', async () => {
       const mockEvent: Event = {

@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { authApi } from "@/services/api";
+import { USER_PROFILE_KEY } from "@/features/user/hooks/useUserProfile";
 import type {
   LoginRequest,
   LoginResponse,
@@ -98,7 +99,10 @@ export function useLogin() {
       persistTokens(data.accessToken, data.refreshToken);
       const profile = loginResponseToProfile(data);
       persistUser(profile);
+      // Seed BOTH user caches so the navbar (auth/me) and the home profile
+      // header (user/profile) update immediately — without a reload.
       queryClient.setQueryData(AUTH_KEYS.me, profile);
+      queryClient.setQueryData(USER_PROFILE_KEY, profile);
       // replace (not push) so Back doesn't return to the login screen
       router.replace("/");
     },
@@ -112,6 +116,31 @@ export function useLogin() {
 export function useRegister() {
   return useMutation({
     mutationFn: (payload: RegisterRequest) => authApi.register(payload),
+  });
+}
+
+/**
+ * Verify-email query — runs the one-shot `/Auth/verify-email?token=` check when
+ * the user lands on the verification page from their email link. `enabled` only
+ * when a token is present; never retried (a bad/expired token won't fix itself).
+ */
+export function useVerifyEmail(token: string | null) {
+  return useQuery({
+    queryKey: ["auth", "verify-email", token],
+    queryFn: () => authApi.verifyEmail(token as string),
+    enabled: !!token,
+    retry: false,
+    staleTime: Infinity,
+  });
+}
+
+/**
+ * Resend-verification mutation — re-sends the confirmation email to an
+ * unverified account (used when the original link expired).
+ */
+export function useResendVerification() {
+  return useMutation({
+    mutationFn: (email: string) => authApi.resendVerification(email),
   });
 }
 

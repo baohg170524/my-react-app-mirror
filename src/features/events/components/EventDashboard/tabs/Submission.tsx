@@ -1,209 +1,116 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useTeamSubmissions, useSubmitWork } from '@/features/events/hooks/useEvents';
-import { zipValidation, urlValidation } from '@/features/events/utils/validationUtils';
-import { Card } from '../Card';
-import { Button } from '../Button';
-import { Badge } from '../Badge';
-import { FormSkeleton } from '../SkeletonLoaders';
-import { Upload, Link as LinkIcon, AlertCircle } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import type { AxiosError } from 'axios';
+import { useEventRounds, useEventTracks } from '@/features/events/hooks/useEvents';
+import { useTeamSubmissions, useCreateSubmission } from '@/features/submissions/hooks/useSubmissions';
 
-interface SubmissionTabProps {
-  teamId: string;
-  eventId: string;
+/** Surface the backend's message (e.g. "Nhóm đã nộp bài giải cho Vòng thi này
+ *  trước đó.") instead of a generic failure. */
+function submitErrorMessage(err: unknown): string {
+  const ax = err as AxiosError<{ message?: string }>;
+  return ax?.response?.data?.message || ax?.message || 'Nộp bài thất bại.';
 }
 
-export function SubmissionTab({ teamId, eventId }: SubmissionTabProps) {
-  const { data: submissions, isLoading, error } = useTeamSubmissions(teamId);
-  const submitMutation = useSubmitWork(teamId, eventId);
+interface Props { teamId: string; eventId: string; }
 
-  const [submissionType] = useState<'zip' | 'url'>('zip');
-  const [zipFile, setZipFile] = useState<File | null>(null);
-  const [urlInput, setUrlInput] = useState('');
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+export function SubmissionTab({ teamId, eventId }: Props) {
+  const { data: rounds = [] } = useEventRounds(eventId);
+  const { data: tracks = [] } = useEventTracks(eventId);
 
-  const handleZipSelect = (file: File | null) => {
-    if (file) {
-      const result = zipValidation.validate(file);
-      if (result.isValid) {
-        setZipFile(file);
-        setValidationErrors({});
-      } else {
-        setValidationErrors(result.errors);
-        setZipFile(null);
-      }
-    }
-  };
+  const [roundId, setRoundId] = useState('');
+  const [trackId, setTrackId] = useState('');
+  const [submissionUrl, setUrl] = useState('');
+  const [description, setDesc] = useState('');
 
-  const handleZipDrop = (e: React.DragEvent) => {
+  // List ALL of the team's submissions — backend ties a submission to a track
+  // (not a round), so a round-filtered query can miss already-submitted work.
+  const {
+    data: existing = [],
+    isLoading: existingLoading,
+    error: existingError,
+  } = useTeamSubmissions(teamId);
+  const create = useCreateSubmission(teamId);
+
+  const allTracks = tracks as Array<{ id: string; roundId: string; trackName: string | null }>;
+  const tracksForRound = useMemo(
+    () => allTracks.filter((t) => t.roundId === roundId),
+    [allTracks, roundId],
+  );
+  const trackName = (id: string) => allTracks.find((t) => t.id === id)?.trackName ?? '—';
+
+  const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    const files = e.dataTransfer.files;
-    if (files.length > 0) handleZipSelect(files[0]);
-  };
-
-  const handleUrlChange = (value: string) => {
-    setUrlInput(value);
-    if (value.trim()) {
-      const result = urlValidation.validate(value);
-      setValidationErrors(result.errors);
-    } else {
-      setValidationErrors({});
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (submissionType === 'zip') {
-      if (!zipFile) {
-        setValidationErrors({ file: 'Please select a ZIP file' });
-        return;
-      }
-      const formData = new FormData();
-      formData.append('file', zipFile);
-      await submitMutation.mutateAsync({ type: 'ZIP', content: formData });
-    } else {
-      const result = urlValidation.validate(urlInput);
-      if (!result.isValid) {
-        setValidationErrors(result.errors);
-        return;
-      }
-      await submitMutation.mutateAsync({ type: 'URL', content: urlInput });
-    }
-
-    setZipFile(null);
-    setUrlInput('');
-    setValidationErrors({});
-  };
-
-  const getStatusBadge = (status: string) => {
-    type BadgeVariant = 'primary' | 'warning' | 'error' | 'success' | 'default';
-    const statusMap: Record<string, { variant: BadgeVariant; label: string }> = {
-      submitted: { variant: 'primary', label: 'Submitted' },
-      'pending-review': { variant: 'warning', label: 'Pending Review' },
-      rejected: { variant: 'error', label: 'Rejected' },
-      graded: { variant: 'success', label: 'Graded' },
-    };
-    const config = statusMap[status] || { variant: 'default', label: 'Unknown' };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
-  };
-
-  if (error) {
-    return (
-      <div className="bg-error/10 border border-error rounded-sm p-6">
-        <p className="t-body-md text-error font-bold">Failed to load submissions</p>
-      </div>
+    create.mutate(
+      { teamId, roundId, trackId, submissionUrl, description },
+      { onSuccess: () => { setUrl(''); setDesc(''); } },
     );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-2">
-        <FormSkeleton />
-        <FormSkeleton />
-      </div>
-    );
-  }
-
-  const formatDate = (date: string) => new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-2">
-      <Card title="Submit for Event">
-        <div className="space-y-4">
-          {submissionType === 'zip' ? (
-            <div
-              onDrop={handleZipDrop}
-              onDragOver={(e) => e.preventDefault()}
-              className={`border-2 border-dashed rounded-sm p-4 md:p-8 text-center cursor-pointer transition-colors duration-150 ${
-                validationErrors.file
-                  ? 'border-error bg-error/5'
-                  : 'border-hairline bg-surface-soft hover:border-primary'
-              }`}
-            >
-              <Upload size={24} className={`mx-auto mb-2 ${validationErrors.file ? 'text-error' : 'text-mute'}`} />
-              <label className="block">
-                <input
-                  type="file"
-                  accept=".zip"
-                  onChange={(e) => handleZipSelect(e.target.files?.[0] || null)}
-                  className="sr-only"
-                  aria-label="Upload ZIP file"
-                />
-                <span className="t-body-md text-ink cursor-pointer">Drag ZIP file here or click to browse</span>
-              </label>
-              <p className="t-caption-sm text-mute mt-2">Max 50MB</p>
-              {zipFile && <p className="t-body-sm text-primary mt-2 font-bold">✓ {zipFile.name}</p>}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <label htmlFor="urlInput" className="t-body-strong text-ink block text-sm md:text-base">
-                Submission Link
-              </label>
-              <div className="relative">
-                <input
-                  id="urlInput"
-                  type="url"
-                  placeholder="https://github.com/... or https://drive.google.com/..."
-                  value={urlInput}
-                  onChange={(e) => handleUrlChange(e.target.value)}
-                  className={`w-full px-4 py-2 border rounded-sm text-body-md focus:outline-none transition-colors duration-150 ${
-                    validationErrors.url ? 'border-error focus:border-error' : 'border-hairline focus:border-primary'
-                  }`}
-                  aria-invalid={!!validationErrors.url}
-                  aria-describedby={validationErrors.url ? 'url-error' : undefined}
-                />
-                <LinkIcon size={16} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-mute" />
-              </div>
-              <p className="t-caption-sm text-mute">Paste GitHub, Drive, or similar link</p>
-            </div>
-          )}
+    <section className="p-6 max-w-2xl mx-auto space-y-6">
+      <h2 className="t-heading-md">Nộp bài</h2>
 
-          {validationErrors.file && (
-            <div className="flex gap-2 bg-error/10 border border-error rounded-sm p-3">
-              <AlertCircle size={16} className="text-error flex-shrink-0 mt-0.5" />
-              <p id="file-error" className="t-body-sm text-error">{validationErrors.file}</p>
-            </div>
-          )}
+      <form onSubmit={submit} className="space-y-3 border border-hairline rounded-sm bg-canvas p-4 md:p-6">
+        <label className="block">
+          <span className="t-body-sm font-bold">Vòng</span>
+          <select required value={roundId} onChange={(e) => { setRoundId(e.target.value); setTrackId(''); }} className="input w-full mt-1">
+            <option value="">— Chọn vòng —</option>
+            {(rounds as Array<{ id: string; roundName: string | null }>).map((r) => (
+              <option key={r.id} value={r.id}>{r.roundName ?? 'Vòng ' + r.id.slice(0, 4)}</option>
+            ))}
+          </select>
+        </label>
 
-          {validationErrors.url && (
-            <div className="flex gap-2 bg-error/10 border border-error rounded-sm p-3">
-              <AlertCircle size={16} className="text-error flex-shrink-0 mt-0.5" />
-              <p id="url-error" className="t-body-sm text-error">{validationErrors.url}</p>
-            </div>
-          )}
+        <label className="block">
+          <span className="t-body-sm font-bold">Track</span>
+          <select required value={trackId} onChange={(e) => setTrackId(e.target.value)} className="input w-full mt-1" disabled={!roundId}>
+            <option value="">— Chọn track —</option>
+            {tracksForRound.map((t) => <option key={t.id} value={t.id}>{t.trackName ?? 'Track ' + t.id.slice(0, 4)}</option>)}
+          </select>
+        </label>
 
-          <Button
-            onClick={handleSubmit}
-            isLoading={submitMutation.isPending}
-            disabled={!zipFile && !urlInput}
-            className="w-full"
-            size="lg"
-          >
-            Submit
-          </Button>
-        </div>
-      </Card>
+        <label className="block">
+          <span className="t-body-sm font-bold">Link nộp bài</span>
+          <input required type="url" value={submissionUrl} onChange={(e) => setUrl(e.target.value)} className="input w-full mt-1" />
+        </label>
 
-      <Card title="Submission History">
-        <div className="space-y-3">
-          {!isLoading && submissions && submissions.length === 0 ? (
-            <div className="text-center py-8">
-              <Upload size={32} className="text-mute mx-auto mb-2 opacity-50" />
-              <p className="t-body-md text-mute">No submissions yet</p>
-            </div>
-          ) : (
-            submissions?.map((sub) => (
-              <div key={sub.id} className="pb-3 border-b border-hairline last:border-b-0">
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <p className="t-caption-sm text-mute">{formatDate(sub.submitDate)}</p>
-                  {getStatusBadge(sub.status)}
-                </div>
-                <p className="t-body-sm text-ink font-bold">{sub.type} Submission</p>
-              </div>
-            ))
-          )}
-        </div>
-      </Card>
-    </div>
+        <label className="block">
+          <span className="t-body-sm font-bold">Mô tả</span>
+          <textarea value={description} onChange={(e) => setDesc(e.target.value)} rows={3} className="input w-full mt-1" />
+        </label>
+
+        {create.error ? <p className="t-body-sm text-error">{submitErrorMessage(create.error)}</p> : null}
+
+        <button type="submit" disabled={create.isPending} className="btn btn-primary">
+          {create.isPending ? 'Đang nộp…' : 'Nộp bài'}
+        </button>
+      </form>
+
+      <div>
+        <h3 className="t-body-md font-bold mb-2">Đã nộp</h3>
+        {existingLoading ? (
+          <p className="t-body-sm text-mute">Đang tải…</p>
+        ) : existingError ? (
+          <p className="t-body-sm text-error">Không tải được danh sách bài nộp.</p>
+        ) : existing.length === 0 ? (
+          <p className="t-body-sm text-mute">Chưa có bài nộp nào.</p>
+        ) : (
+          <ul className="divide-y divide-hairline">
+            {existing.map((s) => (
+              <li key={s.id} className="py-2">
+                <a href={s.submissionUrl} target="_blank" rel="noreferrer" className="t-body-md text-primary underline break-all">
+                  {s.submissionUrl}
+                </a>
+                <p className="t-body-sm text-mute">
+                  Track: {trackName(s.trackId)}
+                  {s.description ? ` · ${s.description}` : ''}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
   );
 }

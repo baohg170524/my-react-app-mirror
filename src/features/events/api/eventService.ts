@@ -45,12 +45,6 @@ export const eventService = {
     return mockEvents;
   },
 
-  // Get user's joined events
-  getMyEvents: async (): Promise<Event[]> => {
-    await delay(300);
-    return mockEvents.filter(e => e.status === 'open');
-  },
-
   // Join an event
   joinEvent: async (eventId: string): Promise<{ success: boolean }> => {
     await delay(500);
