@@ -17,6 +17,9 @@ import type { ApiError, SchoolModel } from "@/services/api";
 
 type Mode = "login" | "register";
 
+/** School picker has only two choices: FPT or "Khác" (other). */
+type SchoolChoice = "" | "FPT" | "OTHER";
+
 interface LoginForm {
   email: string;
   password: string;
@@ -104,7 +107,7 @@ function SchoolSelect({
   isEmpty,
   onRetry,
 }: {
-  value: string;
+  value: SchoolChoice;
   onChange: (e: ChangeEvent<HTMLSelectElement>) => void;
   schools: SchoolModel[];
   isLoading: boolean;
@@ -229,6 +232,16 @@ function CardUpload({
   );
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Find an existing school by name (case-insensitive) — used to reuse a school
+ *  that the backend reports as already existing instead of failing registration. */
+async function findSchoolByName(name: string) {
+  const target = name.trim().toLowerCase();
+  const res = await schoolsApi.list(1000);
+  return res.data.find((s) => s.schoolName.trim().toLowerCase() === target);
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AuthPage() {
@@ -246,10 +259,14 @@ export default function AuthPage() {
     schoolId: "",
     studentCode: "",
   });
-  // Student-card image is UI-only (preview), not sent in the register payload.
+  const [isCreatingSchool, setIsCreatingSchool] = useState(false);
+  const [isUploadingCard, setIsUploadingCard] = useState(false);
+  const [isValidatingCode, setIsValidatingCode] = useState(false);
+  // Student-card image: preview for the UI + the File uploaded for non-FPT students.
   const [cardImage, setCardImage] = useState<{
     preview: string;
     name: string;
+    file: File;
   } | null>(null);
   const [clientError, setClientError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -344,7 +361,11 @@ export default function AuthPage() {
     const reader = new FileReader();
     reader.onload = () => {
       setClientError("");
-      setCardImage({ preview: reader.result as string, name: file.name });
+      setCardImage({
+        preview: reader.result as string,
+        name: file.name,
+        file,
+      });
     };
     reader.readAsDataURL(file);
   }
@@ -538,10 +559,17 @@ export default function AuthPage() {
           height: 100%;
           background: var(--color-canvas);
           display: flex;
-          align-items: center;
           justify-content: center;
           z-index: 10;
           transition: ${EASE};
+          /* allow scrolling when the (taller) register form overflows … */
+          overflow-y: auto;
+          /* … but hide the scrollbar */
+          scrollbar-width: none; /* Firefox */
+          -ms-overflow-style: none; /* IE/Edge */
+        }
+        .auth-form-panel::-webkit-scrollbar {
+          display: none; /* Chrome/Safari */
         }
 
         /* ── switching spinner overlay ────────────────────────────────────── */
@@ -576,7 +604,10 @@ export default function AuthPage() {
         .auth-form-inner {
           width: 100%;
           max-width: 380px;
-          padding: 0 32px;
+          /* margin:auto centers vertically when it fits, and lets the panel
+             scroll without clipping the top when content overflows */
+          margin: auto;
+          padding: 40px 32px;
           display: flex;
           flex-direction: column;
           gap: 20px;
@@ -1048,7 +1079,15 @@ export default function AuthPage() {
                   className="auth-submit"
                   disabled={isPending}
                 >
-                  {registerMutation.isPending ? "Đang đăng ký…" : "Tạo tài khoản"}
+                  {isValidatingCode
+                    ? "Đang kiểm tra MSSV…"
+                    : isUploadingCard
+                      ? "Đang tải ảnh thẻ…"
+                      : isCreatingSchool
+                        ? "Đang tạo trường…"
+                        : registerMutation.isPending
+                          ? "Đang đăng ký…"
+                          : "Tạo tài khoản"}
                 </button>
               </form>
             )}

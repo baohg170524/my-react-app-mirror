@@ -62,10 +62,6 @@ export function DashboardTab({ eventId, userId }: DashboardTabProps) {
               </span>
             </div>
             <div className="flex justify-between items-baseline border-t border-hairline pt-3">
-              <span className="t-body-sm text-mute">Submission Type</span>
-              <span className="t-body-strong text-ink">{event.submissionType}</span>
-            </div>
-            <div className="flex justify-between items-baseline border-t border-hairline pt-3">
               <span className="t-body-sm text-mute">Total Teams</span>
               <span className="t-body-strong text-ink">{teams?.length || 0}</span>
             </div>

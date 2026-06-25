@@ -178,7 +178,7 @@ export function Navbar() {
 
   useEffect(() => {
     const main = document.querySelector<HTMLElement>("main");
-    if (main) main.focus();
+    if (main) main.focus({ preventScroll: true });
   }, [pathname]);
 
   const links: NavLink[] =
