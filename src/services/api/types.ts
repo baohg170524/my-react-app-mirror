@@ -25,16 +25,11 @@ export interface LoginRequest {
   password: string;
 }
 
-/** Matches backend RegisterUserRequestModel. */
+/** Matches backend RegisterUserRequestModel (email + password + full name only). */
 export interface RegisterRequest {
-  schoolId: string;
-  studentCode?: string;
   email: string;
   password: string;
   fullName: string;
-  isStudent: boolean;
-  /** Derived from the selected school name (contains "FPT"). */
-  isFpt: boolean;
 }
 
 /** Matches backend LoginUserResponseModel (flat shape). */
@@ -106,6 +101,20 @@ export interface SchoolModel {
   id: string;
   schoolName: string;
   address: string | null;
+}
+
+/** Matches backend CreateSchoolRequestModel. */
+export interface CreateSchoolRequest {
+  schoolName: string;
+  address?: string | null;
+}
+
+/** Matches backend CreateSchoolResponseModel. */
+export interface CreateSchoolResponse {
+  id: string;
+  schoolName: string;
+  address: string | null;
+  createdTime: string;
 }
 
 // ─── API Error ────────────────────────────────────────────────────────────────

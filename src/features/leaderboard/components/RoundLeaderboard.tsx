@@ -1,46 +1,40 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useEventRounds, useTeams } from '@/features/events/hooks/useEvents';
+import React, { useMemo, useState } from 'react';
+import { useEventRounds } from '@/features/events/hooks/useEvents';
 import { useRoundLeaderboard } from '@/features/results/hooks/useResults';
 
 interface Props { eventId: string; }
 
-const roundLabel = (r: { id: string; roundName: string | null }) =>
-  r.roundName?.trim() || `Vòng ${r.id.slice(0, 4)}`;
+type Round = { id: string; roundName: string; roundNumber: number };
 
 export function RoundLeaderboard({ eventId }: Props) {
   const { data: rounds = [] } = useEventRounds(eventId);
-  const { data: teams = [] } = useTeams();
+
+  // Default to the most recent round (highest roundNumber); the user can still
+  // switch rounds with the selector. The same view is shared by every role in
+  // the event.
+  const latestRoundId = useMemo(() => {
+    const sorted = [...(rounds as Round[])].sort((a, b) => b.roundNumber - a.roundNumber);
+    return sorted[0]?.id ?? '';
+  }, [rounds]);
+
   const [picked, setPicked] = useState('');
-
-  // Default to the first round so a leaderboard shows immediately, until the
-  // user picks another. Derived rather than synced via an effect.
-  const roundId = picked || rounds[0]?.id || '';
-
+  const roundId = picked || latestRoundId;
   const { data: rows = [], isLoading } = useRoundLeaderboard(roundId || undefined);
-
-  // The round leaderboard rarely carries teamName, so resolve it from the teams
-  // list and fall back to whatever the row provides.
-  const teamName = (row: { teamId: string; teamName?: string }) =>
-    row.teamName ?? teams.find((t) => t.id === row.teamId)?.name ?? row.teamId;
 
   return (
     <div className="space-y-4">
-      <select
-        value={roundId}
-        onChange={(e) => setPicked(e.target.value)}
-        className="input font-bold"
-        style={{ width: '100%', maxWidth: '20rem' }}
-        aria-label="Chọn vòng để xem bảng xếp hạng"
-      >
-        {rounds.length === 0 && <option value="">— Chưa có vòng —</option>}
-        {(rounds as Array<{ id: string; roundName: string | null }>).map((r) => (
-          <option key={r.id} value={r.id}>{roundLabel(r)}</option>
-        ))}
-      </select>
+      <label className="block max-w-xs">
+        <span className="t-body-sm font-bold">Vòng</span>
+        <select value={roundId} onChange={(e) => setPicked(e.target.value)} className="input w-full mt-1">
+          {(rounds as Round[]).map((r) => (
+            <option key={r.id} value={r.id}>{r.roundName}</option>
+          ))}
+        </select>
+      </label>
 
-      {!roundId ? <p className="t-body-sm text-mute">Chưa có vòng nào để xem bảng xếp hạng.</p>
+      {rounds.length === 0 ? <p className="t-body-sm text-mute">Chưa có vòng thi nào.</p>
       : isLoading ? <p className="t-body-sm text-mute">Đang tải…</p>
       : rows.length === 0 ? <p className="t-body-sm text-mute">Chưa có dữ liệu.</p>
       : (
@@ -50,7 +44,7 @@ export function RoundLeaderboard({ eventId }: Props) {
             {rows.map((r) => (
               <tr key={r.id} className="border-t border-hairline">
                 <td>{r.rank}</td>
-                <td>{teamName(r)}</td>
+                <td>{r.teamName ?? r.teamId}</td>
                 <td>{r.finalScore.toFixed(2)}</td>
                 <td>{r.isAdvanced ? <span className="text-success">Đi tiếp</span> : null}</td>
               </tr>

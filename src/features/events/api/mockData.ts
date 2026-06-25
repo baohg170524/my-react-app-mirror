@@ -25,7 +25,7 @@ export const mockEvents: Event[] = [
     title: 'Mobile App Contest',
     startDate: '2026-08-01T10:00:00Z',
     endDate: '2026-08-20T23:59:59Z',
-    status: 'closed',
+    status: 'ended',
     submissionType: 'URL',
     description: 'Create an innovative mobile application using React Native or Flutter.',
   },

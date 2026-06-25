@@ -22,4 +22,4 @@ jobs:
           chmod 600 ~/.netrc
           git remote add mirror https://github.com/baohg170524/my-react-app-mirror.git
           git push --force mirror main
-          rm ~/.netrc 
+          rm ~/.netrc

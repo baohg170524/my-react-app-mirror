@@ -1,75 +1,24 @@
 import { apiClient } from '@/services/api';
 import type { PagedResult } from '@/services/api';
-import type { CreateTeamPayload, TeamMember, TeamModel } from '../types/team.types';
+import type { CreateTeamPayload, TeamModel, MyTeam } from '../types/team.types';
 
-/** Backend EventRoleModel (subset). `roleName` is a string (e.g. "Participant",
- *  "Judge", "Mentor"); `user` carries the display info. */
 interface EventRoleRow {
   id: string;
-  userId: string | null;
-  eventId: string | null;
+  userId: string;
+  eventId: string;
   teamId: string | null;
-  roleName: string | null;
-  user?: { id: string | null; fullName: string | null; email: string | null } | null;
-}
-
-/** Backend TeamDetailResponseModel / CreateTeamResponseModel (subset). */
-interface TeamDetail {
-  id: string;
-  name: string | null;
-  description: string | null;
-}
-
-const norm = (s: string | null | undefined) => (s ?? '').trim().toLowerCase();
-const isJudge = (r: EventRoleRow) => norm(r.roleName) === 'judge';
-const isStaff = (r: EventRoleRow) =>
-  ['judge', 'mentor', 'admin', 'eventcoordinator'].includes(norm(r.roleName));
-/** A competitor (team member or leader) is a non-staff role bound to a team. */
-const isTeamMember = (r: EventRoleRow) => !!r.teamId && !isStaff(r);
-
-async function listEventRoles(eventId: string): Promise<EventRoleRow[]> {
-  const { data } = await apiClient.get<PagedResult<EventRoleRow>>('/EventRoles/event', {
-    params: { EventId: eventId, PageNumber: 1, PageSize: 200 },
-  });
-  return data.data ?? [];
-}
-
-function toMember(r: EventRoleRow): TeamMember {
-  return {
-    userId: r.user?.id ?? r.userId ?? '',
-    fullName: r.user?.fullName ?? '—',
-    email: r.user?.email ?? '',
-    isLeader: norm(r.roleName).includes('leader'),
-  };
-}
-
-/** Build the UI TeamModel from the team detail + the event's role rows. */
-async function buildTeam(teamId: string, roles: EventRoleRow[]): Promise<TeamModel> {
-  const { data } = await apiClient.get<TeamDetail>(`/Teams/${encodeURIComponent(teamId)}`);
-  const members = roles.filter((r) => r.teamId === teamId && isTeamMember(r)).map(toMember);
-  return {
-    id: data.id,
-    teamName: data.name?.trim() || '(Chưa đặt tên)',
-    description: data.description,
-    members,
-  };
+  roleName: number;
 }
 
 export const teamsApi = {
-  /** POST /api/Teams — create a team; the creator is the leader. */
-  create: async (p: CreateTeamPayload): Promise<TeamDetail> => {
-    const { data } = await apiClient.post<TeamDetail>('/Teams', p);
+  create: async (p: CreateTeamPayload): Promise<TeamModel> => {
+    const { data } = await apiClient.post<TeamModel>('/Teams', p);
     return data;
   },
 
   getById: async (id: string): Promise<TeamModel> => {
-    const { data } = await apiClient.get<TeamDetail>(`/Teams/${encodeURIComponent(id)}`);
-    return {
-      id: data.id,
-      teamName: data.name?.trim() || '(Chưa đặt tên)',
-      description: data.description,
-      members: [],
-    };
+    const { data } = await apiClient.get<TeamModel>(`/Teams/${encodeURIComponent(id)}`);
+    return data;
   },
 
   addMember: async (teamId: string, userId: string): Promise<void> => {
@@ -84,35 +33,62 @@ export const teamsApi = {
     await apiClient.post(`/Teams/${encodeURIComponent(teamId)}/leave`);
   },
 
-  invite: async (teamId: string, invitedUserId: string): Promise<void> => {
-    await apiClient.post(`/Teams/${encodeURIComponent(teamId)}/invitations`, { invitedUserId });
+  invite: async (teamId: string, email: string): Promise<void> => {
+    await apiClient.post(`/Teams/${encodeURIComponent(teamId)}/invitations`, { email });
   },
 
   respondInvitation: async (invitationId: string, accept: boolean): Promise<void> => {
-    await apiClient.post(`/Teams/invitations/${encodeURIComponent(invitationId)}/respond`, { accept });
+    await apiClient.post(
+      `/Teams/invitations/${encodeURIComponent(invitationId)}/respond`,
+      null,
+      { params: { isAccepted: accept } },
+    );
   },
 
   /**
-   * The team this user competes in for a given event, or null. Detected via the
-   * event's roles (a non-staff role row carrying this user's id + a teamId).
+   * GET /api/Teams/my-team — the caller's team in an event, including the
+   * registration `status` and per-member `isApproved`. Returns null when the
+   * user has no team yet (the API answers 404 / success:false for that case).
    */
-  findUserTeamForEvent: async (userId: string, eventId: string): Promise<TeamModel | null> => {
-    const roles = await listEventRoles(eventId);
-    const mine = roles.find((r) => r.userId === userId && isTeamMember(r));
-    if (!mine?.teamId) return null;
-    return buildTeam(mine.teamId, roles);
+  getMyTeam: async (eventId: string): Promise<MyTeam | null> => {
+    try {
+      const { data } = await apiClient.get<MyTeam>('/Teams/my-team', {
+        params: { eventId },
+      });
+      return data ?? null;
+    } catch {
+      return null;
+    }
   },
 
-  /** The teams a judge is assigned to in an event. */
+  /**
+   * Find the team this user belongs to for a given event, via EventRoles.
+   * Returns null if the user has no TeamLeader/TeamMember role in that event.
+   */
+  findUserTeamForEvent: async (userId: string, eventId: string): Promise<TeamModel | null> => {
+    const { data } = await apiClient.get<PagedResult<EventRoleRow>>(
+      `/EventRoles/user`,
+      { params: { UserId: userId, PageNumber: 1, PageSize: 100 } },
+    );
+    const row = (data.data ?? []).find(
+      (r) => r.eventId === eventId && (r.roleName === 3 || r.roleName === 4) && r.teamId,
+    );
+    if (!row?.teamId) return null;
+    return teamsApi.getById(row.teamId);
+  },
+
+  /**
+   * Find the teams a judge is assigned to in an event.
+   * `EventRoles/user/{userId}` filtered by eventId + roleName==1.
+   */
   findJudgeAssignedTeams: async (userId: string, eventId: string): Promise<TeamModel[]> => {
-    const roles = await listEventRoles(eventId);
-    const teamIds = [
-      ...new Set(
-        roles
-          .filter((r) => r.userId === userId && isJudge(r) && r.teamId)
-          .map((r) => r.teamId as string),
-      ),
-    ];
-    return Promise.all(teamIds.map((id) => buildTeam(id, roles)));
+    const { data } = await apiClient.get<PagedResult<EventRoleRow>>(
+      `/EventRoles/user`,
+      { params: { UserId: userId, PageNumber: 1, PageSize: 100 } },
+    );
+    const rows = (data.data ?? []).filter(
+      (r) => r.eventId === eventId && r.roleName === 1 && r.teamId,
+    );
+    return Promise.all(rows.map((r) => teamsApi.getById(r.teamId as string)));
   },
 };

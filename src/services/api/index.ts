@@ -4,20 +4,12 @@ export { schoolsApi } from "./schools";
 export { storageApi } from "./storage";
 export { fptMockApi } from "./fptMock";
 export { usersApi, type UserSummary } from "./users";
-export {
-  scoresApi,
-  scoreDetailsApi,
-  type Score,
-  type ScoreDetail,
-  type ScoreWithDetails,
-  type CreateScorePayload,
-  type SaveScorePayload,
-  type CreateScoreDetailPayload,
-} from "./scores";
 export type {
   ApiError,
   BackendUserModel,
   BaseResponse,
+  CreateSchoolRequest,
+  CreateSchoolResponse,
   LoginRequest,
   LoginResponse,
   PagedResult,

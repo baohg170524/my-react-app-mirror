@@ -6,6 +6,7 @@ import { useEventDashboard } from '@/features/events/contexts/EventDashboardCont
 import { Card } from '../Card';
 import { Button } from '../Button';
 import { CardSkeleton } from '../SkeletonLoaders';
+import { formatDate } from '@/lib/date';
 
 interface DashboardTabProps {
   eventId: string;
@@ -17,8 +18,6 @@ export function DashboardTab({ eventId, userId }: DashboardTabProps) {
   const { data: event, isLoading: eventLoading, error: eventError } = useEvent(eventId);
   const { data: teams, isLoading: teamsLoading, error: teamsError } = useEventTeams(eventId);
   const { data: userTeam } = useUserTeam(eventId, userId);
-
-  const formatDate = (date: string) => new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
   if (eventError || teamsError) {
     return (

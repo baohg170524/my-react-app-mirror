@@ -1,5 +1,10 @@
 import apiClient from "./client";
-import type { PagedResult, SchoolModel } from "./types";
+import type {
+  CreateSchoolRequest,
+  CreateSchoolResponse,
+  PagedResult,
+  SchoolModel,
+} from "./types";
 
 /**
  * School list is served by the deployed API (not the local backend).
@@ -17,6 +22,17 @@ export const schoolsApi = {
     const { data } = await apiClient.get<PagedResult<SchoolModel>>(SCHOOLS_URL, {
       params: { PageNumber: pageNumber, PageSize: pageSize },
     });
+    return data;
+  },
+
+  /** Create a school (used at registration for non-FPT schools). */
+  create: async (
+    payload: CreateSchoolRequest,
+  ): Promise<CreateSchoolResponse> => {
+    const { data } = await apiClient.post<CreateSchoolResponse>(
+      SCHOOLS_URL,
+      payload,
+    );
     return data;
   },
 };

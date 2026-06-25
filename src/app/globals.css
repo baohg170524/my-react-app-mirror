@@ -234,22 +234,6 @@ button, input, select, textarea {
   color: var(--color-ink);
 }
 
-.btn-outline-danger {
-  background: transparent;
-  color: var(--color-error);
-  border: 1px solid var(--color-error);
-  padding: 10px 23px;
-}
-.btn-outline-danger:hover {
-  background: var(--color-error);
-  color: #fff;
-}
-.btn-outline-danger:active,
-.btn-outline-danger.is-active {
-  background: var(--color-error-deep);
-  color: #fff;
-}
-
 .btn-ghost-link {
   background: transparent;
   color: var(--color-primary);
@@ -313,11 +297,10 @@ button, input, select, textarea {
 
 /* ============ INPUTS ============ */
 
-.text-input,
-.input {
+.text-input {
   display: block;
   width: 100%;
-  min-height: var(--h-control);
+  height: var(--h-control);
   padding: 12px 16px;
   background: var(--color-canvas);
   color: var(--color-ink);
@@ -326,8 +309,7 @@ button, input, select, textarea {
   border-radius: var(--radius-sm);
   outline: none;
 }
-.text-input:focus,
-.input:focus {
+.text-input:focus {
   border: var(--border-primary-2);
   padding: 11px 15px;
 }
@@ -723,106 +705,3 @@ button, input, select, textarea {
     scrollbar-gutter: stable;
   }
 }
-
-/* ============================================================
-   SCORING-V2 COMPONENT CLASSES — Monogreen Design System
-   Accent #76b900 · Canvas #ffffff · 2px radius · 8px grid
-   ============================================================ */
-
-/* ── Hover / transition helpers ── */
-.btn-hover { transition: all 80ms linear; cursor: pointer; }
-.btn-hover:active { opacity: .85; }
-
-.card-hover { transition: border-color 80ms linear; }
-.card-hover:hover { border-color: #76b900 !important; }
-
-/* ── Input (Monogreen light) ── */
-.input-field {
-  display: block;
-  width: 100%;
-  height: 44px;
-  background: #ffffff;
-  border: 1px solid #cccccc;
-  border-radius: 2px;
-  padding: 11px 15px;
-  color: #000000;
-  font-size: 14px;
-  font-family: inherit;
-  outline: none;
-  transition: border-color 80ms linear;
-}
-.input-field:focus { border: 2px solid #76b900; padding: 10px 14px; }
-textarea.input-field { height: auto; }
-
-/* ── Secondary / outline buttons ── */
-.btn-ghost {
-  background: transparent;
-  color: #000000;
-  border: 1px solid #cccccc;
-  border-radius: 2px;
-  padding: 11px 24px;
-  font-size: 14px;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-  transition: border-color 80ms linear;
-}
-.btn-ghost:active { border-color: #76b900; }
-
-.btn-danger {
-  background: rgba(229,32,32,.08);
-  color: #e52020;
-  border: 1px solid rgba(229,32,32,.3);
-  border-radius: 2px;
-  padding: 11px 24px;
-  font-size: 14px;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 80ms linear;
-}
-.btn-danger:active { background: rgba(229,32,32,.15); }
-
-/* ── Status badges (Monogreen palette) ── */
-.badge-accent { background: rgba(118,185,0,.12); color: #5a8d00; border-radius: 2px; padding: 3px 10px; font-size: 11px; font-weight: 700; }
-.badge-warn   { background: rgba(223,101,0,.1);  color: #df6500; border-radius: 2px; padding: 3px 10px; font-size: 11px; font-weight: 700; }
-.badge-blue   { background: rgba(0,70,164,.08);  color: #0046a4; border-radius: 2px; padding: 3px 10px; font-size: 11px; font-weight: 700; }
-.badge-danger { background: rgba(229,32,32,.08); color: #e52020; border-radius: 2px; padding: 3px 10px; font-size: 11px; font-weight: 700; }
-.badge-purple { background: rgba(149,47,198,.08);color: #952fc6; border-radius: 2px; padding: 3px 10px; font-size: 11px; font-weight: 700; }
-
-.bdg-g { background: rgba(118,185,0,.12); color: #5a8d00; padding: 3px 10px; font-size: 11px; font-weight: 700; border-radius: 2px; }
-.bdg-w { background: rgba(223,101,0,.1);  color: #df6500; padding: 3px 10px; font-size: 11px; font-weight: 700; border-radius: 2px; }
-.bdg-b { background: rgba(0,70,164,.08);  color: #0046a4; padding: 3px 10px; font-size: 11px; font-weight: 700; border-radius: 2px; }
-.bdg-r { background: rgba(229,32,32,.08); color: #e52020; padding: 3px 10px; font-size: 11px; font-weight: 700; border-radius: 2px; }
-
-/* ── Modal (Monogreen light) ── */
-.modal-overlay {
-  position: fixed; inset: 0; z-index: 50;
-  display: flex; align-items: flex-start; justify-content: center;
-  overflow-y: auto; padding: 24px 16px;
-  background: rgba(0,0,0,.6);
-}
-.modal-box {
-  background: #ffffff;
-  border: 1px solid #cccccc;
-  border-radius: 2px;
-  padding: 36px;
-  width: 100%;
-  animation: modalIn .22s ease both;
-}
-
-/* ── Đăng ký card backgrounds (Monogreen light) ── */
-.card-fpt { background: rgba(118,185,0,.06); border: 1.5px solid rgba(118,185,0,.35); border-radius: 2px; }
-.card-ext { background: #f7f7f7; border: 1.5px solid #cccccc; border-radius: 2px; }
-
-/* ── Keyframes ── */
-@keyframes fadeUp    { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
-@keyframes modalIn   { from { opacity: 0; transform: scale(.96); }       to { opacity: 1; transform: scale(1); } }
-@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 0 0 rgba(118,185,0,.4); } 50% { box-shadow: 0 0 0 10px rgba(118,185,0,0); } }
-
-/* ── Animation utilities ── */
-.animate-fadeUp    { animation: fadeUp    .4s  ease both; }
-.animate-modalIn   { animation: modalIn   .22s ease both; }
-.animate-slideDown { animation: slideDown .3s  ease both; }
-.animate-pulseGlow { animation: pulseGlow 2s   infinite; }

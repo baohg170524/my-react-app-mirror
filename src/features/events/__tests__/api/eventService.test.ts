@@ -30,7 +30,7 @@ describe('eventService', () => {
           title: 'Node.js Challenge',
           startDate: '2026-07-01T10:00:00Z',
           endDate: '2026-07-08T10:00:00Z',
-          status: 'closed',
+          status: 'ended',
           submissionType: 'URL',
           description: 'Build a Node.js API',
         },
@@ -55,6 +55,35 @@ describe('eventService', () => {
       (apiClient.get as jest.Mock).mockRejectedValueOnce(error);
 
       await expect(eventService.getAllEvents()).rejects.toThrow('Network error');
+    });
+  });
+
+  describe('getMyEvents', () => {
+    it('should fetch user joined events', async () => {
+      const mockEvents: Event[] = [
+        {
+          id: 'event-1',
+          title: 'React Challenge',
+          startDate: '2026-06-15T10:00:00Z',
+          endDate: '2026-06-22T10:00:00Z',
+          status: 'open',
+          submissionType: 'ZIP',
+          description: 'Build a React app',
+        },
+      ];
+
+      (apiClient.get as jest.Mock).mockResolvedValueOnce({ data: mockEvents });
+
+      const result = await eventService.getMyEvents();
+      expect(result).toEqual(mockEvents);
+      expect(apiClient.get).toHaveBeenCalledWith('/events/me');
+    });
+
+    it('should return empty array when user has no events', async () => {
+      (apiClient.get as jest.Mock).mockResolvedValueOnce({ data: null });
+
+      const result = await eventService.getMyEvents();
+      expect(result).toEqual([]);
     });
   });
 

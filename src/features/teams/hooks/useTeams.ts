@@ -6,9 +6,23 @@ import type { CreateTeamPayload } from '../types/team.types';
 
 export const TEAM_KEYS = {
   myTeam:  (eventId: string, userId: string) => ['team', 'mine', eventId, userId] as const,
+  myTeamFull: (eventId: string) => ['team', 'my-team', eventId] as const,
   judge:   (eventId: string, userId: string) => ['team', 'judge', eventId, userId] as const,
   detail:  (teamId: string) => ['team', teamId] as const,
 } as const;
+
+/**
+ * The caller's team in an event via GET /api/Teams/my-team — includes the
+ * registration `status` and per-member `isApproved`. Returns null when the user
+ * has no team yet.
+ */
+export const useMyTeam = (eventId: string) =>
+  useQuery({
+    queryKey: TEAM_KEYS.myTeamFull(eventId),
+    queryFn: () => teamsApi.getMyTeam(eventId),
+    enabled: !!eventId,
+    staleTime: 60_000,
+  });
 
 export const useMyTeamForEvent = (eventId: string, userId: string) =>
   useQuery({
@@ -34,12 +48,14 @@ export const useTeam = (teamId: string | undefined) =>
     staleTime: 60_000,
   });
 
-export const useCreateTeam = (_eventId: string, _userId: string) => {
-  // The caller seeds the freshly-created team into the myTeam cache so the team
-  // view shows immediately; invalidating here would race a refetch that could
-  // overwrite that seed before the backend roster is consistent.
+export const useCreateTeam = (eventId: string, userId: string) => {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: (p: CreateTeamPayload) => teamsApi.create(p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: TEAM_KEYS.myTeam(eventId, userId) });
+      qc.invalidateQueries({ queryKey: TEAM_KEYS.myTeamFull(eventId) });
+    },
   });
 };
 
@@ -59,6 +75,7 @@ export const useLeaveTeam = (teamId: string, eventId: string, userId: string) =>
     mutationFn: () => teamsApi.leave(teamId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: TEAM_KEYS.myTeam(eventId, userId) });
+      qc.invalidateQueries({ queryKey: TEAM_KEYS.myTeamFull(eventId) });
       qc.removeQueries({ queryKey: TEAM_KEYS.detail(teamId) });
     },
   });

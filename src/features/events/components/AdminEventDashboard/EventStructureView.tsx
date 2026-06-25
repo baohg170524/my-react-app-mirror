@@ -3,19 +3,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEventRounds, useEventTracks } from '@/features/events/hooks/useEvents';
 import { templatesApi } from '../../api/templates';
+import { formatDate } from '@/lib/date';
 import { Card } from '../EventDashboard/Card';
 import { CardSkeleton } from '../EventDashboard/SkeletonLoaders';
 
 interface Props {
   eventId: string;
-}
-
-function formatDate(iso: string) {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime())
-    ? '—'
-    : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 /** Read-only view of an event's full structure: rounds → tracks (same data

@@ -1,6 +1,6 @@
 import { apiClient } from "@/services/api";
 import type { PagedResult } from "@/services/api";
-import type { Event } from "../types/event.types";
+import type { Event, EventStatus } from "../types/event.types";
 
 // ─── Backend list model (CreateEventResponse / EventModel) ─────────────────────
 
@@ -13,20 +13,24 @@ export interface EventModel {
   startDate: string;
   endDate: string;
   description: string | null;
+  /** Backend flag: true = open/visible, false = hidden (admin-only). */
+  status: boolean;
   createdTime: string;
   lastUpdatedTime: string;
 }
 
 /** Map a backend EventModel to the card UI `Event` shape. */
 function toUiEvent(e: EventModel): Event {
-  // Backend has no status — derive it from the end date.
-  const open = new Date(e.endDate).getTime() >= Date.now();
+  // Past the end date the event is "ended" (visible to all); otherwise the
+  // backend boolean decides open (true) vs hidden/admin-only (false).
+  const ended = new Date(e.endDate).getTime() < Date.now();
+  const status: EventStatus = ended ? "ended" : e.status ? "open" : "hidden";
   return {
     id: e.id,
     title: e.eventName?.trim() || "(Chưa đặt tên)",
     startDate: e.startDate,
     endDate: e.endDate,
-    status: open ? "open" : "closed",
+    status,
     description: e.description ?? "",
   };
 }
@@ -62,6 +66,8 @@ export interface CreateEventPayload {
   startDate: string; // ISO 8601
   endDate: string;
   description: string;
+  /** true = mở (mọi người xem được), false = ẩn (chỉ admin). */
+  status: boolean;
   rounds: CreateRoundPayload[];
 }
 
@@ -73,6 +79,8 @@ export interface UpdateEventPayload {
   startDate: string; // ISO 8601
   endDate: string;
   description: string;
+  /** true = mở (mọi người xem được), false = ẩn (chỉ admin). */
+  status: boolean;
 }
 
 /** Subset of CreateEventResponseModel we care about. */
@@ -84,6 +92,7 @@ export interface CreateEventResponse {
   startDate: string;
   endDate: string;
   description: string;
+  status: boolean;
   createdTime: string;
 }
 
