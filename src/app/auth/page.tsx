@@ -17,8 +17,6 @@ import type { ApiError, SchoolModel } from "@/services/api";
 
 type Mode = "login" | "register";
 
-/** School picker has only two choices: FPT or "Khác" (other). */
-type SchoolChoice = "" | "FPT" | "OTHER";
 
 interface LoginForm {
   email: string;
@@ -107,7 +105,7 @@ function SchoolSelect({
   isEmpty,
   onRetry,
 }: {
-  value: SchoolChoice;
+  value: string;
   onChange: (e: ChangeEvent<HTMLSelectElement>) => void;
   schools: SchoolModel[];
   isLoading: boolean;

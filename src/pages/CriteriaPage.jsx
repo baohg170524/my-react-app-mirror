@@ -6,7 +6,7 @@ import {
   toggleCriteriaStatus,
 } from '../services/criteriaService';
 
-const BLANK = { criteriaName: '', description: '' };
+const BLANK = { criteriaName: '', description: '', isActive: true };
 const COLORS = ['#76b900','#0046a4','#df6500','#952fc6','#0D9488','#5a8d00'];
 
 export default function CriteriaPage({ criteria, setCriteria, sn }) {
@@ -15,7 +15,7 @@ export default function CriteriaPage({ criteria, setCriteria, sn }) {
   const [saving, setSaving] = useState(false);
 
   const openNew  = ()  => { setF({ ...BLANK }); setEd('new'); };
-  const openEdit = (c) => { setF({ criteriaName: c.label, description: c.desc ?? '' }); setEd(c.id); };
+  const openEdit = (c) => { setF({ criteriaName: c.label, description: c.desc ?? '', isActive: c.isActive !== false }); setEd(c.id); };
   const close    = ()  => setEd(null);
 
   const save = async () => {
@@ -24,16 +24,18 @@ export default function CriteriaPage({ criteria, setCriteria, sn }) {
     try {
       if (ed === 'new') {
         const created = await createCriteria(f);
-        setCriteria(p => [...p, created]);
+        if (created) setCriteria(p => [...p, created]);
         sn('Đã thêm tiêu chí!');
       } else {
         const updated = await updateCriteria(ed, f);
-        setCriteria(p => p.map(c => c.id === ed ? { ...c, ...updated } : c));
+        if (updated) setCriteria(p => p.map(c => c.id === ed ? { ...c, ...updated } : c));
         sn('Đã cập nhật tiêu chí!');
       }
       close();
-    } catch {
-      sn('Lỗi khi lưu tiêu chí', 'e');
+    } catch (e) {
+      const msg = e?.response?.data?.message ?? e?.message ?? 'Lỗi khi lưu tiêu chí';
+      sn(msg, 'e');
+      console.error('[createCriteria]', e?.response?.status, e?.response?.data ?? e);
     } finally {
       setSaving(false);
     }

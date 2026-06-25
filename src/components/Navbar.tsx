@@ -181,12 +181,22 @@ export function Navbar() {
     if (main) main.focus({ preventScroll: true });
   }, [pathname]);
 
-  const links: NavLink[] =
+  const baseLinks: NavLink[] =
     !isAuthenticated         ? GUEST_LINKS   :
     user?.role === "ADMIN"   ? ADMIN_LINKS   :
     user?.role === "MENTOR"  ? MENTOR_LINKS  :
     user?.role === "STUDENT" ? STUDENT_LINKS :
     GUEST_LINKS;
+
+  // Nếu đang ở /events/{id}/... → gắn eventId vào link Chấm điểm
+  const eventIdFromPath = pathname?.match(/^\/events\/([^/]+)/)?.[1] ?? null;
+  const links = eventIdFromPath
+    ? baseLinks.map(l =>
+        l.href === "/scoring"
+          ? { ...l, href: `/scoring?eventId=${eventIdFromPath}` }
+          : l
+      )
+    : baseLinks;
 
   const isActive = (href: string) =>
     pathname === href || (pathname?.startsWith(href + "/") ?? false)

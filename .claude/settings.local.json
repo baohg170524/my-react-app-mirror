@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Read(//d/SWP302/scoring-system-v2/**)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(git add *)",
+      "Bash(npx tsc *)",
+      "Bash(cat src/services/api/client.ts)",
+      "Bash(cat src/services/api/client.js)",
+      "Bash(ls -la .env*)",
+      "Bash(cat .env)"
     ]
   }
 }

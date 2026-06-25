@@ -14,6 +14,7 @@ const ENDPOINTS = {
 };
 
 function adaptCriteria(backendItem, templateCriteria) {
+  if (!backendItem) return null;
   return {
     id:       backendItem.id,
     label:    backendItem.criteriaName,
@@ -43,15 +44,15 @@ export const getCriteria = async (templateId) => {
   return items.map(item => adaptCriteria(item, tmplMap[item.id]));
 };
 
-// POST /Criterias
-export const createCriteria = async ({ criteriaName, description = '' }) => {
-  const res = await apiClient.post(ENDPOINTS.CREATE, { criteriaName, description });
+// POST /Criterias  — IsActive required, default true
+export const createCriteria = async ({ criteriaName, description = '', isActive = true }) => {
+  const res = await apiClient.post(ENDPOINTS.CREATE, { criteriaName, description, isActive });
   return adaptCriteria(res.data, null);
 };
 
-// PUT /Criterias/{id}
-export const updateCriteria = async (id, { criteriaName, description = '' }) => {
-  const res = await apiClient.put(ENDPOINTS.UPDATE(id), { criteriaName, description });
+// PUT /Criterias/{id}  — IsActive required, preserve existing value
+export const updateCriteria = async (id, { criteriaName, description = '', isActive = true }) => {
+  const res = await apiClient.put(ENDPOINTS.UPDATE(id), { criteriaName, description, isActive });
   return adaptCriteria(res.data, null);
 };
 

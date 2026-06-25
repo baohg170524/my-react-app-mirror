@@ -31,9 +31,13 @@ export default function TemplatePage({ sn }) {
   const [search,    setSearch]    = useState('');   // tìm kiếm trong dropdown criteria
 
   useEffect(() => {
-    Promise.all([getTemplates(), getCriteria()])
-      .then(([tmpl, crit]) => { setTemplates(tmpl); setAllCriteria(crit); })
-      .catch(console.error)
+    Promise.allSettled([getTemplates(), getCriteria()])
+      .then(([tmplR, critR]) => {
+        if (tmplR.status === 'fulfilled') setTemplates(tmplR.value);
+        else console.error('getTemplates failed:', tmplR.reason);
+        if (critR.status === 'fulfilled') setAllCriteria(critR.value);
+        else console.error('getCriteria failed:', critR.reason);
+      })
       .finally(() => setLoading(false));
   }, []);
 
