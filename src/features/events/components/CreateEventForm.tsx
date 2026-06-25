@@ -204,7 +204,6 @@ function Hint({ children }: { children: ReactNode }) {
   );
 }
 
-/** Add/remove multiple accounts as chips. Empty list is allowed (optional). */
 /** Search users by email/name in the database and add them as chips (stores ids). */
 function UserSearchSelect({
   label,
@@ -223,7 +222,6 @@ function UserSearchSelect({
   const [debounced, setDebounced] = useState("");
   const [open, setOpen] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Cache id → display label so selected chips stay readable.
   const [labels, setLabels] = useState<Record<string, string>>({});
 
   const searchQuery = useQuery({
@@ -337,7 +335,6 @@ function UserSearchSelect({
                 <button
                   key={u.id}
                   type="button"
-                  // onMouseDown so it fires before the input's onBlur closes the list.
                   onMouseDown={(e) => {
                     e.preventDefault();
                     addUser(u);
@@ -696,12 +693,10 @@ function EventFormBody({
   const isEdit = !!eventId;
   const [form, setForm] = useState<EventForm>(() => initialForm);
   const [formError, setFormError] = useState<string | null>(null);
-  // Original round/track ids — used to delete the ones removed during editing.
   const originalRoundIds = useRef<string[]>(initialRoundIds);
   const originalTrackIds = useRef<string[]>(initialTrackIds);
   const queryClient = useQueryClient();
 
-  // Scoring templates for the per-track dropdown.
   const templatesQuery = useQuery({
     queryKey: ["templates"],
     queryFn: () => templatesApi.list(),
@@ -712,12 +707,10 @@ function EventFormBody({
   const createMutation = useMutation({
     mutationFn: (payload: CreateEventPayload) => eventsApi.create(payload),
     onSuccess: () => {
-      // Refresh any event listings once they move to the real API.
       queryClient.invalidateQueries({ queryKey: ["events"] });
     },
   });
 
-  // ── Edit mutation: diff rounds/tracks → update / create / delete ──
   const editMutation = useMutation({
     mutationFn: async () => {
       const id = eventId as string;
@@ -756,7 +749,6 @@ function EventFormBody({
         }
       }
 
-      // Delete tracks then rounds that were removed in the form.
       const keptTrackIds = new Set(
         form.rounds.flatMap((r) => r.tracks.map((t) => t.id)).filter(Boolean),
       );
@@ -779,18 +771,10 @@ function EventFormBody({
 
   const activeMutation = isEdit ? editMutation : createMutation;
 
-  // ── event-level field update (string fields only) ──
-  type EventStringKey =
-    | "eventName"
-    | "season"
-    | "year"
-    | "startDate"
-    | "endDate"
-    | "description";
+  type EventStringKey = "eventName" | "season" | "year" | "startDate" | "endDate" | "description";
   const setField = (key: EventStringKey, value: string) =>
     setForm((f) => ({ ...f, [key]: value }));
 
-  // ── round operations ──
   const addRound = () => setForm((f) => ({ ...f, rounds: [...f.rounds, emptyRound()] }));
 
   const removeRound = (ri: number) =>
@@ -802,7 +786,6 @@ function EventFormBody({
       rounds: f.rounds.map((r, i) => (i === ri ? { ...r, [key]: value } : r)),
     }));
 
-  // ── track operations ──
   const addTrack = (ri: number) =>
     setForm((f) => ({
       ...f,
@@ -829,9 +812,7 @@ function EventFormBody({
       ),
     }));
 
-  // ── build the API payload (CreateEventRequestModel) ──
-  // `templateId` is sent as null when unset (empty string makes the backend throw
-  // a 500 trying to parse it as a GUID).
+  // `templateId` sent as null when unset — empty string makes the backend throw a 500.
   function buildPayload(): CreateEventPayload {
     return {
       eventName: form.eventName.trim(),
@@ -858,7 +839,6 @@ function EventFormBody({
     };
   }
 
-  /** Returns the first validation error, or null when the form is valid. */
   function validate(): string | null {
     if (!form.eventName.trim()) return "Vui lòng nhập tên sự kiện.";
     if ((Number(form.year) || 0) <= 2000) return "Năm tổ chức phải lớn hơn 2000.";
@@ -955,15 +935,14 @@ function EventFormBody({
           type="submit"
           className="btn btn-primary"
           disabled={activeMutation.isPending}
-          style={{ cursor: activeMutation.isPending ? "not-allowed" : "pointer", opacity: activeMutation.isPending ? 0.6 : 1 }}
+          style={{
+            cursor: activeMutation.isPending ? "not-allowed" : "pointer",
+            opacity: activeMutation.isPending ? 0.6 : 1,
+          }}
         >
           {isEdit
-            ? activeMutation.isPending
-              ? "Đang lưu..."
-              : "Lưu thay đổi"
-            : activeMutation.isPending
-              ? "Đang tạo..."
-              : "Tạo sự kiện"}
+            ? activeMutation.isPending ? "Đang lưu..." : "Lưu thay đổi"
+            : activeMutation.isPending ? "Đang tạo..." : "Tạo sự kiện"}
         </button>
         <button type="button" className="btn btn-outline" onClick={onCancel} style={{ cursor: "pointer" }}>
           {activeMutation.isSuccess ? "Đóng" : "Hủy"}

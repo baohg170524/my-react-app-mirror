@@ -4,21 +4,11 @@ import { Suspense } from 'react';
 import { useParams } from 'next/navigation';
 import { EventDashboardProvider } from '@/features/events/contexts/EventDashboardContext';
 import { EventDashboard } from '@/features/events/components/EventDashboard/EventDashboard';
-import { useCurrentUser } from '@/hooks/useAuth';
 
 function EventDashboardPageContent() {
   const params = useParams();
   const eventId = params?.id as string;
-  const { data: user } = useCurrentUser();
-  const userId = user?.id ?? '';
-
-  if (!userId) {
-    return (
-      <div className="min-h-screen bg-canvas flex items-center justify-center">
-        <p className="t-body-md text-mute">Vui lòng đăng nhập để xem sự kiện.</p>
-      </div>
-    );
-  }
+  const userId = 'user-001';
 
   return (
     <EventDashboardProvider>

@@ -56,19 +56,10 @@ apiClient.interceptors.response.use(
     // Normalise enveloped error bodies → ApiError shape.
     const body = error.response?.data;
     if (body && typeof body === "object" && "success" in body) {
-      const env = body as BaseResponse<unknown> & {
-        data?: Array<{ key?: string; value?: string[] }> | null;
-      };
-      // Preserve field-level validation errors ([{ key, value: [...] }]).
-      const errors = Array.isArray(env.data)
-        ? Object.fromEntries(
-            env.data.map((it) => [it.key ?? "", it.value ?? []]),
-          )
-        : undefined;
+      const env = body as BaseResponse<unknown>;
       (error.response as AxiosResponse).data = {
         message: env.message,
         statusCode: env.statusCode,
-        errors,
       } satisfies ApiError;
     }
 
