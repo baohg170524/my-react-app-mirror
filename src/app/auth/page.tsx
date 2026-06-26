@@ -9,6 +9,8 @@ import {
 import { useLogin, useRegister } from "@/hooks/useAuth";
 import type { AxiosError } from "axios";
 import type { ApiError } from "@/services/api";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -573,6 +575,13 @@ export default function AuthPage() {
           cursor: pointer;
         }
 
+        .hover-primary {
+          transition: color 100ms linear;
+        }
+        .hover-primary:hover {
+          color: var(--color-primary) !important;
+        }
+
         /* ── responsive ───────────────────────────────────────────────────── */
         @media (max-width: 768px) {
           .auth-dark { display: none; }
@@ -645,6 +654,25 @@ export default function AuthPage() {
           </div>
 
           <div className="auth-form-inner">
+            {/* Back to Home */}
+            <Link
+              href="/"
+              className="hover-primary"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 13,
+                color: "var(--color-mute)",
+                textDecoration: "none",
+                marginBottom: 8,
+                width: "fit-content",
+              }}
+            >
+              <ArrowLeft size={16} />
+              Quay lại trang chủ
+            </Link>
+
             {/* heading */}
             <div>
               <h2 className="auth-form-heading">
