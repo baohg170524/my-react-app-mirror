@@ -39,8 +39,9 @@ const STATUS_META: Record<Event["status"], { label: string; accent: string }> = 
 export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
   const isAdmin = useUserRole() === "admin";
   const isOpen = event.status === "open";
-  // Admins don't join — they just open the event detail.
-  const joinDisabled = !isAdmin && (!isOpen || isJoining);
+  const isLoggedIn = typeof window !== "undefined" && !!localStorage.getItem("accessToken");
+  // Only disable the join action/button for logged in non-admins when closed or joining
+  const joinDisabled = !isAdmin && isLoggedIn && (!isOpen || isJoining);
   const meta = STATUS_META[event.status];
   const teamCount = useEventTeamCount(event.id);
 
@@ -120,8 +121,8 @@ export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
           className="btn btn-primary btn-sm"
           style={{ width: "100%", minHeight: 44 }}
           disabled={joinDisabled}
-          onClick={isAdmin ? undefined : () => onJoin(event.id)}
-          aria-label={isAdmin ? `Xem chi tiết: ${event.title}` : `Tham gia: ${event.title}`}
+          onClick={isAdmin || !isLoggedIn ? undefined : () => onJoin(event.id)}
+          aria-label={`Xem chi tiết: ${event.title}`}
         >
           {isAdmin
             ? "Xem chi tiết"
@@ -129,7 +130,7 @@ export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
               ? "Đang xử lý…"
               : event.status === "ended"
                 ? "Đã kết thúc"
-                : "Tham gia"}
+                : "Xem chi tiết"}
         </button>
         </Link>
         
