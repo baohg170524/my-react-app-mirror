@@ -143,6 +143,14 @@ export const manageApi = {
   /** DELETE /api/EventRoles/{id} — remove a role assignment. */
   removeRole: (id: string): Promise<void> =>
     apiClient.delete(`/EventRoles/${encodeURIComponent(id)}`).then(() => undefined),
+
+  /** POST /api/Judges/invite — invite a judge into a track. */
+  inviteJudge: (payload: InviteJudgePayload): Promise<void> =>
+    apiClient.post("/Judges/invite", payload).then(() => undefined),
+
+  /** POST /api/Mentors/invite — invite a mentor into a track. */
+  inviteMentor: (payload: InviteMentorPayload): Promise<void> =>
+    apiClient.post("/Mentors/invite", payload).then(() => undefined),
 };
 
 /** EventRoleType enum values (0–4). */
@@ -162,4 +170,20 @@ export interface AssignRolePayload {
   /** EventRoleType enum value (e.g. EVENT_ROLE.Judge = 2). */
   roleName: number;
   trackId?: string | null;
+}
+
+export interface InviteJudgePayload {
+  eventId: string;
+  trackId: string;
+  judgeEmail: string;
+  judgeFullName: string;
+  notes: string;
+}
+
+export interface InviteMentorPayload {
+  eventId: string;
+  trackId: string;
+  mentorEmail: string;
+  mentorFullName: string;
+  notes: string;
 }

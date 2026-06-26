@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useEffect,
   useRef,
   useState,
   type ChangeEvent,
@@ -17,6 +18,12 @@ import { usersApi, type UserSummary } from "@/services/api";
 
 // ─── Form state types (mirror the create-event payload) ───────────────────────
 
+interface InvitedUser {
+  id?: string;
+  email: string;
+  fullName: string;
+}
+
 interface TrackForm {
   /** Backend id when editing an existing track; undefined for a new one. */
   id?: string;
@@ -25,10 +32,10 @@ interface TrackForm {
   templateId: string;
   /** Free-text submission requirement (sent as submissionRuleDescription). */
   submissionRuleDescription: string;
-  /** Optional — judge accounts (email/ID). Empty allowed; account search comes later. */
-  judgeUserIds: string[];
-  /** Optional — mentor accounts (email/ID). Empty allowed. */
-  mentorUserIds: string[];
+  /** Optional — judge accounts to invite to this track. */
+  judgeUserIds: InvitedUser[];
+  /** Optional — mentor accounts to invite to this track. */
+  mentorUserIds: InvitedUser[];
 }
 
 interface RoundForm {
@@ -216,15 +223,17 @@ function UserSearchSelect({
   hint,
 }: {
   label: string;
-  values: string[];
-  onChange: (next: string[]) => void;
+  values: InvitedUser[];
+  onChange: (next: InvitedUser[]) => void;
   placeholder?: string;
   hint?: ReactNode;
 }) {
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
   const [open, setOpen] = useState(false);
+  const [manualFullName, setManualFullName] = useState("");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const [labels, setLabels] = useState<Record<string, string>>({});
 
   const searchQuery = useQuery({
@@ -233,9 +242,12 @@ function UserSearchSelect({
     queryFn: () => usersApi.search(debounced),
     staleTime: 30_000,
   });
-  const results = (searchQuery.data ?? []).filter((u) => !values.includes(u.id));
+  const results = (searchQuery.data ?? []).filter((u) => !values.some((v) => v.id === u.id || v.email === u.email));
 
-  const labelFor = (id: string) => labels[id] ?? id;
+  const labelFor = (user: InvitedUser) => {
+    const fallback = user.fullName || user.email || user.id || "(không tên)";
+    return labels[user.id ?? user.email] ?? fallback;
+  };
 
   const onType = (v: string) => {
     setQuery(v);
@@ -245,14 +257,56 @@ function UserSearchSelect({
   };
 
   const addUser = (u: UserSummary) => {
+    const inviteUser: InvitedUser = {
+      id: u.id,
+      email: u.email ?? "",
+      fullName: u.fullName ?? "",
+    };
     setLabels((prev) => ({ ...prev, [u.id]: u.email ?? u.fullName ?? u.id }));
-    if (!values.includes(u.id)) onChange([...values, u.id]);
+    if (!values.some((v) => v.id === u.id || v.email === inviteUser.email)) {
+      onChange([...values, inviteUser]);
+    }
     setQuery("");
     setDebounced("");
     setOpen(false);
   };
 
+  const addManualUser = () => {
+    const normalizedEmail = query.trim();
+    const normalizedFullName = manualFullName.trim();
+    if (!normalizedEmail) return;
+
+    const inviteUser: InvitedUser = {
+      id: undefined,
+      email: normalizedEmail,
+      fullName: normalizedFullName || normalizedEmail,
+    };
+
+    if (!values.some((v) => v.email === inviteUser.email)) {
+      onChange([...values, inviteUser]);
+    }
+
+    setLabels((prev) => ({ ...prev, [normalizedEmail]: inviteUser.fullName }));
+    setQuery("");
+    setDebounced("");
+    setManualFullName("");
+    setOpen(false);
+  };
+
   const removeAt = (i: number) => onChange(values.filter((_, idx) => idx !== i));
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [open]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -264,7 +318,7 @@ function UserSearchSelect({
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {values.map((v, i) => (
             <span
-              key={v}
+              key={`${v.email}-${i}`}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -298,14 +352,13 @@ function UserSearchSelect({
         </div>
       )}
 
-      <div style={{ position: "relative" }}>
+      <div ref={wrapperRef} style={{ position: "relative" }}>
         <input
           className="text-input"
           value={query}
           placeholder={placeholder ?? "Nhập email để tìm…"}
           onChange={(e: ChangeEvent<HTMLInputElement>) => onType(e.target.value)}
           onFocus={() => setOpen(true)}
-          onBlur={() => setTimeout(() => setOpen(false), 150)}
           style={{ width: "100%" }}
         />
 
@@ -330,8 +383,36 @@ function UserSearchSelect({
                 Đang tìm…
               </div>
             ) : results.length === 0 ? (
-              <div className="t-caption-sm" style={{ padding: "10px 12px", color: "var(--color-mute)" }}>
-                Không tìm thấy người dùng.
+              <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
+                <div className="t-caption-sm" style={{ color: "var(--color-mute)" }}>
+                  Không tìm thấy người dùng. Bạn có thể nhập thủ công email và tên đầy đủ để mời.
+                </div>
+                <input
+                  className="text-input"
+                  value={manualFullName}
+                  onChange={(e) => setManualFullName(e.target.value)}
+                  placeholder="Nhập họ và tên"
+                  style={{ width: "100%" }}
+                />
+                <button
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    addManualUser();
+                  }}
+                  style={{
+                    alignSelf: "flex-start",
+                    padding: "6px 10px",
+                    background: "var(--color-surface-soft)",
+                    border: "1px solid var(--color-hairline)",
+                    borderRadius: "var(--radius-sm)",
+                    cursor: "pointer",
+                    fontSize: "var(--fs-caption-sm)",
+                    color: "var(--color-primary)",
+                  }}
+                >
+                  + Thêm người này
+                </button>
               </div>
             ) : (
               results.map((u) => (
@@ -629,7 +710,7 @@ function RoundCard({
             type="number"
             step={type === 'minScore' ? '0.1' : '1'}
             min="0"
-            max={type === 'percent' ? '100' : type === 'minScore' ? '10' : undefined}
+            max={type === 'percent' ? '100' : undefined}
             value={value}
             onChange={(e) => handleRuleValueChange(e.target.value)}
             placeholder={
@@ -803,10 +884,58 @@ function EventFormBody({
   });
   const templates = templatesQuery.data ?? [];
 
+  const inviteUsersToTrack = async (eventId: string, trackId: string, judges: InvitedUser[], mentors: InvitedUser[]) => {
+    for (const judge of judges) {
+      const email = judge.email?.trim();
+      if (!email) continue;
+      await manageApi.inviteJudge({
+        eventId,
+        trackId,
+        judgeEmail: email,
+        judgeFullName: judge.fullName?.trim() || email,
+        notes: "",
+      });
+    }
+
+    for (const mentor of mentors) {
+      const email = mentor.email?.trim();
+      if (!email) continue;
+      await manageApi.inviteMentor({
+        eventId,
+        trackId,
+        mentorEmail: email,
+        mentorFullName: mentor.fullName?.trim() || email,
+        notes: "",
+      });
+    }
+  };
+
   const createMutation = useMutation({
-    mutationFn: (payload: CreateEventPayload) => eventsApi.create(payload),
+    mutationFn: async (payload: CreateEventPayload) => {
+      const created = await eventsApi.create(payload);
+      const [createdRounds, createdTracks] = await Promise.all([
+        manageApi.listEventRounds(created.id),
+        manageApi.listEventTracks(created.id),
+      ]);
+
+      for (let ri = 0; ri < form.rounds.length; ri++) {
+        const r = form.rounds[ri];
+        const createdRound = createdRounds.find((round) => round.roundNumber === ri + 1);
+        if (!createdRound?.id) continue;
+
+        const roundTracks = createdTracks.filter((track) => track.roundId === createdRound.id);
+        for (let ti = 0; ti < r.tracks.length; ti++) {
+          const t = r.tracks[ti];
+          const createdTrack = roundTracks[ti];
+          if (!createdTrack?.id) continue;
+
+          await inviteUsersToTrack(created.id, createdTrack.id, t.judgeUserIds, t.mentorUserIds);
+        }
+      }
+
+      return created;
+    },
     onSuccess: (data) => {
-      // Refresh any event listings once they move to the real API.
       queryClient.invalidateQueries({ queryKey: ["events"] });
       if (data?.id) {
         router.push(`/events/${data.id}/manage`);
@@ -849,8 +978,11 @@ function EventFormBody({
             templateId: t.templateId.trim() || null,
             description: t.description.trim(),
           };
-          if (t.id) await tracksApi.update(t.id, trackPayload);
-          else await tracksApi.create(trackPayload);
+          let trackId = t.id;
+          if (trackId) await tracksApi.update(trackId, trackPayload);
+          else trackId = (await tracksApi.create(trackPayload)).id;
+
+          await inviteUsersToTrack(id, trackId, t.judgeUserIds, t.mentorUserIds);
         }
       }
 
@@ -964,6 +1096,8 @@ function EventFormBody({
     }));
 
   // `templateId` sent as null when unset — empty string makes the backend throw a 500.
+  // For invite-based flow, create-event payload should only build the event/round/track structure.
+  // Judge/mentor role creation and mail sending happen later through invite APIs.
   function buildPayload(): CreateEventPayload {
     return {
       eventName: form.eventName.trim(),
@@ -984,8 +1118,8 @@ function EventFormBody({
           description: t.description.trim(),
           templateId: t.templateId.trim() || null,
           submissionRuleDescription: t.submissionRuleDescription.trim(),
-          judgeUserIds: t.judgeUserIds,
-          mentorUserIds: t.mentorUserIds,
+          judgeUserIds: [],
+          mentorUserIds: [],
         })),
       })),
     };
@@ -1033,8 +1167,8 @@ function EventFormBody({
         }
       } else if (ruleStr.toLowerCase().startsWith('minscore:')) {
         const val = Number(ruleStr.replace(/minscore:/i, ''));
-        if (Number.isNaN(val) || val < 0 || val > 10) {
-          return `Vòng ${i + 1}: điểm số tối thiểu để thăng vòng phải nằm trong khoảng từ 0 đến 10.`;
+        if (Number.isNaN(val) || val < 0 || val > 100) {
+          return `Vòng ${i + 1}: điểm số tối thiểu để thăng vòng phải nằm trong khoảng từ 0 đến 100.`;
         }
       } else {
         return `Vòng ${i + 1}: quy tắc thăng vòng không hợp lệ. Vui lòng chọn và cấu hình lại.`;
