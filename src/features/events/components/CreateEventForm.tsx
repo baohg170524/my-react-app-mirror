@@ -6,12 +6,14 @@ import {
   type ChangeEvent,
   type ReactNode,
 } from "react";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AxiosError } from "axios";
 import { eventsApi, type CreateEventPayload } from "../api/events";
 import { templatesApi, type TemplateSummary } from "../api/templates";
 import { manageApi } from "../api/manage";
 import { roundsApi, tracksApi } from "../api/roundTrack";
+import { usersApi, type UserSummary } from "@/services/api";
 
 // ─── Form state types (mirror the create-event payload) ───────────────────────
 
@@ -47,8 +49,6 @@ interface EventForm {
   startDate: string;
   endDate: string;
   description: string;
-  /** true = mở (mọi người xem được), false = ẩn (chỉ admin xem). */
-  status: boolean;
   rounds: RoundForm[];
 }
 
@@ -79,8 +79,6 @@ const emptyEvent = (): EventForm => ({
   startDate: "",
   endDate: "",
   description: "",
-  // New events start hidden (draft) — the admin opens them when ready.
-  status: false,
   rounds: [emptyRound()],
 });
 
@@ -207,6 +205,174 @@ function Hint({ children }: { children: ReactNode }) {
   );
 }
 
+/** Search users by email/name in the database and add them as chips (stores ids). */
+function UserSearchSelect({
+  label,
+  values,
+  onChange,
+  placeholder,
+  hint,
+}: {
+  label: string;
+  values: string[];
+  onChange: (next: string[]) => void;
+  placeholder?: string;
+  hint?: ReactNode;
+}) {
+  const [query, setQuery] = useState("");
+  const [debounced, setDebounced] = useState("");
+  const [open, setOpen] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [labels, setLabels] = useState<Record<string, string>>({});
+
+  const searchQuery = useQuery({
+    queryKey: ["userSearch", debounced],
+    enabled: debounced.length >= 2,
+    queryFn: () => usersApi.search(debounced),
+    staleTime: 30_000,
+  });
+  const results = (searchQuery.data ?? []).filter((u) => !values.includes(u.id));
+
+  const labelFor = (id: string) => labels[id] ?? id;
+
+  const onType = (v: string) => {
+    setQuery(v);
+    setOpen(true);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setDebounced(v.trim()), 250);
+  };
+
+  const addUser = (u: UserSummary) => {
+    setLabels((prev) => ({ ...prev, [u.id]: u.email ?? u.fullName ?? u.id }));
+    if (!values.includes(u.id)) onChange([...values, u.id]);
+    setQuery("");
+    setDebounced("");
+    setOpen(false);
+  };
+
+  const removeAt = (i: number) => onChange(values.filter((_, idx) => idx !== i));
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <span className="t-caption-xs" style={{ color: "var(--color-mute)" }}>
+        {label}
+      </span>
+
+      {values.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {values.map((v, i) => (
+            <span
+              key={v}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "4px 8px",
+                background: "var(--color-surface-soft)",
+                border: "var(--border-hairline)",
+                borderRadius: "var(--radius-sm)",
+                fontSize: "var(--fs-caption-sm)",
+              }}
+            >
+              {labelFor(v)}
+              <button
+                type="button"
+                onClick={() => removeAt(i)}
+                aria-label={`Xóa ${labelFor(v)}`}
+                style={{
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  lineHeight: 1,
+                  fontSize: 15,
+                  color: "var(--color-mute)",
+                  cursor: "pointer",
+                }}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div style={{ position: "relative" }}>
+        <input
+          className="text-input"
+          value={query}
+          placeholder={placeholder ?? "Nhập email để tìm…"}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => onType(e.target.value)}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          style={{ width: "100%" }}
+        />
+
+        {open && debounced.length >= 2 && (
+          <div
+            style={{
+              position: "absolute",
+              top: "calc(100% + 4px)",
+              left: 0,
+              right: 0,
+              zIndex: 20,
+              background: "var(--color-canvas)",
+              border: "var(--border-hairline)",
+              borderRadius: "var(--radius-sm)",
+              boxShadow: "0 6px 20px rgba(0,0,0,0.08)",
+              maxHeight: 220,
+              overflowY: "auto",
+            }}
+          >
+            {searchQuery.isLoading ? (
+              <div className="t-caption-sm" style={{ padding: "10px 12px", color: "var(--color-mute)" }}>
+                Đang tìm…
+              </div>
+            ) : results.length === 0 ? (
+              <div className="t-caption-sm" style={{ padding: "10px 12px", color: "var(--color-mute)" }}>
+                Không tìm thấy người dùng.
+              </div>
+            ) : (
+              results.map((u) => (
+                <button
+                  key={u.id}
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    addUser(u);
+                  }}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 2,
+                    width: "100%",
+                    textAlign: "left",
+                    padding: "8px 12px",
+                    background: "none",
+                    border: "none",
+                    borderBottom: "var(--border-hairline)",
+                    cursor: "pointer",
+                  }}
+                >
+                  <span className="t-body-sm" style={{ color: "var(--color-ink)" }}>
+                    {u.email ?? "(không có email)"}
+                  </span>
+                  {u.fullName && (
+                    <span className="t-caption-sm" style={{ color: "var(--color-mute)" }}>
+                      {u.fullName}
+                    </span>
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+
+      {hint && <Hint>{hint}</Hint>}
+    </div>
+  );
+}
+
 // ─── Track editor ─────────────────────────────────────────────────────────────
 
 function TrackCard({
@@ -285,11 +451,41 @@ function TrackCard({
         onChange={(v) => onChange({ submissionRuleDescription: v })}
         placeholder="VD: Nộp link GitHub repo và bản thuyết trình (PDF)."
       />
+
+      <UserSearchSelect
+        label="Judge (tùy chọn)"
+        values={track.judgeUserIds}
+        onChange={(next) => onChange({ judgeUserIds: next })}
+        placeholder="Nhập email để tìm judge…"
+        hint="Tìm theo email/tên tài khoản có trong hệ thống."
+      />
+
+      <UserSearchSelect
+        label="Mentor (tùy chọn)"
+        values={track.mentorUserIds}
+        onChange={(next) => onChange({ mentorUserIds: next })}
+        placeholder="Nhập email để tìm mentor…"
+      />
     </div>
   );
 }
 
 // ─── Round editor ─────────────────────────────────────────────────────────────
+
+function parseAdvancementRule(rule: string) {
+  const trimmed = (rule || "").trim();
+  if (trimmed.startsWith('top:')) {
+    return { type: 'top', value: trimmed.replace('top:', '') };
+  }
+  if (trimmed.toLowerCase().startsWith('percent:')) {
+    return { type: 'percent', value: trimmed.replace(/percent:/i, '') };
+  }
+  if (trimmed.toLowerCase().startsWith('minscore:')) {
+    return { type: 'minScore', value: trimmed.replace(/minscore:/i, '') };
+  }
+  // Mặc định là top nếu rỗng hoặc không khớp
+  return { type: 'top', value: '' };
+}
 
 function RoundCard({
   round,
@@ -314,6 +510,21 @@ function RoundCard({
   onAddTrack: () => void;
   onRemoveTrack: (trackIndex: number) => void;
 }) {
+  const { type, value } = parseAdvancementRule(round.advancementRule);
+
+  const handleRuleTypeChange = (newType: string) => {
+    const defaultValue = newType === 'minScore' ? '7.5' : newType === 'percent' ? '50' : '10';
+    onChange('advancementRule', `${newType}:${defaultValue}`);
+  };
+
+  const handleRuleValueChange = (newValue: string) => {
+    if (type === 'manual') {
+      onChange('advancementRule', newValue);
+    } else {
+      onChange('advancementRule', `${type}:${newValue}`);
+    }
+  };
+
   return (
     <div
       style={{
@@ -340,34 +551,98 @@ function RoundCard({
         )}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "var(--space-md)" }}>
-        <TextField label="Tên vòng" value={round.roundName} onChange={(v) => onChange("roundName", v)} />
-        <TextField
-          label="Số thứ tự vòng"
-          type="number"
-          value={round.roundNumber}
-          onChange={(v) => onChange("roundNumber", v)}
-        />
-      </div>
+      <TextField label="Tên vòng" value={round.roundName} onChange={(v) => onChange("roundName", v)} />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-md)" }}>
         <TextField
-          label="Bắt đầu"
+          label="Mở cổng nộp bài"
           type="datetime-local"
           value={round.startDate}
           onChange={(v) => onChange("startDate", v)}
         />
-        <TextField
-          label="Kết thúc"
-          type="datetime-local"
-          value={round.endDate}
-          onChange={(v) => onChange("endDate", v)}
-        />
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <TextField
+            label="Hạn chót nộp bài (Deadline)"
+            type="datetime-local"
+            value={round.endDate}
+            onChange={(v) => onChange("endDate", v)}
+          />
+          {round.startDate && (
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <span className="t-caption-xs" style={{ color: "var(--color-mute)" }}>Đặt nhanh:</span>
+              {[2, 24, 48, 72].map((hours) => (
+                <button
+                  key={hours}
+                  type="button"
+                  onClick={() => {
+                    const date = new Date(round.startDate);
+                    date.setHours(date.getHours() + hours);
+                    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+                    onChange("endDate", local.toISOString().slice(0, 16));
+                  }}
+                  style={{
+                    padding: "3px 8px",
+                    background: "var(--color-canvas)",
+                    border: "1px solid var(--color-hairline)",
+                    borderRadius: 2,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "var(--color-mute)",
+                    cursor: "pointer",
+                    transition: "all 100ms ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "var(--color-primary)";
+                    e.currentTarget.style.color = "var(--color-primary)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = "var(--color-hairline)";
+                    e.currentTarget.style.color = "var(--color-mute)";
+                  }}
+                >
+                  +{hours}h
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-      <TextField
-        label="Quy tắc lên vòng (advancement rule)"
-        value={round.advancementRule}
-        onChange={(v) => onChange("advancementRule", v)}
-      />
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <span className="t-caption-xs" style={{ color: "var(--color-mute)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+          Quy tắc thăng vòng (Advancement Rule)
+        </span>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-md)" }}>
+          <select
+            className="text-input"
+            value={type}
+            onChange={(e) => handleRuleTypeChange(e.target.value)}
+            style={{ cursor: "pointer" }}
+          >
+            <option value="top">🏆 Lấy Top số lượng đội (top:N)</option>
+            <option value="percent">📈 Lấy theo phần trăm (percent:P)</option>
+            <option value="minScore">🎯 Điểm số tối thiểu (minScore:X)</option>
+          </select>
+
+          <input
+            className="text-input"
+            type="number"
+            step={type === 'minScore' ? '0.1' : '1'}
+            min="0"
+            max={type === 'percent' ? '100' : type === 'minScore' ? '10' : undefined}
+            value={value}
+            onChange={(e) => handleRuleValueChange(e.target.value)}
+            placeholder={
+              type === 'top' ? "Nhập số lượng đội (VD: 10)" :
+                type === 'percent' ? "Nhập phần trăm % (VD: 50)" :
+                  "Nhập điểm tối thiểu (VD: 7.5)"
+            }
+          />
+        </div>
+        <Hint>
+          <div style={{ fontSize: 11, lineHeight: "1.4em", marginTop: 2 }}>
+            💡 Cú pháp được cấu hình tự động: <code style={{ background: "var(--color-surface-elevated)", padding: "1px 4px", borderRadius: 2, fontWeight: 700, color: "var(--color-primary)" }}>{round.advancementRule || "(Để trống)"}</code>
+          </div>
+        </Hint>
+      </div>
 
       {/* Tracks */}
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-md)" }}>
@@ -463,7 +738,6 @@ function EditEventLoader({
     startDate: isoToLocalInput(event.startDate),
     endDate: isoToLocalInput(event.endDate),
     description: event.description ?? "",
-    status: event.status ?? false,
     rounds: orderedRounds.map((r) => ({
       id: r.id,
       roundName: r.roundName ?? "",
@@ -512,14 +786,13 @@ function EventFormBody({
   initialTrackIds: string[];
 }) {
   const isEdit = !!eventId;
+  const router = useRouter();
   const [form, setForm] = useState<EventForm>(() => initialForm);
   const [formError, setFormError] = useState<string | null>(null);
-  // Original round/track ids — used to delete the ones removed during editing.
   const originalRoundIds = useRef<string[]>(initialRoundIds);
   const originalTrackIds = useRef<string[]>(initialTrackIds);
   const queryClient = useQueryClient();
 
-  // Scoring templates for the per-track dropdown.
   const templatesQuery = useQuery({
     queryKey: ["templates"],
     queryFn: () => templatesApi.list(),
@@ -529,13 +802,15 @@ function EventFormBody({
 
   const createMutation = useMutation({
     mutationFn: (payload: CreateEventPayload) => eventsApi.create(payload),
-    onSuccess: () => {
+    onSuccess: (data) => {
       // Refresh any event listings once they move to the real API.
       queryClient.invalidateQueries({ queryKey: ["events"] });
+      if (data?.id) {
+        router.push(`/events/${data.id}/manage`);
+      }
     },
   });
 
-  // ── Edit mutation: diff rounds/tracks → update / create / delete ──
   const editMutation = useMutation({
     mutationFn: async () => {
       const id = eventId as string;
@@ -546,14 +821,14 @@ function EventFormBody({
         startDate: toIso(form.startDate),
         endDate: toIso(form.endDate),
         description: form.description.trim(),
-        status: form.status,
       });
 
-      for (const r of form.rounds) {
+      for (let ri = 0; ri < form.rounds.length; ri++) {
+        const r = form.rounds[ri];
         const roundPayload = {
           eventId: id,
           roundName: r.roundName.trim(),
-          roundNumber: Number(r.roundNumber) || 0,
+          roundNumber: ri + 1,
           startDate: toIso(r.startDate),
           endDate: toIso(r.endDate),
           advancementRule: r.advancementRule.trim(),
@@ -575,7 +850,6 @@ function EventFormBody({
         }
       }
 
-      // Delete tracks then rounds that were removed in the form.
       const keptTrackIds = new Set(
         form.rounds.flatMap((r) => r.tracks.map((t) => t.id)).filter(Boolean),
       );
@@ -598,30 +872,65 @@ function EventFormBody({
 
   const activeMutation = isEdit ? editMutation : createMutation;
 
-  // ── event-level field update (string fields only) ──
-  type EventStringKey =
-    | "eventName"
-    | "season"
-    | "year"
-    | "startDate"
-    | "endDate"
-    | "description";
+  type EventStringKey = "eventName" | "season" | "year" | "startDate" | "endDate" | "description";
   const setField = (key: EventStringKey, value: string) =>
-    setForm((f) => ({ ...f, [key]: value }));
+    setForm((f) => {
+      const updated = { ...f, [key]: value };
+      // When event start date is updated, automatically populate Round 1 start date, Year and Season
+      if (key === "startDate") {
+        if (updated.rounds[0]) {
+          updated.rounds[0] = { ...updated.rounds[0], startDate: value };
+        }
+        if (value) {
+          const date = new Date(value);
+          const year = date.getFullYear();
+          if (year && !Number.isNaN(year)) {
+            updated.year = String(year);
+          }
+
+          // Auto-derive FPT University Academic Season based on user requirements:
+          // Spring: Jan to Apr (0 to 3)
+          // Summer: May to Aug (4 to 7)
+          // Fall: Sep to Dec (8 to 11)
+          const month = date.getMonth(); // 0-11
+          if (month >= 0 && month <= 3) {
+            updated.season = "Spring";
+          } else if (month >= 4 && month <= 7) {
+            updated.season = "Summer";
+          } else {
+            updated.season = "Fall";
+          }
+        } else {
+          updated.year = "";
+          updated.season = "";
+        }
+      }
+      return updated;
+    });
 
   const setStatus = (status: boolean) => setForm((f) => ({ ...f, status }));
 
   // ── round operations ──
-  const addRound = () => setForm((f) => ({ ...f, rounds: [...f.rounds, emptyRound()] }));
+  const addRound = () =>
+    setForm((f) => {
+      const lastRound = f.rounds[f.rounds.length - 1];
+      const nextStartDate = lastRound ? lastRound.endDate : f.startDate;
+      const newR = { ...emptyRound(), startDate: nextStartDate };
+      return { ...f, rounds: [...f.rounds, newR] };
+    });
 
   const removeRound = (ri: number) =>
     setForm((f) => ({ ...f, rounds: f.rounds.filter((_, i) => i !== ri) }));
 
   const updateRound = (ri: number, key: keyof Omit<RoundForm, "tracks">, value: string) =>
-    setForm((f) => ({
-      ...f,
-      rounds: f.rounds.map((r, i) => (i === ri ? { ...r, [key]: value } : r)),
-    }));
+    setForm((f) => {
+      const updatedRounds = f.rounds.map((r, i) => (i === ri ? { ...r, [key]: value } : r));
+      // When round end date is updated, automatically set next round's start date
+      if (key === "endDate" && updatedRounds[ri + 1]) {
+        updatedRounds[ri + 1] = { ...updatedRounds[ri + 1], startDate: value };
+      }
+      return { ...f, rounds: updatedRounds };
+    });
 
   // ── track operations ──
   const addTrack = (ri: number) =>
@@ -650,9 +959,7 @@ function EventFormBody({
       ),
     }));
 
-  // ── build the API payload (CreateEventRequestModel) ──
-  // `templateId` is sent as null when unset (empty string makes the backend throw
-  // a 500 trying to parse it as a GUID).
+  // `templateId` sent as null when unset — empty string makes the backend throw a 500.
   function buildPayload(): CreateEventPayload {
     return {
       eventName: form.eventName.trim(),
@@ -662,9 +969,9 @@ function EventFormBody({
       endDate: toIso(form.endDate),
       description: form.description.trim(),
       status: form.status,
-      rounds: form.rounds.map((r) => ({
+      rounds: form.rounds.map((r, ri) => ({
         roundName: r.roundName.trim(),
-        roundNumber: Number(r.roundNumber) || 0,
+        roundNumber: ri + 1,
         startDate: toIso(r.startDate),
         endDate: toIso(r.endDate),
         advancementRule: r.advancementRule.trim(),
@@ -680,19 +987,71 @@ function EventFormBody({
     };
   }
 
-  /** Returns the first validation error, or null when the form is valid. */
   function validate(): string | null {
     if (!form.eventName.trim()) return "Vui lòng nhập tên sự kiện.";
     if ((Number(form.year) || 0) <= 2000) return "Năm tổ chức phải lớn hơn 2000.";
     if (!form.startDate) return "Vui lòng chọn ngày bắt đầu sự kiện.";
     if (!form.endDate) return "Vui lòng chọn ngày kết thúc sự kiện.";
+
+    const now = Date.now() - 60000; // Allow 1 minute buffer for user entry latency
+    const eventStart = new Date(form.startDate).getTime();
+    const eventEnd = new Date(form.endDate).getTime();
+
+    // Prevent past dates when creating a new event
+    if (!isEdit && eventStart < now) {
+      return "Ngày bắt đầu sự kiện không được ở trong quá khứ.";
+    }
+
+    if (eventEnd <= eventStart) {
+      return "Ngày kết thúc sự kiện phải sau ngày bắt đầu.";
+    }
+
     for (let i = 0; i < form.rounds.length; i++) {
       const r = form.rounds[i];
       if (!r.roundName.trim()) return `Vòng ${i + 1}: vui lòng nhập tên vòng.`;
-      if ((Number(r.roundNumber) || 0) <= 0)
-        return `Vòng ${i + 1}: số thứ tự vòng phải lớn hơn 0.`;
       if (!r.startDate || !r.endDate)
         return `Vòng ${i + 1}: vui lòng chọn ngày bắt đầu và kết thúc.`;
+
+      // Validate Quy tắc thăng vòng (Advancement Rule)
+      const ruleStr = (r.advancementRule || "").trim();
+      if (!ruleStr) {
+        return `Vòng ${i + 1}: vui lòng cấu hình quy tắc thăng vòng.`;
+      }
+      if (ruleStr.startsWith('top:')) {
+        const val = Number(ruleStr.replace('top:', ''));
+        if (Number.isNaN(val) || val <= 0 || !Number.isInteger(val)) {
+          return `Vòng ${i + 1}: số lượng đội thi lấy top phải là một số nguyên lớn hơn 0.`;
+        }
+      } else if (ruleStr.toLowerCase().startsWith('percent:')) {
+        const val = Number(ruleStr.replace(/percent:/i, ''));
+        if (Number.isNaN(val) || val < 0 || val > 100) {
+          return `Vòng ${i + 1}: tỷ lệ phần trăm đội thi lấy tiếp phải nằm trong khoảng từ 0% đến 100%.`;
+        }
+      } else if (ruleStr.toLowerCase().startsWith('minscore:')) {
+        const val = Number(ruleStr.replace(/minscore:/i, ''));
+        if (Number.isNaN(val) || val < 0 || val > 10) {
+          return `Vòng ${i + 1}: điểm số tối thiểu để thăng vòng phải nằm trong khoảng từ 0 đến 10.`;
+        }
+      } else {
+        return `Vòng ${i + 1}: quy tắc thăng vòng không hợp lệ. Vui lòng chọn và cấu hình lại.`;
+      }
+
+      const roundStart = new Date(r.startDate).getTime();
+      const roundEnd = new Date(r.endDate).getTime();
+
+      if (!isEdit && roundStart < now) {
+        return `Vòng ${i + 1}: ngày bắt đầu không được ở trong quá khứ.`;
+      }
+
+      if (roundEnd <= roundStart) {
+        return `Vòng ${i + 1}: ngày kết thúc phải sau ngày bắt đầu.`;
+      }
+
+      // Round dates must fit within the overall event timeline
+      if (roundStart < eventStart || roundEnd > eventEnd) {
+        return `Vòng ${i + 1}: thời gian của vòng thi phải nằm trong khoảng thời gian diễn ra sự kiện.`;
+      }
+
       for (let j = 0; j < r.tracks.length; j++) {
         if (!r.tracks[j].trackName.trim())
           return `Vòng ${i + 1} – Hạng mục ${j + 1}: vui lòng nhập tên hạng mục.`;
@@ -721,10 +1080,6 @@ function EventFormBody({
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-md)" }}>
         <TextField label="Tên sự kiện" value={form.eventName} onChange={(v) => setField("eventName", v)} />
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-md)" }}>
-          <TextField label="Mùa (season)" value={form.season} onChange={(v) => setField("season", v)} />
-          <TextField label="Năm" type="number" value={form.year} onChange={(v) => setField("year", v)} />
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-md)" }}>
           <TextField
             label="Bắt đầu"
             type="datetime-local"
@@ -738,18 +1093,110 @@ function EventFormBody({
             onChange={(v) => setField("endDate", v)}
           />
         </div>
+
+        {/* Thông tin tự động nhận diện */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "var(--space-md)",
+          padding: "16px",
+          background: "linear-gradient(135deg, rgba(118, 185, 0, 0.08) 0%, rgba(118, 185, 0, 0.02) 100%)",
+          border: "2px dashed var(--color-primary)",
+          borderRadius: "var(--radius-sm)",
+          marginTop: "4px"
+        }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <span className="t-caption-xs" style={{ color: "var(--color-primary)", fontWeight: 700, letterSpacing: "0.05em" }}>
+              MÙA (SEASON)
+            </span>
+            <div style={{
+              padding: "10px 14px",
+              background: "var(--color-canvas)",
+              border: "1px solid var(--color-hairline)",
+              borderRadius: "var(--radius-sm)",
+              fontSize: "var(--fs-body-sm)",
+              fontWeight: 700,
+              color: form.season ? "var(--color-primary)" : "var(--color-mute)",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              minHeight: 40
+            }}>
+              {form.season ? (
+                form.season === "Spring" ? "🌸 Kỳ Spring (Mùa Xuân)" :
+                  form.season === "Summer" ? "☀️ Kỳ Summer (Mùa Hè)" :
+                    "🍂 Kỳ Fall (Mùa Thu)"
+              ) : (
+                "Chờ ngày bắt đầu..."
+              )}
+            </div>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <span className="t-caption-xs" style={{ color: "var(--color-primary)", fontWeight: 700, letterSpacing: "0.05em" }}>
+              NĂM
+            </span>
+            <div style={{
+              padding: "10px 14px",
+              background: "var(--color-canvas)",
+              border: "1px solid var(--color-hairline)",
+              borderRadius: "var(--radius-sm)",
+              fontSize: "var(--fs-body-sm)",
+              fontWeight: 700,
+              color: form.year ? "var(--color-primary)" : "var(--color-mute)",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              minHeight: 40
+            }}>
+              {form.year ? `📅 Năm ${form.year}` : "Chờ ngày bắt đầu..."}
+            </div>
+          </div>
+          <span className="t-caption-xs" style={{ gridColumn: "span 2", color: "var(--color-mute)", fontStyle: "italic", marginTop: 4 }}>
+            💡 Hệ thống tự động xác định Mùa và Năm dựa vào ngày bắt đầu của sự kiện.
+          </span>
+        </div>
         <TextArea label="Mô tả" value={form.description} onChange={(v) => setField("description", v)} />
-        <Field label="Trạng thái">
-          <select
-            className="text-input"
-            value={form.status ? "open" : "hidden"}
-            onChange={(e) => setStatus(e.target.value === "open")}
-          >
-            <option value="open">Đang diễn ra — mọi người xem & tham gia được</option>
-            <option value="hidden">Ẩn — chỉ admin xem được</option>
-          </select>
-        </Field>
-        <Hint>Sự kiện tự chuyển sang “Đã kết thúc” (vẫn hiện cho mọi người) sau ngày kết thúc.</Hint>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <span className="t-caption-xs" style={{ color: "var(--color-mute)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            Trạng thái hiển thị
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
+            <button
+              type="button"
+              onClick={() => setStatus(!form.status)}
+              style={{
+                width: 48,
+                height: 24,
+                background: form.status ? 'var(--color-primary)' : 'var(--color-surface-elevated)',
+                border: '1px solid var(--color-hairline-strong)',
+                borderRadius: 2,
+                position: 'relative',
+                cursor: 'pointer',
+                transition: 'background-color 150ms ease',
+                padding: 0,
+              }}
+              aria-label={form.status ? "Ẩn sự kiện" : "Hiện sự kiện"}
+            >
+              <span
+                style={{
+                  width: 18,
+                  height: 18,
+                  background: '#fff',
+                  borderRadius: 1,
+                  position: 'absolute',
+                  top: 2,
+                  left: form.status ? 26 : 2,
+                  transition: 'left 150ms ease',
+                }}
+              />
+            </button>
+            <span style={{ fontSize: 'var(--fs-body-sm)', fontWeight: 700, color: form.status ? 'var(--color-primary)' : 'var(--color-mute)' }}>
+              {form.status ? 'HIỆN' : 'ẨN'}
+            </span>
+          </div>
+        </div>
+        {/* <Hint>Sự kiện tự chuyển sang “Đã kết thúc” (vẫn hiện cho mọi người) sau ngày kết thúc.</Hint> */}
       </div>
 
       {/* Rounds */}
@@ -788,15 +1235,14 @@ function EventFormBody({
           type="submit"
           className="btn btn-primary"
           disabled={activeMutation.isPending}
-          style={{ cursor: activeMutation.isPending ? "not-allowed" : "pointer", opacity: activeMutation.isPending ? 0.6 : 1 }}
+          style={{
+            cursor: activeMutation.isPending ? "not-allowed" : "pointer",
+            opacity: activeMutation.isPending ? 0.6 : 1,
+          }}
         >
           {isEdit
-            ? activeMutation.isPending
-              ? "Đang lưu..."
-              : "Lưu thay đổi"
-            : activeMutation.isPending
-              ? "Đang tạo..."
-              : "Tạo sự kiện"}
+            ? activeMutation.isPending ? "Đang lưu..." : "Lưu thay đổi"
+            : activeMutation.isPending ? "Đang tạo..." : "Tạo sự kiện"}
         </button>
         <button type="button" className="btn btn-outline" onClick={onCancel} style={{ cursor: "pointer" }}>
           {activeMutation.isSuccess ? "Đóng" : "Hủy"}

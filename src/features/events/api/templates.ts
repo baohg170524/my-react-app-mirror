@@ -8,6 +8,23 @@ export interface TemplateSummary {
   description: string | null;
 }
 
+/** One criteria entry inside a template (with weight & maxScore). */
+export interface TemplateCriteria {
+  criteriaId: string;
+  criteriaName: string;
+  description: string | null;
+  weight: number;
+  maxScore: number;
+  isActive: boolean;
+}
+
+/** Full template returned by GET /api/Templates/{id} */
+export interface TemplateDetail extends TemplateSummary {
+  isActive: boolean;
+  isSystem: boolean;
+  criterias: TemplateCriteria[];
+}
+
 export const templatesApi = {
   /** GET /api/Templates — list scoring templates (requires auth). */
   list: async (): Promise<TemplateSummary[]> => {
@@ -16,5 +33,11 @@ export const templatesApi = {
       { params: { PageNumber: 1, PageSize: 100 } },
     );
     return data.data ?? [];
+  },
+
+  /** GET /api/Templates/{id} — lấy template kèm toàn bộ criteria (weight, maxScore). */
+  getById: async (id: string): Promise<TemplateDetail> => {
+    const { data } = await apiClient.get<TemplateDetail>(`/Templates/${id}`);
+    return data;
   },
 };

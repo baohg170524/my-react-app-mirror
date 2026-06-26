@@ -4,8 +4,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import eventService from '../api/eventService';
 import { eventsApi } from '../api/events';
 import { manageApi } from '../api/manage';
-import { rolesApi } from '../api/roles';
-import { resolveEventRole, roleNameToNumber, type DashboardRole } from '@/lib/events/eventRole';
 
 export const useEvent = (eventId: string) => {
   return useQuery({
@@ -16,33 +14,12 @@ export const useEvent = (eventId: string) => {
   });
 };
 
-export const useAllEvents = () => {
+export const useAllEvents = (isAdmin: boolean) => {
   return useQuery({
-    queryKey: ['events', 'all'],
-    queryFn: () => eventsApi.list(), // real API: GET /api/Events
+    queryKey: ['events', 'all', isAdmin],
+    queryFn: () => eventsApi.list(isAdmin ? undefined : true), // real API: GET /api/Events
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
-};
-
-/**
- * The caller's role *within an event*, fetched lazily when the event is opened.
- * Returns both the dashboard role (drives the tab set; participant unless judge)
- * and the granular Vietnamese label (keeps mentor/coordinator distinct). Defaults
- * to participant while loading or when the user has no assigned role; global
- * admins are redirected before reaching here.
- */
-export const useMyEventRole = (
-  eventId: string,
-  userId: string,
-): { role: DashboardRole; label: string } => {
-  const { data } = useQuery({
-    queryKey: ['myEventRole', eventId, userId],
-    queryFn: () => rolesApi.getUserRole(userId, eventId),
-    enabled: !!eventId && !!userId,
-    staleTime: 60_000,
-  });
-  const num = roleNameToNumber(data?.roleName);
-  return resolveEventRole(num === null ? [] : [num]);
 };
 
 // ─── Admin manage page (real API) ──────────────────────────────────────────────
@@ -91,10 +68,23 @@ export const useRoundFinalResults = (roundId: string | undefined) =>
     staleTime: 2 * 60 * 1000,
   });
 
-export const useMyEvents = () => {
+/**
+ * Events the user has actually joined — derived from their EventRoles
+ * (competitor/judge/mentor). We list the user's roles to get the joined
+ * event ids, then filter the public events list down to those ids.
+ */
+export const useMyEvents = (userId?: string) => {
   return useQuery({
-    queryKey: ['events', 'my'],
-    queryFn: () => eventService.getMyEvents(),
+    queryKey: ['events', 'my', userId ?? ''],
+    enabled: !!userId,
+    queryFn: async () => {
+      const roles = await manageApi.listUserEventRoles(userId as string);
+      const joinedIds = new Set(
+        roles.map((r) => r.eventId).filter((id): id is string => !!id),
+      );
+      const all = await eventsApi.list();
+      return all.filter((e) => joinedIds.has(e.id));
+    },
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
 };

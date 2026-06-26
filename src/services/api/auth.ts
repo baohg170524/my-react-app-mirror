@@ -5,6 +5,7 @@ import type {
   LoginResponse,
   RefreshTokenResponse,
   RegisterRequest,
+  UpdateStudentProfileCommand,
 } from "./types";
 
 export const authApi = {
@@ -42,4 +43,17 @@ export const authApi = {
     });
     return data;
   },
+
+  /**
+   * Re-send the verification email for an unverified account.
+   * NOTE: backend endpoint not implemented yet — wire-up is ready, the
+   * `/Auth/resend-verification` route just needs to exist server-side.
+   */
+  resendVerification: async (email: string): Promise<void> => {
+    await apiClient.post("/Auth/resend-verification", { email });
+  },
+
+  /** POST /api/Auth/student-profiles — submit/update the caller's student proof. */
+  submitStudentProfile: (payload: UpdateStudentProfileCommand): Promise<void> =>
+    apiClient.post("/Auth/student-profiles", payload).then(() => undefined),
 };
