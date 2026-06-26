@@ -19,4 +19,9 @@ export const schoolsApi = {
     });
     return data;
   },
+
+  create: async (payload: { schoolName: string; address?: string }): Promise<SchoolModel> => {
+    const { data } = await apiClient.post<SchoolModel>(SCHOOLS_URL, payload);
+    return data;
+  },
 };

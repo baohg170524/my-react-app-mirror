@@ -27,14 +27,14 @@ export interface LoginRequest {
 
 /** Matches backend RegisterUserRequestModel. */
 export interface RegisterRequest {
-  schoolId: string;
+  schoolId?: string;
   studentCode?: string;
   email: string;
   password: string;
   fullName: string;
-  isStudent: boolean;
+  isStudent?: boolean;
   /** Derived from the selected school name (contains "FPT"). */
-  isFpt: boolean;
+  isFpt?: boolean;
 }
 
 /** Matches backend LoginUserResponseModel (flat shape). */
@@ -124,6 +124,15 @@ export interface ApiError {
   message: string;
   statusCode: number;
   errors?: Record<string, string[]>;
+}
+
+export interface UserRejectionModel {
+  id: string;
+  userId: string;
+  rejectedBy: string;
+  reason: string | null;
+  createdTime: string;
+  lastUpdatedTime: string;
 }
 
 // ─── Generic paginated response (legacy alias) ────────────────────────────────

@@ -2,7 +2,7 @@
 import { useState, useCallback } from 'react';
 import { Navbar } from '@/components/Navbar';
 import Notif from '@/components/Notif';
-import AppealManagementPage from '@/pages/AppealManagementPage';
+import AppealManagementPage from '@/views/AppealManagementPage';
 import { INIT_CRITERIA, INIT_TEAMS, INIT_APPEALS } from '@/data';
 
 export default function AppealsRoute() {

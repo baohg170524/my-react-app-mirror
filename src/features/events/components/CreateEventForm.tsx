@@ -49,6 +49,7 @@ interface EventForm {
   startDate: string;
   endDate: string;
   description: string;
+  status: boolean;
   rounds: RoundForm[];
 }
 
@@ -79,6 +80,7 @@ const emptyEvent = (): EventForm => ({
   startDate: "",
   endDate: "",
   description: "",
+  status: true,
   rounds: [emptyRound()],
 });
 
@@ -738,6 +740,7 @@ function EditEventLoader({
     startDate: isoToLocalInput(event.startDate),
     endDate: isoToLocalInput(event.endDate),
     description: event.description ?? "",
+    status: event.status ?? false,
     rounds: orderedRounds.map((r) => ({
       id: r.id,
       roundName: r.roundName ?? "",
@@ -821,6 +824,7 @@ function EventFormBody({
         startDate: toIso(form.startDate),
         endDate: toIso(form.endDate),
         description: form.description.trim(),
+        status: form.status,
       });
 
       for (let ri = 0; ri < form.rounds.length; ri++) {

@@ -2,7 +2,7 @@
 import { useState, useCallback } from 'react';
 import { Navbar } from '@/components/Navbar';
 import Notif from '@/components/Notif';
-import TeamAppealPage from '@/pages/TeamAppealPage';
+import TeamAppealPage from '@/views/TeamAppealPage';
 import { INIT_TEAMS, MY_TEAM_ID } from '@/data';
 
 export default function TeamAppealRoute() {

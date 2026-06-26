@@ -12,7 +12,7 @@ interface Props { eventId: string; userId: string; }
 const STATUS = {
   open:   { label: 'Đang diễn ra', cls: 'bg-primary text-on-primary' },
   hidden: { label: 'Ẩn',          cls: 'bg-stone text-on-dark' },
-  ended:  { label: 'Đã kết thúc', cls: 'bg-stone text-on-dark' },
+  closed: { label: 'Đã kết thúc', cls: 'bg-stone text-on-dark' },
 } as const;
 
 /**

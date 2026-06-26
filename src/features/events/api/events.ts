@@ -15,6 +15,7 @@ export interface EventModel {
   description: string | null;
   createdTime: string;
   lastUpdatedTime: string;
+  status?: boolean;
 }
 
 /** Map a backend EventModel to the card UI `Event` shape. */
@@ -62,6 +63,7 @@ export interface CreateEventPayload {
   startDate: string; // ISO 8601
   endDate: string;
   description: string;
+  status: boolean;
   rounds: CreateRoundPayload[];
 }
 
@@ -73,6 +75,7 @@ export interface UpdateEventPayload {
   startDate: string; // ISO 8601
   endDate: string;
   description: string;
+  status: boolean;
 }
 
 /** Subset of CreateEventResponseModel we care about. */

@@ -2,7 +2,7 @@
 import { useState, useCallback } from 'react';
 import { Navbar } from '@/components/Navbar';
 import Notif from '@/components/Notif';
-import PheDuyetPage from '@/pages/PheDuyetPage';
+import PheDuyetPage from '@/views/PheDuyetPage';
 
 const INIT_REGS = [
   { id:'R-001', type:'fpt', hocKi:'K19', gmail:'teamalpha@gmail.com', leader:{ name:'Nguyễn Văn An', mssv:'SE170001' }, members:[{ name:'Trần Thị Bình', id:'SE170002' }], status:'Đã xác nhận', date:'07/06/2026 10:00' },

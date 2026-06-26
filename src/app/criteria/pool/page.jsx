@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Navbar } from '@/components/Navbar';
 import Notif from '@/components/Notif';
-import CriteriaPage from '@/pages/CriteriaPage';
+import CriteriaPage from '@/views/CriteriaPage';
 import { getCriteria } from '@/services/criteriaService';
 
 export default function CriteriaPoolRoute() {

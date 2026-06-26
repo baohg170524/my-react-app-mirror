@@ -7,6 +7,11 @@ export interface EventRoleUser {
   id: string | null;
   email: string | null;
   fullName: string | null;
+  isApproved?: boolean;
+  isFpt?: boolean;
+  schoolId?: string | null;
+  studentCode?: string | null;
+  photoStudentCardUrl?: string | null;
 }
 
 /** Matches backend EventRoleModel (a user's role within an event). */
@@ -63,6 +68,8 @@ export interface FinalResult {
 
 // ─── Role classifiers (roleName is a free string in the response) ──────────────
 
+export const isEventCoordinatorRole = (r: EventRole) =>
+  (r.roleName ?? "").toLowerCase() === "eventcoordinator";
 export const isJudgeRole = (r: EventRole) =>
   (r.roleName ?? "").toLowerCase() === "judge";
 export const isMentorRole = (r: EventRole) =>

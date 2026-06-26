@@ -4,7 +4,7 @@ import { Navbar } from '@/components/Navbar';
 import Notif from '@/components/Notif';
 import EditModal from '@/components/EditModal';
 import ExportModal from '@/components/ExportModal';
-import LeaderboardPage from '@/pages/LeaderboardPage';
+import LeaderboardPage from '@/views/LeaderboardPage';
 import { INIT_CRITERIA, INIT_TEAMS } from '@/data';
 import { calcScore } from '@/utils/scoreUtils';
 

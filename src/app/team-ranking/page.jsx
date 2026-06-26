@@ -1,6 +1,6 @@
 'use client';
 import { Navbar } from '@/components/Navbar';
-import TeamRankingPage from '@/pages/TeamRankingPage';
+import TeamRankingPage from '@/views/TeamRankingPage';
 import { INIT_CRITERIA, INIT_TEAMS, MY_TEAM_ID } from '@/data';
 
 export default function TeamRankingRoute() {

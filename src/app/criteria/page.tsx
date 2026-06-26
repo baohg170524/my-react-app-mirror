@@ -3,7 +3,7 @@
 import { useCallback, useState } from 'react';
 import { Navbar } from '@/components/Navbar';
 import Notif from '@/components/Notif';
-import TemplatePage from '@/pages/TemplatePage';
+import TemplatePage from '@/views/TemplatePage';
 import { Footer } from '@/components/Footer';
 
 type NotificationState = {

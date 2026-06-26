@@ -125,7 +125,7 @@ export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
               ? "Xem chi tiết"
               : isJoining
                 ? "Đang xử lý…"
-                : event.status === "ended"
+                : event.status === "closed"
                   ? "Đã kết thúc"
                   : "Xem chi tiết"}
           </button>
