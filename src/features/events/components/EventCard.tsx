@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { useUserRole } from "@/hooks/useUserRole";
 import { manageApi } from "../api/manage";
 import type { Event } from "../types/event.types";
 
@@ -42,7 +43,6 @@ export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
   const isLoggedIn = typeof window !== "undefined" && !!localStorage.getItem("accessToken");
   // Only disable the join action/button for logged in non-admins when closed or joining
   const joinDisabled = !isAdmin && isLoggedIn && (!isOpen || isJoining);
-  const meta = STATUS_META[event.status];
   const teamCount = useEventTeamCount(event.id);
 
   return (
