@@ -145,4 +145,8 @@ export const eventsApi = {
   /** POST /api/Events — requires an authenticated (admin) Bearer token. */
   create: (payload: CreateEventPayload): Promise<CreateEventResponse> =>
     apiClient.post<CreateEventResponse>("/Events", payload).then((r) => r.data),
+
+  /** DELETE /api/Events/{id} — deletes an event. */
+  remove: (id: string): Promise<void> =>
+    apiClient.delete(`/Events/${encodeURIComponent(id)}`).then(() => undefined),
 };

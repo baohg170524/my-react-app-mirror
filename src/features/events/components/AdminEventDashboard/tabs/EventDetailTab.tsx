@@ -1,7 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import { useEvent, useEventRoles } from '@/features/events/hooks/useEvents';
+import { eventsApi } from '@/features/events/api/events';
 import { Card } from '../../EventDashboard/Card';
 import { Button } from '../../EventDashboard/Button';
 import { CardSkeleton } from '../../EventDashboard/SkeletonLoaders';
@@ -17,6 +20,22 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
   const { data: event, isLoading, error } = useEvent(eventId);
   const { data: roles = [] } = useEventRoles(eventId);
   const [isEditing, setIsEditing] = useState(false);
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  const deleteMutation = useMutation({
+    mutationFn: () => eventsApi.remove(eventId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+      router.push('/');
+    },
+  });
+
+  const handleDelete = () => {
+    if (window.confirm("Bạn có chắc chắn muốn xóa sự kiện này không? Hành động này không thể hoàn tác.")) {
+      deleteMutation.mutate();
+    }
+  };
 
   const teamCount = new Set(roles.map((r) => r.teamId).filter(Boolean)).size;
 
@@ -98,9 +117,18 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
 
       <EventStructureView eventId={eventId} />
 
-      <div className="pt-2">
+      <div className="pt-2 flex gap-3">
         <Button variant="secondary" size="md" onClick={() => setIsEditing(true)}>
           Chỉnh sửa sự kiện
+        </Button>
+        <Button
+          variant="outline"
+          size="md"
+          onClick={handleDelete}
+          isLoading={deleteMutation.isPending}
+          className="border-error text-error hover:bg-error/10"
+        >
+          Xóa sự kiện
         </Button>
       </div>
     </div>
