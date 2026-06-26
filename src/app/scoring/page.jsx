@@ -58,54 +58,87 @@ function ScoringInner() {
 
     let cancelled = false;
 
-    const load = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+    // const load = async () => {
 
-        // 1. Lấy eventRole của judge → eventRoleId + trackId
-        const role = await eventRolesApi.getUserRole(currentUser.id, eventId);
-        if (cancelled) return;
+    //   try {
+    //     setLoading(true);
+    //     setError(null);
 
-        if (!role.trackId) throw new Error('Bạn chưa được phân công track trong sự kiện này');
-        setEventRoleId(role.id);
+    //     // 1. Lấy eventRole của judge → eventRoleId + trackId
+    //     const role = await eventRolesApi.getUserRole(currentUser.id, eventId);
+    //       if (cancelled) return;
 
-        // 2. Lấy track → templateId
-        const track = await tracksApi.getById(role.trackId);
-        if (cancelled) return;
+    //       if (!role) throw new Error('Bạn chưa được phân công vai trò trong sự kiện này');
+    //       if (!role.trackId) throw new Error('Bạn chưa được phân công track trong sự kiện này');
+    //     setEventRoleId(role.id);
 
-        if (!track.templateId) throw new Error('Track chưa được gắn bộ tiêu chí');
+    //     // 2. Lấy track → templateId
+    //     const track = await tracksApi.getById(role.trackId);
+    //     if (cancelled) return;
 
-        // 3. Lấy template → criterias[]
-        const template = await templatesApi.getById(track.templateId);
-        if (cancelled) return;
+    //     if (!track.templateId) throw new Error('Track chưa được gắn bộ tiêu chí');
 
-        const mappedCriteria = (template.criterias ?? []).map(c => ({
-          id:      c.criteriaId,
-          label:   c.criteriaName,
-          labelVi: c.criteriaName,
-          weight:  c.weight,
-          desc:    c.description ?? '',
-          levels:  [],
-        }));
-        setCriteria(mappedCriteria);
+    //     // 3. Lấy template → criterias[]
+    //     const template = await templatesApi.getById(track.templateId);
+    //     if (cancelled) return;
 
-        // 4. Lấy danh sách bài nộp của track
-        const submissions = await submitResultsApi.list({ trackId: role.trackId });
-        if (cancelled) return;
+    //     const mappedCriteria = (template.criterias ?? []).map(c => ({
+    //       id:      c.criteriaId,
+    //       label:   c.criteriaName,
+    //       labelVi: c.criteriaName,
+    //       weight:  c.weight,
+    //       desc:    c.description ?? '',
+    //       levels:  [],
+    //     }));
+    //     setCriteria(mappedCriteria);
 
-        setTeams(submissions.map(s => ({
-          id:       s.id,
-          name:     s.teamName,
-          scores:   Array(mappedCriteria.length).fill(0),
-          comments: Array(mappedCriteria.length).fill(''),
-        })));
-      } catch (e) {
-        if (!cancelled) setError(e?.message ?? 'Không thể tải dữ liệu chấm điểm');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
+    //     // 4. Lấy danh sách bài nộp của track
+    //     const submissions = await submitResultsApi.list({ trackId: role.trackId });
+    //     if (cancelled) return;
+
+    //     setTeams(submissions.map(s => ({
+    //       id:       s.id,
+    //       name:     s.teamName,
+    //       scores:   Array(mappedCriteria.length).fill(0),
+    //       comments: Array(mappedCriteria.length).fill(''),
+    //     })));
+    //   } catch (e) {
+    //     if (!cancelled) setError(e?.message ?? 'Không thể tải dữ liệu chấm điểm');
+    //   } finally {
+    //     if (!cancelled) setLoading(false);
+    //   }
+    // };
+
+
+    // thay đổi khi có API thật trackId
+const load = async () => {
+  try {
+    setLoading(true);
+    setError(null);
+
+    // ── MOCK DATA ── xóa khi có API thật ──────────────────────
+    const mockCriteria = [
+      { id: 'c1', label: 'Tính sáng tạo',        weight: 30, desc: '' },
+      { id: 'c2', label: 'Kỹ năng trình bày',     weight: 30, desc: '' },
+      { id: 'c3', label: 'Tính khả thi',           weight: 20, desc: '' },
+      { id: 'c4', label: 'Tác động thực tế',       weight: 20, desc: '' },
+    ];
+    const mockTeams = [
+      { id: 's1', name: 'Team Alpha', scores: [0,0,0,0], comments: ['','','',''] },
+      { id: 's2', name: 'Team Beta',  scores: [0,0,0,0], comments: ['','','',''] },
+      { id: 's3', name: 'Team Gamma', scores: [0,0,0,0], comments: ['','','',''] },
+    ];
+    setCriteria(mockCriteria);
+    setTeams(mockTeams);
+    setEventRoleId('mock-role-id');
+    // ── END MOCK ───────────────────────────────────────────────
+
+  } catch (e) {
+    if (!cancelled) setError(e?.message ?? 'Không thể tải dữ liệu chấm điểm');
+  } finally {
+    if (!cancelled) setLoading(false);
+  }
+};
 
     load();
     return () => { cancelled = true; };

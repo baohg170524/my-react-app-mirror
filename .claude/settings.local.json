@@ -8,7 +8,9 @@
       "Bash(cat src/services/api/client.ts)",
       "Bash(cat src/services/api/client.js)",
       "Bash(ls -la .env*)",
-      "Bash(cat .env)"
+      "Bash(cat .env)",
+      "Bash(npx next *)",
+      "Bash(grep \"app/auth/page\\\\|auth\\\\\\\\\\\\\\\\page\")"
     ]
   }
 }

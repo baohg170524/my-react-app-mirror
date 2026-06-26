@@ -25,5 +25,6 @@ export type {
   RefreshTokenResponse,
   RegisterRequest,
   SchoolModel,
+  UpdateStudentProfileCommand,
   UserProfile,
 } from "./types";

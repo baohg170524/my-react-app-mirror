@@ -108,6 +108,16 @@ export interface SchoolModel {
   address: string | null;
 }
 
+// ─── Student profile update ───────────────────────────────────────────────────
+
+export interface UpdateStudentProfileCommand {
+  schoolId: string | null;
+  studentCode: string;
+  photoStudentCardUrl: string | null;
+  isFpt: boolean;
+  fullName: string;
+}
+
 // ─── API Error ────────────────────────────────────────────────────────────────
 
 export interface ApiError {

@@ -3,8 +3,9 @@
 import { Suspense, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import type { AxiosError } from "axios";
-import { useVerifyEmail, useResendVerification } from "@/hooks/useAuth";
+import { authApi } from "@/services/api";
 import type { ApiError } from "@/services/api";
 
 // ─── Status view ──────────────────────────────────────────────────────────────
@@ -103,7 +104,10 @@ function StatusIcon({ icon }: { icon: View["icon"] }) {
 
 function ResendForm() {
   const [email, setEmail] = useState("");
-  const resend = useResendVerification();
+
+  const resend = useMutation({
+    mutationFn: (email: string) => authApi.resendVerification(email),
+  });
 
   const serverError = (resend.error as AxiosError<ApiError>)?.response?.data
     ?.message;
@@ -146,16 +150,30 @@ function ResendForm() {
 
 // ─── Inner (reads the URL token) ──────────────────────────────────────────────
 
+/** Map a query error to a status — 4xx means the token is invalid/expired,
+ *  anything else is a server-side problem. */
+function statusFromError(err: unknown): Status {
+  const code = (err as AxiosError)?.response?.status;
+  return code !== undefined && code >= 400 && code < 500 ? "invalid" : "error";
+}
+
 function VerifyEmailInner() {
-  const token = useSearchParams().get("token");
-  const query = useVerifyEmail(token);
+  const token = useSearchParams()?.get("token") ?? null;
+
+  const query = useQuery({
+    queryKey: ["auth", "verify-email", token],
+    queryFn: () => authApi.verifyEmail(token as string),
+    enabled: !!token,
+    retry: false,
+    staleTime: Infinity,
+  });
 
   const status: Status = !token
     ? "missing"
     : query.isLoading
       ? "loading"
       : query.isError
-        ? "error"
+        ? statusFromError(query.error)
         : query.data === true
           ? "success"
           : "invalid";
