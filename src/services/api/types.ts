@@ -25,11 +25,16 @@ export interface LoginRequest {
   password: string;
 }
 
-/** Matches backend RegisterUserRequestModel (email + password + full name only). */
+/** Matches backend RegisterUserRequestModel. */
 export interface RegisterRequest {
+  schoolId: string;
+  studentCode?: string;
   email: string;
   password: string;
   fullName: string;
+  isStudent: boolean;
+  /** Derived from the selected school name (contains "FPT"). */
+  isFpt: boolean;
 }
 
 /** Matches backend LoginUserResponseModel (flat shape). */
@@ -103,18 +108,14 @@ export interface SchoolModel {
   address: string | null;
 }
 
-/** Matches backend CreateSchoolRequestModel. */
-export interface CreateSchoolRequest {
-  schoolName: string;
-  address?: string | null;
-}
+// ─── Student profile update ───────────────────────────────────────────────────
 
-/** Matches backend CreateSchoolResponseModel. */
-export interface CreateSchoolResponse {
-  id: string;
-  schoolName: string;
-  address: string | null;
-  createdTime: string;
+export interface UpdateStudentProfileCommand {
+  schoolId: string | null;
+  studentCode: string;
+  photoStudentCardUrl: string | null;
+  isFpt: boolean;
+  fullName: string;
 }
 
 // ─── API Error ────────────────────────────────────────────────────────────────

@@ -26,14 +26,11 @@ export function EventSection() {
   // Admins don't have a "Của tôi" list — always show all events.
   const effectiveFilter: Filter = isAdmin || !isLoggedIn ? "all" : filter;
 
+  const myQuery = useMyEvents(profile?.id);
   const allQuery = useAllEvents(isAdmin);
-  const myQuery  = useMyEvents();
 
   const active = effectiveFilter === "all" ? allQuery : myQuery;
-  // Hidden events are admin-only; everyone else only sees open/ended ones.
-  const events = (active.data ?? []).filter(
-    (e) => isAdmin || e.status !== "hidden",
-  );
+  const events = active.data ?? [];
   const isLoading = active.isLoading;
 
   const joinMutation = useJoinEvent();

@@ -1,12 +1,11 @@
 import { mockEvents, mockDataStore, getUserTeamFromStore, createTeamInStore, addSubmissionToStore } from './mockData';
-import type { EventStatus } from '../types/event.types';
 
 export interface Event {
   id: string;
   title: string;
   startDate: string; // ISO 8601
   endDate: string;
-  status: EventStatus;
+  status: 'open' | 'closed';
   submissionType: 'ZIP' | 'URL' | 'Both';
   description: string;
 }
@@ -44,12 +43,6 @@ export const eventService = {
   getAllEvents: async (): Promise<Event[]> => {
     await delay(300);
     return mockEvents;
-  },
-
-  // Get user's joined events
-  getMyEvents: async (): Promise<Event[]> => {
-    await delay(300);
-    return mockEvents.filter(e => e.status === 'open');
   },
 
   // Join an event

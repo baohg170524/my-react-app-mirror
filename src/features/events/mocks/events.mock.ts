@@ -23,7 +23,7 @@ export const MOCK_EVENTS: Event[] = [
     startDate: "2026-06-18T10:00:00.000Z",
     endDate: "2026-06-18T14:00:00.000Z",
     description: "Essential Agile and Scrum practices designed for student teams and projects.",
-    status: "ended",
+    status: "closed",
   },
   {
     id: "evt-004",

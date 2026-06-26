@@ -67,8 +67,6 @@ export const isJudgeRole = (r: EventRole) =>
   (r.roleName ?? "").toLowerCase() === "judge";
 export const isMentorRole = (r: EventRole) =>
   (r.roleName ?? "").toLowerCase() === "mentor";
-export const isEventCoordinatorRole = (r: EventRole) =>
-  (r.roleName ?? "").toLowerCase() === "eventcoordinator";
 
 // ─── API ───────────────────────────────────────────────────────────────────────
 // All require an authenticated (admin) Bearer token — attached by apiClient.
@@ -79,6 +77,16 @@ export const manageApi = {
     const { data } = await apiClient.get<PagedResult<EventRole>>(
       "/EventRoles/event",
       { params: { EventId: eventId, PageNumber: 1, PageSize: 200 } },
+    );
+    return data.data ?? [];
+  },
+
+  /** GET /api/EventRoles/user — every role the user holds across all events.
+   *  Mirrors the `/EventRoles/event` query-param convention used above. */
+  listUserEventRoles: async (userId: string): Promise<EventRole[]> => {
+    const { data } = await apiClient.get<PagedResult<EventRole>>(
+      "/EventRoles/user",
+      { params: { UserId: userId, PageNumber: 1, PageSize: 200 } },
     );
     return data.data ?? [];
   },
@@ -130,13 +138,13 @@ export const manageApi = {
     apiClient.delete(`/EventRoles/${encodeURIComponent(id)}`).then(() => undefined),
 };
 
-/** EventRoleType enum values (0–4) — authoritative, from GET /api/EventRoles/types. */
+/** EventRoleType enum values (0–4). */
 export const EVENT_ROLE = {
-  EventCoordinator: 0,
-  Judge: 1,
-  Mentor: 2,
-  TeamLeader: 3,
-  TeamMember: 4,
+  Admin: 0,
+  EventCoordinator: 1,
+  Judge: 2,
+  Mentor: 3,
+  Participant: 4,
 } as const;
 
 export interface AssignRolePayload {
@@ -144,7 +152,7 @@ export interface AssignRolePayload {
   eventId: string;
   /** Omit/null to assign at event level (e.g. a judge not yet tied to a team). */
   teamId?: string | null;
-  /** EventRoleType enum value (e.g. EVENT_ROLE.Judge = 1). */
+  /** EventRoleType enum value (e.g. EVENT_ROLE.Judge = 2). */
   roleName: number;
   trackId?: string | null;
 }
