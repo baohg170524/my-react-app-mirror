@@ -351,17 +351,57 @@ function RoundCard({
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-md)" }}>
         <TextField
-          label="Bắt đầu"
+          label="Mở cổng nộp bài"
           type="datetime-local"
           value={round.startDate}
           onChange={(v) => onChange("startDate", v)}
         />
-        <TextField
-          label="Kết thúc"
-          type="datetime-local"
-          value={round.endDate}
-          onChange={(v) => onChange("endDate", v)}
-        />
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <TextField
+            label="Hạn chót nộp bài (Deadline)"
+            type="datetime-local"
+            value={round.endDate}
+            onChange={(v) => onChange("endDate", v)}
+          />
+          {round.startDate && (
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <span className="t-caption-xs" style={{ color: "var(--color-mute)" }}>Đặt nhanh:</span>
+              {[2, 24, 48, 72].map((hours) => (
+                <button
+                  key={hours}
+                  type="button"
+                  onClick={() => {
+                    const date = new Date(round.startDate);
+                    date.setHours(date.getHours() + hours);
+                    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+                    onChange("endDate", local.toISOString().slice(0, 16));
+                  }}
+                  style={{
+                    padding: "3px 8px",
+                    background: "var(--color-canvas)",
+                    border: "1px solid var(--color-hairline)",
+                    borderRadius: 2,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "var(--color-mute)",
+                    cursor: "pointer",
+                    transition: "all 100ms ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "var(--color-primary)";
+                    e.currentTarget.style.color = "var(--color-primary)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = "var(--color-hairline)";
+                    e.currentTarget.style.color = "var(--color-mute)";
+                  }}
+                >
+                  +{hours}h
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
       <TextField
         label="Quy tắc lên vòng (advancement rule)"
@@ -607,21 +647,38 @@ function EventFormBody({
     | "endDate"
     | "description";
   const setField = (key: EventStringKey, value: string) =>
-    setForm((f) => ({ ...f, [key]: value }));
+    setForm((f) => {
+      const updated = { ...f, [key]: value };
+      // When event start date is updated, automatically populate Round 1 start date
+      if (key === "startDate" && updated.rounds[0]) {
+        updated.rounds[0] = { ...updated.rounds[0], startDate: value };
+      }
+      return updated;
+    });
 
   const setStatus = (status: boolean) => setForm((f) => ({ ...f, status }));
 
   // ── round operations ──
-  const addRound = () => setForm((f) => ({ ...f, rounds: [...f.rounds, emptyRound()] }));
+  const addRound = () =>
+    setForm((f) => {
+      const lastRound = f.rounds[f.rounds.length - 1];
+      const nextStartDate = lastRound ? lastRound.endDate : f.startDate;
+      const newR = { ...emptyRound(), startDate: nextStartDate };
+      return { ...f, rounds: [...f.rounds, newR] };
+    });
 
   const removeRound = (ri: number) =>
     setForm((f) => ({ ...f, rounds: f.rounds.filter((_, i) => i !== ri) }));
 
   const updateRound = (ri: number, key: keyof Omit<RoundForm, "tracks">, value: string) =>
-    setForm((f) => ({
-      ...f,
-      rounds: f.rounds.map((r, i) => (i === ri ? { ...r, [key]: value } : r)),
-    }));
+    setForm((f) => {
+      const updatedRounds = f.rounds.map((r, i) => (i === ri ? { ...r, [key]: value } : r));
+      // When round end date is updated, automatically set next round's start date
+      if (key === "endDate" && updatedRounds[ri + 1]) {
+        updatedRounds[ri + 1] = { ...updatedRounds[ri + 1], startDate: value };
+      }
+      return { ...f, rounds: updatedRounds };
+    });
 
   // ── track operations ──
   const addTrack = (ri: number) =>
