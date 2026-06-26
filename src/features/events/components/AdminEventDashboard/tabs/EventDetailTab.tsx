@@ -23,21 +23,37 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
 
+  const teamCount = new Set(roles.map((r) => r.teamId).filter(Boolean)).size;
+
   const deleteMutation = useMutation({
     mutationFn: () => eventsApi.remove(eventId),
     onSuccess: () => {
+      alert("Xóa sự kiện thành công!");
       queryClient.invalidateQueries({ queryKey: ['events'] });
       router.push('/');
     },
+    onError: (error: any) => {
+      const responseMessage = error?.response?.data?.message || error?.message;
+      alert(`Không thể xóa sự kiện: ${responseMessage || "Đã xảy ra lỗi không xác định."}`);
+    }
   });
 
   const handleDelete = () => {
+    if (!event) return;
+
+    if (event.status === 'open') {
+      alert("Sự kiện đang ở trạng thái công khai. Vui lòng chỉnh sửa và chuyển sự kiện về trạng thái Ẩn trước khi xóa.");
+      return;
+    }
+    if (teamCount > 0) {
+      alert("Không thể xóa sự kiện đã có đội thi đăng ký để bảo vệ thông tin đăng ký của sinh viên.");
+      return;
+    }
+
     if (window.confirm("Bạn có chắc chắn muốn xóa sự kiện này không? Hành động này không thể hoàn tác.")) {
       deleteMutation.mutate();
     }
   };
-
-  const teamCount = new Set(roles.map((r) => r.teamId).filter(Boolean)).size;
 
   if (error) {
     return (
