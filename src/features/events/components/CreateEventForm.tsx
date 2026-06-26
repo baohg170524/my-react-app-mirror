@@ -292,6 +292,21 @@ function TrackCard({
 
 // ─── Round editor ─────────────────────────────────────────────────────────────
 
+function parseAdvancementRule(rule: string) {
+  const trimmed = (rule || "").trim();
+  if (trimmed.startsWith('top:')) {
+    return { type: 'top', value: trimmed.replace('top:', '') };
+  }
+  if (trimmed.toLowerCase().startsWith('percent:')) {
+    return { type: 'percent', value: trimmed.replace(/percent:/i, '') };
+  }
+  if (trimmed.toLowerCase().startsWith('minscore:')) {
+    return { type: 'minScore', value: trimmed.replace(/minscore:/i, '') };
+  }
+  // Mặc định là top nếu rỗng hoặc không khớp
+  return { type: 'top', value: '' };
+}
+
 function RoundCard({
   round,
   index,
@@ -315,6 +330,21 @@ function RoundCard({
   onAddTrack: () => void;
   onRemoveTrack: (trackIndex: number) => void;
 }) {
+  const { type, value } = parseAdvancementRule(round.advancementRule);
+
+  const handleRuleTypeChange = (newType: string) => {
+    const defaultValue = newType === 'minScore' ? '7.5' : newType === 'percent' ? '50' : '10';
+    onChange('advancementRule', `${newType}:${defaultValue}`);
+  };
+
+  const handleRuleValueChange = (newValue: string) => {
+    if (type === 'manual') {
+      onChange('advancementRule', newValue);
+    } else {
+      onChange('advancementRule', `${type}:${newValue}`);
+    }
+  };
+
   return (
     <div
       style={{
@@ -341,15 +371,7 @@ function RoundCard({
         )}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "var(--space-md)" }}>
-        <TextField label="Tên vòng" value={round.roundName} onChange={(v) => onChange("roundName", v)} />
-        <TextField
-          label="Số thứ tự vòng"
-          type="number"
-          value={round.roundNumber}
-          onChange={(v) => onChange("roundNumber", v)}
-        />
-      </div>
+      <TextField label="Tên vòng" value={round.roundName} onChange={(v) => onChange("roundName", v)} />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-md)" }}>
         <TextField
           label="Mở cổng nộp bài"
@@ -404,11 +426,43 @@ function RoundCard({
           )}
         </div>
       </div>
-      <TextField
-        label="Quy tắc lên vòng (advancement rule)"
-        value={round.advancementRule}
-        onChange={(v) => onChange("advancementRule", v)}
-      />
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <span className="t-caption-xs" style={{ color: "var(--color-mute)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+          Quy tắc thăng vòng (Advancement Rule)
+        </span>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-md)" }}>
+          <select
+            className="text-input"
+            value={type}
+            onChange={(e) => handleRuleTypeChange(e.target.value)}
+            style={{ cursor: "pointer" }}
+          >
+            <option value="top">🏆 Lấy Top số lượng đội (top:N)</option>
+            <option value="percent">📈 Lấy theo phần trăm (percent:P)</option>
+            <option value="minScore">🎯 Điểm số tối thiểu (minScore:X)</option>
+          </select>
+
+          <input
+            className="text-input"
+            type="number"
+            step={type === 'minScore' ? '0.1' : '1'}
+            min="0"
+            max={type === 'percent' ? '100' : type === 'minScore' ? '10' : undefined}
+            value={value}
+            onChange={(e) => handleRuleValueChange(e.target.value)}
+            placeholder={
+              type === 'top' ? "Nhập số lượng đội (VD: 10)" :
+                type === 'percent' ? "Nhập phần trăm % (VD: 50)" :
+                  "Nhập điểm tối thiểu (VD: 7.5)"
+            }
+          />
+        </div>
+        <Hint>
+          <div style={{ fontSize: 11, lineHeight: "1.4em", marginTop: 2 }}>
+            💡 Cú pháp được cấu hình tự động: <code style={{ background: "var(--color-surface-elevated)", padding: "1px 4px", borderRadius: 2, fontWeight: 700, color: "var(--color-primary)" }}>{round.advancementRule || "(Để trống)"}</code>
+          </div>
+        </Hint>
+      </div>
 
       {/* Tracks */}
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-md)" }}>
@@ -594,11 +648,12 @@ function EventFormBody({
         status: form.status,
       });
 
-      for (const r of form.rounds) {
+      for (let ri = 0; ri < form.rounds.length; ri++) {
+        const r = form.rounds[ri];
         const roundPayload = {
           eventId: id,
           roundName: r.roundName.trim(),
-          roundNumber: Number(r.roundNumber) || 0,
+          roundNumber: ri + 1,
           startDate: toIso(r.startDate),
           endDate: toIso(r.endDate),
           advancementRule: r.advancementRule.trim(),
@@ -665,7 +720,7 @@ function EventFormBody({
           if (year && !Number.isNaN(year)) {
             updated.year = String(year);
           }
-          
+
           // Auto-derive FPT University Academic Season based on user requirements:
           // Spring: Jan to Apr (0 to 3)
           // Summer: May to Aug (4 to 7)
@@ -749,9 +804,9 @@ function EventFormBody({
       endDate: toIso(form.endDate),
       description: form.description.trim(),
       status: form.status,
-      rounds: form.rounds.map((r) => ({
+      rounds: form.rounds.map((r, ri) => ({
         roundName: r.roundName.trim(),
-        roundNumber: Number(r.roundNumber) || 0,
+        roundNumber: ri + 1,
         startDate: toIso(r.startDate),
         endDate: toIso(r.endDate),
         advancementRule: r.advancementRule.trim(),
@@ -790,10 +845,32 @@ function EventFormBody({
     for (let i = 0; i < form.rounds.length; i++) {
       const r = form.rounds[i];
       if (!r.roundName.trim()) return `Vòng ${i + 1}: vui lòng nhập tên vòng.`;
-      if ((Number(r.roundNumber) || 0) <= 0)
-        return `Vòng ${i + 1}: số thứ tự vòng phải lớn hơn 0.`;
       if (!r.startDate || !r.endDate)
         return `Vòng ${i + 1}: vui lòng chọn ngày bắt đầu và kết thúc.`;
+
+      // Validate Quy tắc thăng vòng (Advancement Rule)
+      const ruleStr = (r.advancementRule || "").trim();
+      if (!ruleStr) {
+        return `Vòng ${i + 1}: vui lòng cấu hình quy tắc thăng vòng.`;
+      }
+      if (ruleStr.startsWith('top:')) {
+        const val = Number(ruleStr.replace('top:', ''));
+        if (Number.isNaN(val) || val <= 0 || !Number.isInteger(val)) {
+          return `Vòng ${i + 1}: số lượng đội thi lấy top phải là một số nguyên lớn hơn 0.`;
+        }
+      } else if (ruleStr.toLowerCase().startsWith('percent:')) {
+        const val = Number(ruleStr.replace(/percent:/i, ''));
+        if (Number.isNaN(val) || val < 0 || val > 100) {
+          return `Vòng ${i + 1}: tỷ lệ phần trăm đội thi lấy tiếp phải nằm trong khoảng từ 0% đến 100%.`;
+        }
+      } else if (ruleStr.toLowerCase().startsWith('minscore:')) {
+        const val = Number(ruleStr.replace(/minscore:/i, ''));
+        if (Number.isNaN(val) || val < 0 || val > 10) {
+          return `Vòng ${i + 1}: điểm số tối thiểu để thăng vòng phải nằm trong khoảng từ 0 đến 10.`;
+        }
+      } else {
+        return `Vòng ${i + 1}: quy tắc thăng vòng không hợp lệ. Vui lòng chọn và cấu hình lại.`;
+      }
 
       const roundStart = new Date(r.startDate).getTime();
       const roundEnd = new Date(r.endDate).getTime();
@@ -883,8 +960,8 @@ function EventFormBody({
             }}>
               {form.season ? (
                 form.season === "Spring" ? "🌸 Kỳ Spring (Mùa Xuân)" :
-                form.season === "Summer" ? "☀️ Kỳ Summer (Mùa Hè)" :
-                "🍂 Kỳ Fall (Mùa Thu)"
+                  form.season === "Summer" ? "☀️ Kỳ Summer (Mùa Hè)" :
+                    "🍂 Kỳ Fall (Mùa Thu)"
               ) : (
                 "Chờ ngày bắt đầu..."
               )}
@@ -893,7 +970,7 @@ function EventFormBody({
 
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <span className="t-caption-xs" style={{ color: "var(--color-primary)", fontWeight: 700, letterSpacing: "0.05em" }}>
-              NĂM HỌC
+              NĂM
             </span>
             <div style={{
               padding: "10px 14px",
