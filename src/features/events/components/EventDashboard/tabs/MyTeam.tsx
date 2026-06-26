@@ -19,26 +19,32 @@ export function MyTeamTab({ eventId, userId }: Props) {
 
   return (
     <section className="p-6 max-w-2xl mx-auto space-y-6">
-      <header>
-        <h2 className="t-heading-md">{team.teamName}</h2>
-        {team.description ? <p className="t-body-sm text-mute mt-1">{team.description}</p> : null}
-      </header>
+      <div className="border border-hairline rounded-sm bg-canvas p-4 md:p-6 space-y-4">
+        <header>
+          <h2 className="t-heading-md">{team.teamName}</h2>
+          {team.description ? <p className="t-body-sm text-mute mt-1">{team.description}</p> : null}
+        </header>
 
-      <div>
-        <h3 className="t-body-md font-bold mb-2">Thành viên</h3>
-        <ul className="divide-y divide-hairline">
-          {team.members.map((m) => (
-            <li key={m.userId} className="py-2 flex justify-between">
-              <span>{m.fullName} <span className="text-mute t-body-sm">({m.email})</span></span>
-              <span className="text-xs font-bold">{m.roleName === 3 ? 'Leader' : 'Member'}</span>
-            </li>
-          ))}
-        </ul>
+        <div>
+          <h3 className="t-body-md font-bold mb-2">Thành viên</h3>
+          <ul className="divide-y divide-hairline">
+            {team.members.length === 0 ? (
+              <li className="py-2 t-body-sm text-mute">Chưa có thành viên.</li>
+            ) : (
+              team.members.map((m) => (
+                <li key={m.userId} className="py-2 flex justify-between">
+                  <span>{m.fullName} <span className="text-mute t-body-sm">({m.email})</span></span>
+                  <span className="text-xs font-bold">{m.isLeader ? 'Trưởng nhóm' : 'Thành viên'}</span>
+                </li>
+              ))
+            )}
+          </ul>
+        </div>
       </div>
 
       <form
         onSubmit={(e) => { e.preventDefault(); invite.mutate({ email }, { onSuccess: () => setEmail('') }); }}
-        className="space-y-2"
+        className="space-y-2 border border-hairline rounded-sm bg-canvas p-4 md:p-6"
       >
         <h3 className="t-body-md font-bold">Mời thành viên</h3>
         <div className="flex gap-2">

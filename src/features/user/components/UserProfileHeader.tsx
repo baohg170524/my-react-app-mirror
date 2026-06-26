@@ -46,11 +46,11 @@ function SkeletonPulse({ w, h }: { w: string; h: number }) {
   );
 }
 
-// Account-level role only distinguishes Admin vs regular User. The other roles
-// (judge, mentor, event coordinator, participant) are per-event and only show
-// up inside a specific event's dashboard, not here on the home profile.
-const accountRoleLabel = (role: string): string =>
-  role === "ADMIN" ? "Quản trị viên" : "Người tham gia";
+/** The home header only distinguishes admin vs. regular user; detailed roles
+ *  (student / mentor / judge) only matter inside an event. */
+function homeRoleLabel(role: string): string {
+  return role === "ADMIN" ? "admin" : "user";
+}
 
 export function UserProfileHeader() {
   const { data: profile, isLoading, error } = useUserProfile();
@@ -130,10 +130,10 @@ export function UserProfileHeader() {
                 </h1>
                 <span
                   className="badge-tag"
-                  aria-label={accountRoleLabel(profile.role)}
+                  aria-label={profile.role}
                   style={{ marginTop: 6, display: "inline-block", background: "rgba(118,185,0,0.15)", color: "var(--color-primary)", border: "1px solid var(--color-primary)" }}
                 >
-                  {accountRoleLabel(profile.role)}
+                  {homeRoleLabel(profile.role)}
                 </span>
               </>
             ) : null}

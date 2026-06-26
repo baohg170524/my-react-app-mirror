@@ -8,7 +8,8 @@ import {
 } from "react";
 import { useLogin, useRegister } from "@/hooks/useAuth";
 import type { AxiosError } from "axios";
-import type { ApiError } from "@/services/api";
+import { schoolsApi } from "@/services/api";
+import type { ApiError, SchoolModel } from "@/services/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -17,7 +18,7 @@ type Mode = "login" | "register";
 interface LoginForm {
   email: string;
   password: string;
-}
+} 
 
 interface RegisterForm {
   fullName: string;
@@ -143,36 +144,43 @@ export default function AuthPage() {
     setClientError("");
     setSuccessMessage("");
 
-    if (!registerForm.fullName.trim()) {
+    const fullName = registerForm.fullName.trim();
+    if (!fullName) {
       setClientError("Vui lòng nhập họ và tên.");
       return;
     }
-    if (!registerForm.email.trim()) {
+    const email = registerForm.email.trim();
+    if (!email) {
       setClientError("Vui lòng nhập email.");
       return;
     }
-    if (registerForm.password.length < 8) {
-      setClientError("Mật khẩu phải có ít nhất 8 ký tự.");
+    if (!registerForm.password) {
+      setClientError("Vui lòng nhập mật khẩu.");
       return;
     }
 
     registerMutation.mutate(
       {
-        email: registerForm.email.trim(),
+        email,
         password: registerForm.password,
-        fullName: registerForm.fullName.trim(),
+        fullName,
       },
       {
         onSuccess: () => {
-          // Backend returns the user but no tokens — prompt user to log in.
+          // Backend returns the user but no tokens and sends a verification
+          // email — prompt the user to confirm via the link before logging in.
           setSuccessMessage(
-            "Đăng ký thành công. Vui lòng đăng nhập để tiếp tục.",
+            "Đăng ký thành công. Vui lòng kiểm tra email để xác nhận tài khoản trước khi đăng nhập.",
           );
           setLoginForm({
-            email: registerForm.email.trim(),
+            email,
             password: "",
           });
-          setRegisterForm({ fullName: "", email: "", password: "" });
+          setRegisterForm({
+            fullName: "",
+            email: "",
+            password: "",
+          });
           setMode("login");
         },
       },
@@ -744,7 +752,7 @@ export default function AuthPage() {
                   onChange={(e) =>
                     setRegisterForm((f) => ({ ...f, fullName: e.target.value }))
                   }
-                  placeholder="Nguyễn Văn A"
+                  placeholder="Họ và tên"
                   autoComplete="name"
                 />
                 <Field
@@ -757,14 +765,16 @@ export default function AuthPage() {
                   placeholder="ten@email.com"
                   autoComplete="email"
                 />
-                
 
                 <Field
                   label="Mật khẩu"
                   type="password"
                   value={registerForm.password}
                   onChange={(e) =>
-                    setRegisterForm((f) => ({ ...f, password: e.target.value }))
+                    setRegisterForm((f) => ({
+                      ...f,
+                      password: e.target.value,
+                    }))
                   }
                   placeholder="Tối thiểu 8 ký tự"
                   autoComplete="new-password"
@@ -775,7 +785,9 @@ export default function AuthPage() {
                   className="auth-submit"
                   disabled={isPending}
                 >
-                  {registerMutation.isPending ? "Đang đăng ký…" : "Tạo tài khoản"}
+                  {registerMutation.isPending
+                    ? "Đang đăng ký…"
+                    : "Tạo tài khoản"}
                 </button>
               </form>
             )}

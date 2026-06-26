@@ -26,13 +26,10 @@ export function EventSection() {
   const effectiveFilter: Filter = isAdmin ? "all" : filter;
 
   const allQuery = useAllEvents();
-  const myQuery  = useMyEvents();
+  const myQuery  = useMyEvents(profile?.id);
 
   const active = effectiveFilter === "all" ? allQuery : myQuery;
-  // Hidden events are admin-only; everyone else only sees open/ended ones.
-  const events = (active.data ?? []).filter(
-    (e) => isAdmin || e.status !== "hidden",
-  );
+  const events   = active.data ?? [];
   const isLoading = active.isLoading;
 
   const joinMutation = useJoinEvent();

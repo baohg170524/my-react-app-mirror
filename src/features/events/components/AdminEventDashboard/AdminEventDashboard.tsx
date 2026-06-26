@@ -7,7 +7,7 @@ import { useEvent } from '@/features/events/hooks/useEvents';
 import { AdminSidebar, AdminTab } from './AdminSidebar';
 import { EventDetailTab } from './tabs/EventDetailTab';
 import { TeamListTab } from './tabs/TeamListTab';
-import { RoleAssignmentTab } from './tabs/RoleAssignmentTab';
+import { JudgeListTab } from './tabs/JudgeListTab';
 import { LeaderboardTab } from './tabs/LeaderboardTab';
 
 interface AdminEventDashboardProps {
@@ -47,7 +47,7 @@ export function AdminEventDashboard({ eventId, role = 'Admin' }: AdminEventDashb
       case 'teams':
         return <TeamListTab eventId={eventId} />;
       case 'judges':
-        return <RoleAssignmentTab eventId={eventId} />;
+        return <JudgeListTab eventId={eventId} />;
       case 'leaderboard':
         return <LeaderboardTab eventId={eventId} />;
       default:
@@ -71,6 +71,9 @@ export function AdminEventDashboard({ eventId, role = 'Admin' }: AdminEventDashb
           <h1 className="t-heading-md text-ink m-0 truncate text-sm md:text-lg lg:text-xl">{event.title}</h1>
           <p className="t-body-sm text-mute m-0 hidden md:block text-xs md:text-body-sm">Quản lý sự kiện</p>
         </div>
+        <span className="inline-block bg-surface-soft text-ink px-2 md:px-3 py-1 rounded-sm text-caption-xs md:text-caption-sm font-bold uppercase whitespace-nowrap flex-shrink-0">
+          {role}
+        </span>
       </header>
 
       <main className="fixed top-24 md:top-20 left-0 right-0 bottom-0 overflow-hidden bg-canvas lg:left-60">

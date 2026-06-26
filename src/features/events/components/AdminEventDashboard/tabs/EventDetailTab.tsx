@@ -2,12 +2,13 @@
 
 import React, { useState } from 'react';
 import { useEvent, useEventRoles } from '@/features/events/hooks/useEvents';
+import { useUserRole } from '@/hooks/useUserRole';
+import { isJudgeRole, isMentorRole } from '@/features/events/api/manage';
 import { Card } from '../../EventDashboard/Card';
 import { Button } from '../../EventDashboard/Button';
 import { CardSkeleton } from '../../EventDashboard/SkeletonLoaders';
 import { CreateEventForm } from '../../CreateEventForm';
 import { EventStructureView } from '../EventStructureView';
-import { formatDate } from '@/lib/date';
 
 interface EventDetailTabProps {
   eventId: string;
@@ -17,8 +18,19 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
   const { data: event, isLoading, error } = useEvent(eventId);
   const { data: roles = [] } = useEventRoles(eventId);
   const [isEditing, setIsEditing] = useState(false);
+  // Every role sees the same event detail; only admins may edit it.
+  const canEdit = useUserRole() === 'admin';
 
   const teamCount = new Set(roles.map((r) => r.teamId).filter(Boolean)).size;
+  const judgeCount = new Set(
+    roles.filter(isJudgeRole).map((r) => r.userId).filter(Boolean),
+  ).size;
+  const mentorCount = new Set(
+    roles.filter(isMentorRole).map((r) => r.userId).filter(Boolean),
+  ).size;
+
+  const formatDate = (date: string) =>
+    new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
   if (error) {
     return (
@@ -41,7 +53,7 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
 
   if (!event) return <div className="t-body-md text-mute">Không tìm thấy sự kiện</div>;
 
-  if (isEditing) {
+  if (isEditing && canEdit) {
     return (
       <Card title="Chỉnh sửa sự kiện">
         <CreateEventForm eventId={eventId} onCancel={() => setIsEditing(false)} />
@@ -51,6 +63,8 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
 
   const stats = [
     { label: 'Tổng số đội', value: teamCount },
+    { label: 'Số judge', value: judgeCount },
+    { label: 'Số mentor', value: mentorCount },
   ];
 
   return (
@@ -74,7 +88,7 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
                 className={`inline-block px-3 py-1 rounded-sm t-caption-sm font-bold uppercase ${event.status === 'open' ? 'bg-primary text-on-primary' : 'bg-stone text-on-dark'
                   }`}
               >
-                {event.status === 'open' ? 'Đang diễn ra' : event.status === 'hidden' ? 'Ẩn' : 'Đã kết thúc'}
+                {event.status === 'open' ? 'Mở' : 'Đóng'}
               </span>
             </div>
           </div>
@@ -98,11 +112,13 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
 
       <EventStructureView eventId={eventId} />
 
-      <div className="pt-2">
-        <Button variant="secondary" size="md" onClick={() => setIsEditing(true)}>
-          Chỉnh sửa sự kiện
-        </Button>
-      </div>
+      {canEdit && (
+        <div className="pt-2">
+          <Button variant="secondary" size="md" onClick={() => setIsEditing(true)}>
+            Chỉnh sửa sự kiện
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

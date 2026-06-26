@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { manageApi } from "../api/manage";
-import { useUserRole } from "@/hooks/useUserRole";
-import { formatDate } from "@/lib/date";
 import type { Event } from "../types/event.types";
 
 interface Props {
@@ -28,20 +26,18 @@ function useEventTeamCount(eventId: string): number {
   return new Set((data ?? []).map((r) => r.teamId).filter(Boolean)).size;
 }
 
-
-/** Badge label + colour token per UI status. */
-const STATUS_META: Record<Event["status"], { label: string; accent: string }> = {
-  open:   { label: "Đang diễn ra", accent: "var(--color-primary)" },
-  hidden: { label: "Ẩn",           accent: "var(--color-stone)" },
-  ended:  { label: "Đã kết thúc",  accent: "var(--color-ash)" },
-};
+function formatDate(iso: string) {
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}
 
 export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
-  const isAdmin = useUserRole() === "admin";
-  const isOpen = event.status === "open";
-  // Admins don't join — they just open the event detail.
-  const joinDisabled = !isAdmin && (!isOpen || isJoining);
-  const meta = STATUS_META[event.status];
+  const joinDisabled = event.status === "closed" || isJoining;
   const teamCount = useEventTeamCount(event.id);
 
   return (
@@ -57,7 +53,7 @@ export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
           left: 0,
           width: 10,
           height: 10,
-          background: meta.accent,
+          background: event.status === "open" ? "var(--color-primary)" : "var(--color-ash)",
         }}
       />
 
@@ -66,33 +62,30 @@ export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
         <span
           className="badge-tag"
           style={{
-            background: isOpen ? "rgba(118,185,0,0.1)" : "var(--color-surface-soft)",
-            color: isOpen ? "var(--color-primary)" : "var(--color-stone)",
-            border: `1px solid ${isOpen ? "var(--color-primary)" : "var(--color-hairline)"}`,
+            background: event.status === "open" ? "rgba(118,185,0,0.1)" : "var(--color-surface-soft)",
+            color: event.status === "open" ? "var(--color-primary)" : "var(--color-stone)",
+            border: `1px solid ${event.status === "open" ? "var(--color-primary)" : "var(--color-hairline)"}`,
           }}
         >
-          {meta.label}
+          {event.status === "open" ? "Mở" : "Đã đóng"}
         </span>
       </div>
 
-      {/* Title — links to the event dashboard. Works for open AND closed events
-          (the "Tham gia" button below is disabled when closed, so the title is
-          the reliable way in). */}
-      <Link href={`/events/${event.id}`} style={{ textDecoration: "none" }}>
+      {/* Title — the only link on card */}
+      
         <h3
           className="card__title"
           style={{
             margin: 0,
             color: "var(--color-ink)",
             transition: "color 150ms",
-            cursor: "pointer",
           }}
           onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-primary)")}
           onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-ink)")}
         >
           {event.title}
         </h3>
-      </Link>
+      
 
       {/* Start Date */}
       <p style={{ margin: 0, fontSize: "var(--fs-caption-md)", color: "var(--color-mute)", display: "flex", alignItems: "center", gap: 6 }}>
@@ -110,7 +103,7 @@ export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
         </span>
       </div>
 
-      {/* Open event — role-aware dashboard at /events/[id] */}
+      {/* Open event — role-aware dashboard at /events/[id] handles admin redirect to /manage */}
       <div style={{ marginTop: "var(--space-sm)" }}>
         <Link
         href={`/events/${event.id}`}
@@ -120,16 +113,10 @@ export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
           className="btn btn-primary btn-sm"
           style={{ width: "100%", minHeight: 44 }}
           disabled={joinDisabled}
-          onClick={isAdmin ? undefined : () => onJoin(event.id)}
-          aria-label={isAdmin ? `Xem chi tiết: ${event.title}` : `Tham gia: ${event.title}`}
+          onClick={() => onJoin(event.id)}
+          aria-label={`Tham gia: ${event.title}`}
         >
-          {isAdmin
-            ? "Xem chi tiết"
-            : isJoining
-              ? "Đang xử lý…"
-              : event.status === "ended"
-                ? "Đã kết thúc"
-                : "Tham gia"}
+          {isJoining ? "Đang xử lý…" : "Tham gia"}
         </button>
         </Link>
         

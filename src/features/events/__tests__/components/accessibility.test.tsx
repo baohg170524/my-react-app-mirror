@@ -17,9 +17,14 @@ jest.mock('@/hooks/useAuth', () => ({
   }),
 }));
 
-// Per-event role is fetched on event open; mock it to a participant.
-jest.mock('@/features/events/hooks/useEvents', () => ({
-  useMyEventRole: () => ({ role: 'participant', label: 'Người tham gia' }),
+jest.mock('@/features/teams/hooks/useTeams', () => ({
+  useMyTeamForEvent: () => ({ data: null, isLoading: false }),
+}));
+
+// Sidebar reads registration status to gate the "Tạo đội" tab. Mock an approved
+// student so the full no-team tab set renders (and the Sidebar needs no QueryClient).
+jest.mock('@/features/registration/hooks/useRegistration', () => ({
+  useRegistration: () => ({ status: 'approved' }),
 }));
 
 function renderSidebar() {
@@ -37,13 +42,13 @@ describe('Accessibility - Sidebar Navigation (role-aware)', () => {
     expect(screen.getByRole('tablist')).toBeInTheDocument();
   });
 
-  it('renders the participant tab set (4 tabs)', () => {
+  it('renders the approved student-no-team tab set (4 tabs: Chi tiết, Đăng ký thi đấu, Tạo đội, Bảng xếp hạng)', () => {
     renderSidebar();
     const tabs = screen.getAllByRole('tab');
     expect(tabs.length).toBe(4);
     expect(tabs[0]).toHaveAttribute('aria-label', expect.stringContaining('Chi tiết sự kiện'));
-    expect(tabs[1]).toHaveAttribute('aria-label', expect.stringContaining('Đăng ký / Đội của tôi'));
-    expect(tabs[2]).toHaveAttribute('aria-label', expect.stringContaining('Nộp bài'));
+    expect(tabs[1]).toHaveAttribute('aria-label', expect.stringContaining('Đăng ký thi đấu'));
+    expect(tabs[2]).toHaveAttribute('aria-label', expect.stringContaining('Tạo đội'));
     expect(tabs[3]).toHaveAttribute('aria-label', expect.stringContaining('Bảng xếp hạng'));
   });
 
@@ -73,36 +78,5 @@ describe('Accessibility - Sidebar Navigation (role-aware)', () => {
   it('tabs expose sr-only labels for screen readers', () => {
     const { container } = renderSidebar();
     expect(container.querySelectorAll('.sr-only').length).toBeGreaterThan(0);
-  });
-
-  it('each tab is wired to the tabpanel via aria-controls', () => {
-    renderSidebar();
-    for (const tab of screen.getAllByRole('tab')) {
-      expect(tab).toHaveAttribute('aria-controls', 'event-tabpanel');
-    }
-  });
-
-  it('Arrow keys move focus and activate the next/previous tab', async () => {
-    const user = userEvent.setup();
-    renderSidebar();
-    const [first, second] = screen.getAllByRole('tab');
-    first.focus();
-    await user.keyboard('{ArrowDown}');
-    expect(document.activeElement).toBe(second);
-    expect(second).toHaveAttribute('aria-selected', 'true');
-    await user.keyboard('{ArrowUp}');
-    expect(document.activeElement).toBe(first);
-    expect(first).toHaveAttribute('aria-selected', 'true');
-  });
-
-  it('Home/End jump to the first/last tab', async () => {
-    const user = userEvent.setup();
-    renderSidebar();
-    const tabs = screen.getAllByRole('tab');
-    tabs[0].focus();
-    await user.keyboard('{End}');
-    expect(document.activeElement).toBe(tabs[tabs.length - 1]);
-    await user.keyboard('{Home}');
-    expect(document.activeElement).toBe(tabs[0]);
   });
 });

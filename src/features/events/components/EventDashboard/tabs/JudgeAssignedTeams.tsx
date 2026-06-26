@@ -4,9 +4,9 @@ import React from 'react';
 import Link from 'next/link';
 import { useJudgeAssignedTeams } from '@/features/teams/hooks/useTeams';
 
-interface Props { eventId: string; userId: string; readOnly?: boolean; }
+interface Props { eventId: string; userId: string; }
 
-export function JudgeAssignedTeamsTab({ eventId, userId, readOnly = false }: Props) {
+export function JudgeAssignedTeamsTab({ eventId, userId }: Props) {
   const { data: teams = [], isLoading } = useJudgeAssignedTeams(eventId, userId);
 
   if (isLoading) return <div className="p-6 t-body-md text-mute">Đang tải…</div>;
@@ -22,15 +22,9 @@ export function JudgeAssignedTeamsTab({ eventId, userId, readOnly = false }: Pro
               <p className="t-body-md font-bold">{t.teamName}</p>
               <p className="t-body-sm text-mute">{t.members.length} thành viên</p>
             </div>
-            {readOnly ? (
-              <span className="btn btn-sm opacity-50 cursor-not-allowed" aria-disabled="true">
-                Đã kết thúc
-              </span>
-            ) : (
-              <Link href={`/events/${eventId}/manage?team=${t.id}`} className="btn btn-primary btn-sm">
-                Mở chấm điểm
-              </Link>
-            )}
+            <Link href={`/events/${eventId}/manage?team=${t.id}`} className="btn btn-primary btn-sm">
+              Mở chấm điểm
+            </Link>
           </li>
         ))}
       </ul>
