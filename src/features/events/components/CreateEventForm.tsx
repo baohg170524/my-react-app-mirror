@@ -649,9 +649,34 @@ function EventFormBody({
   const setField = (key: EventStringKey, value: string) =>
     setForm((f) => {
       const updated = { ...f, [key]: value };
-      // When event start date is updated, automatically populate Round 1 start date
-      if (key === "startDate" && updated.rounds[0]) {
-        updated.rounds[0] = { ...updated.rounds[0], startDate: value };
+      // When event start date is updated, automatically populate Round 1 start date, Year and Season
+      if (key === "startDate") {
+        if (updated.rounds[0]) {
+          updated.rounds[0] = { ...updated.rounds[0], startDate: value };
+        }
+        if (value) {
+          const date = new Date(value);
+          const year = date.getFullYear();
+          if (year && !Number.isNaN(year)) {
+            updated.year = String(year);
+          }
+          
+          // Auto-derive FPT University Academic Season based on user requirements:
+          // Spring: Jan to Apr (0 to 3)
+          // Summer: May to Aug (4 to 7)
+          // Fall: Sep to Dec (8 to 11)
+          const month = date.getMonth(); // 0-11
+          if (month >= 0 && month <= 3) {
+            updated.season = "Spring";
+          } else if (month >= 4 && month <= 7) {
+            updated.season = "Summer";
+          } else {
+            updated.season = "Fall";
+          }
+        } else {
+          updated.year = "";
+          updated.season = "";
+        }
       }
       return updated;
     });
@@ -809,10 +834,6 @@ function EventFormBody({
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-md)" }}>
         <TextField label="Tên sự kiện" value={form.eventName} onChange={(v) => setField("eventName", v)} />
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-md)" }}>
-          <TextField label="Mùa (season)" value={form.season} onChange={(v) => setField("season", v)} />
-          <TextField label="Năm" type="number" value={form.year} onChange={(v) => setField("year", v)} />
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-md)" }}>
           <TextField
             label="Bắt đầu"
             type="datetime-local"
@@ -825,6 +846,69 @@ function EventFormBody({
             value={form.endDate}
             onChange={(v) => setField("endDate", v)}
           />
+        </div>
+
+        {/* Thông tin tự động nhận diện */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "var(--space-md)",
+          padding: "16px",
+          background: "linear-gradient(135deg, rgba(118, 185, 0, 0.08) 0%, rgba(118, 185, 0, 0.02) 100%)",
+          border: "2px dashed var(--color-primary)",
+          borderRadius: "var(--radius-sm)",
+          marginTop: "4px"
+        }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <span className="t-caption-xs" style={{ color: "var(--color-primary)", fontWeight: 700, letterSpacing: "0.05em" }}>
+              MÙA (SEASON)
+            </span>
+            <div style={{
+              padding: "10px 14px",
+              background: "var(--color-canvas)",
+              border: "1px solid var(--color-hairline)",
+              borderRadius: "var(--radius-sm)",
+              fontSize: "var(--fs-body-sm)",
+              fontWeight: 700,
+              color: form.season ? "var(--color-primary)" : "var(--color-mute)",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              minHeight: 40
+            }}>
+              {form.season ? (
+                form.season === "Spring" ? "🌸 Kỳ Spring (Mùa Xuân)" :
+                form.season === "Summer" ? "☀️ Kỳ Summer (Mùa Hè)" :
+                "🍂 Kỳ Fall (Mùa Thu)"
+              ) : (
+                "Chờ ngày bắt đầu..."
+              )}
+            </div>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <span className="t-caption-xs" style={{ color: "var(--color-primary)", fontWeight: 700, letterSpacing: "0.05em" }}>
+              NĂM HỌC
+            </span>
+            <div style={{
+              padding: "10px 14px",
+              background: "var(--color-canvas)",
+              border: "1px solid var(--color-hairline)",
+              borderRadius: "var(--radius-sm)",
+              fontSize: "var(--fs-body-sm)",
+              fontWeight: 700,
+              color: form.year ? "var(--color-primary)" : "var(--color-mute)",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              minHeight: 40
+            }}>
+              {form.year ? `📅 Năm ${form.year}` : "Chờ ngày bắt đầu..."}
+            </div>
+          </div>
+          <span className="t-caption-xs" style={{ gridColumn: "span 2", color: "var(--color-mute)", fontStyle: "italic", marginTop: 4 }}>
+            💡 Hệ thống tự động xác định Mùa và Năm dựa vào ngày bắt đầu của sự kiện.
+          </span>
         </div>
         <TextArea label="Mô tả" value={form.description} onChange={(v) => setField("description", v)} />
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
