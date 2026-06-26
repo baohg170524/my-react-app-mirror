@@ -17,7 +17,7 @@ interface RoleAssignmentTabProps {
 
 /** The 3 roles an admin can assign. Ban tổ chức is event-level; the rest are per-track. */
 const ASSIGNABLE_ROLES = [
-  { value: EVENT_ROLE.EventCoordinator, label: 'Ban tổ chức', needsTrack: false },
+  { value: EVENT_ROLE.EventCoordinator, label: 'Ban tổ chức sự kiện', needsTrack: false },
   { value: EVENT_ROLE.Judge, label: 'Giám khảo', needsTrack: true },
   { value: EVENT_ROLE.Mentor, label: 'Người hướng dẫn', needsTrack: true },
 ] as const;
@@ -79,7 +79,7 @@ export function RoleAssignmentTab({ eventId }: RoleAssignmentTabProps) {
   const total = coordinators.length + judges.length + mentors.length;
 
   const groups = [
-    { key: 'coordinator' as const, label: 'Ban tổ chức', rows: coordinators, showTrack: false },
+    { key: 'coordinator' as const, label: 'Ban tổ chức sự kiện', rows: coordinators, showTrack: false },
     { key: 'judge' as const, label: 'Giám khảo', rows: judges, showTrack: true },
     { key: 'mentor' as const, label: 'Người hướng dẫn', rows: mentors, showTrack: true },
   ];

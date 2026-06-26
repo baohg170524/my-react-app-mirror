@@ -91,10 +91,15 @@ export function AccountApprovalTab({ eventId }: AccountApprovalTabProps) {
       : undefined;
 
   // Pending registrants: roles whose embedded user is not yet approved, deduped by user.
+  // Only approve TeamLeader and TeamMember roles (ignore Judge, Mentor, EC).
   const byUser = new Map<string, Registrant>();
   for (const role of roles) {
     const u = role.user;
     if (!role.userId || !u || u.isApproved !== false) continue;
+
+    const rName = (role.roleName ?? '').toLowerCase();
+    if (rName !== 'teamleader' && rName !== 'teammember' && rName !== 'member') continue;
+
     const existing = byUser.get(role.userId);
     if (existing) existing.roleIds.push(role.id);
     else byUser.set(role.userId, { userId: role.userId, user: u, roleIds: [role.id] });

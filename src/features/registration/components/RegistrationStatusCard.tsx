@@ -93,9 +93,14 @@ export function RegistrationStatusCard({
         </button>
       )}
       {status === 'approved' && (
-        <button type="button" className="btn btn-primary w-fit" onClick={onRegisterTeam}>
-          Đăng ký đội
-        </button>
+        <div className="flex gap-2">
+          <button type="button" className="btn btn-primary w-fit" onClick={onRegisterTeam}>
+            Đăng ký đội
+          </button>
+          <button type="button" className="btn btn-secondary w-fit" onClick={onEdit}>
+            Cập nhật hồ sơ
+          </button>
+        </div>
       )}
       {status === 'rejected' && (
         <button type="button" className="btn btn-secondary w-fit" onClick={onResubmit}>

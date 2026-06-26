@@ -49,7 +49,7 @@ export function resolveEventRole(roleNumbers: number[]): { role: DashboardRole; 
   const has = (n: number) => roleNumbers.includes(n);
   const role: DashboardRole = has(EVENT_ROLE_NUM.Judge) ? 'judge' : 'participant';
   const label = has(EVENT_ROLE_NUM.EventCoordinator)
-    ? 'Ban tổ chức'
+    ? 'Ban tổ chức sự kiện'
     : has(EVENT_ROLE_NUM.Judge)
       ? 'Giám khảo'
       : has(EVENT_ROLE_NUM.Mentor)

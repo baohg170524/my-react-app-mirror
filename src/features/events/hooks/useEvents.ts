@@ -26,10 +26,10 @@ export const useAllEvents = (isAdmin: boolean) => {
 // ─── Admin manage page (real API) ──────────────────────────────────────────────
 
 /** All roles (judge/mentor/competitor) in an event — admin manage page. */
-export const useEventRoles = (eventId: string) =>
+export const useEventRoles = (eventId: string, roleName?: number) =>
   useQuery({
-    queryKey: ['eventRoles', eventId],
-    queryFn: () => manageApi.listEventRoles(eventId),
+    queryKey: ['eventRoles', eventId, roleName],
+    queryFn: () => manageApi.listEventRoles(eventId, roleName),
     enabled: !!eventId,
     staleTime: 2 * 60 * 1000,
   });

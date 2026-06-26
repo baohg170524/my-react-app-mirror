@@ -36,7 +36,7 @@ const roleLabelOf = (roleName: string | null): string => {
     case 'judge':            return 'Giám khảo';
     case 'participant':      return 'Thành viên';
     case 'admin':            return 'Admin';
-    case 'eventcoordinator': return 'Điều phối';
+    case 'eventcoordinator': return 'Ban tổ chức sự kiện';
     default:                 return roleName || '';
   }
 };

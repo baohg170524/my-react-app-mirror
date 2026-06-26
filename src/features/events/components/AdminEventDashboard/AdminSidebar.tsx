@@ -1,14 +1,15 @@
 'use client';
 
 import React from 'react';
-import { FileText, Users, Gavel, Trophy, LucideIcon } from 'lucide-react';
+import { FileText, Users, Trophy, LucideIcon, UserCog, UserCheck } from 'lucide-react';
 
-export type AdminTab = 'detail' | 'teams' | 'judges' | 'leaderboard';
+export type AdminTab = 'detail' | 'teams' | 'roles' | 'approvals' | 'leaderboard';
 
 const tabs: { id: AdminTab; label: string; icon: LucideIcon }[] = [
   { id: 'detail', label: 'Chi tiết sự kiện', icon: FileText },
   { id: 'teams', label: 'Danh sách đội', icon: Users },
-  { id: 'judges', label: 'Danh sách judge', icon: Gavel },
+  { id: 'roles', label: 'Danh sách vai trò', icon: UserCog },
+  { id: 'approvals', label: 'Xét duyệt tài khoản', icon: UserCheck },
   { id: 'leaderboard', label: 'Bảng xếp hạng', icon: Trophy },
 ];
 
@@ -65,7 +66,7 @@ export function AdminSidebar({ activeTab, setActiveTab, role = 'Admin' }: AdminS
         <div className="hidden md:flex flex-col flex-1 min-w-0">
           <p className="text-on-dark text-body-sm font-bold truncate text-opacity-100">Quản trị viên</p>
           <span className="inline-block bg-primary/20 text-primary text-caption-xs px-2 py-1 rounded-full text-xs mt-1 w-fit font-semibold">
-            {role}
+            {role.toLowerCase() === 'eventcoordinator' ? 'Ban tổ chức sự kiện' : role}
           </span>
         </div>
       </div>
