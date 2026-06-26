@@ -21,11 +21,12 @@ export function EventSection() {
 
   const role = useUserRole();
   const isAdmin = role === "admin";
+  const isLoggedIn = !!role;
   const { data: profile } = useUserProfile();
   // Admins don't have a "Của tôi" list — always show all events.
-  const effectiveFilter: Filter = isAdmin ? "all" : filter;
+  const effectiveFilter: Filter = isAdmin || !isLoggedIn ? "all" : filter;
 
-  const allQuery = useAllEvents();
+  const allQuery = useAllEvents(isAdmin);
   const myQuery  = useMyEvents();
 
   const active = effectiveFilter === "all" ? allQuery : myQuery;
@@ -74,7 +75,7 @@ export function EventSection() {
         ) : (
           <>
             {/* Tabs */}
-            <EventFilterTabs active={effectiveFilter} onChange={setFilter} hideMy={isAdmin} />
+            <EventFilterTabs active={effectiveFilter} onChange={setFilter} hideMy={isAdmin || !isLoggedIn} />
 
             {/* Grid */}
             <EventGrid

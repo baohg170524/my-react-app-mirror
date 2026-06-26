@@ -97,10 +97,19 @@ export interface CreateEventResponse {
 }
 
 export const eventsApi = {
-  /** GET /api/Events — list events (public), mapped to the card UI shape. */
-  list: async (): Promise<Event[]> => {
+  /** GET /api/Events — list events, mapped to the card UI shape. */
+  list: async (status?: boolean): Promise<Event[]> => {
+    const params: Record<string, any> = {
+      PageNumber: 1,
+      PageSize: 100,
+      SortBy: "createdTime",
+      IsAscending: false,
+    };
+    if (status !== undefined) {
+      params.Status = status;
+    }
     const { data } = await apiClient.get<PagedResult<EventModel>>("/Events", {
-      params: { PageNumber: 1, PageSize: 100, SortBy: "createdTime", IsAscending: false },
+      params,
     });
     return (data.data ?? []).map(toUiEvent);
   },

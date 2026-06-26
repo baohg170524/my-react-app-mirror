@@ -16,10 +16,10 @@ export const useEvent = (eventId: string) => {
   });
 };
 
-export const useAllEvents = () => {
+export const useAllEvents = (isAdmin: boolean) => {
   return useQuery({
-    queryKey: ['events', 'all'],
-    queryFn: () => eventsApi.list(), // real API: GET /api/Events
+    queryKey: ['events', 'all', isAdmin],
+    queryFn: () => eventsApi.list(isAdmin ? undefined : true), // real API: GET /api/Events
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
 };

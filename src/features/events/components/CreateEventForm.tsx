@@ -686,6 +686,20 @@ function EventFormBody({
     if ((Number(form.year) || 0) <= 2000) return "Năm tổ chức phải lớn hơn 2000.";
     if (!form.startDate) return "Vui lòng chọn ngày bắt đầu sự kiện.";
     if (!form.endDate) return "Vui lòng chọn ngày kết thúc sự kiện.";
+
+    const now = Date.now() - 60000; // Allow 1 minute buffer for user entry latency
+    const eventStart = new Date(form.startDate).getTime();
+    const eventEnd = new Date(form.endDate).getTime();
+
+    // Prevent past dates when creating a new event
+    if (!isEdit && eventStart < now) {
+      return "Ngày bắt đầu sự kiện không được ở trong quá khứ.";
+    }
+
+    if (eventEnd <= eventStart) {
+      return "Ngày kết thúc sự kiện phải sau ngày bắt đầu.";
+    }
+
     for (let i = 0; i < form.rounds.length; i++) {
       const r = form.rounds[i];
       if (!r.roundName.trim()) return `Vòng ${i + 1}: vui lòng nhập tên vòng.`;
@@ -693,6 +707,23 @@ function EventFormBody({
         return `Vòng ${i + 1}: số thứ tự vòng phải lớn hơn 0.`;
       if (!r.startDate || !r.endDate)
         return `Vòng ${i + 1}: vui lòng chọn ngày bắt đầu và kết thúc.`;
+
+      const roundStart = new Date(r.startDate).getTime();
+      const roundEnd = new Date(r.endDate).getTime();
+
+      if (!isEdit && roundStart < now) {
+        return `Vòng ${i + 1}: ngày bắt đầu không được ở trong quá khứ.`;
+      }
+
+      if (roundEnd <= roundStart) {
+        return `Vòng ${i + 1}: ngày kết thúc phải sau ngày bắt đầu.`;
+      }
+
+      // Round dates must fit within the overall event timeline
+      if (roundStart < eventStart || roundEnd > eventEnd) {
+        return `Vòng ${i + 1}: thời gian của vòng thi phải nằm trong khoảng thời gian diễn ra sự kiện.`;
+      }
+
       for (let j = 0; j < r.tracks.length; j++) {
         if (!r.tracks[j].trackName.trim())
           return `Vòng ${i + 1} – Hạng mục ${j + 1}: vui lòng nhập tên hạng mục.`;
@@ -739,17 +770,46 @@ function EventFormBody({
           />
         </div>
         <TextArea label="Mô tả" value={form.description} onChange={(v) => setField("description", v)} />
-        <Field label="Trạng thái">
-          <select
-            className="text-input"
-            value={form.status ? "open" : "hidden"}
-            onChange={(e) => setStatus(e.target.value === "open")}
-          >
-            <option value="open">Đang diễn ra — mọi người xem & tham gia được</option>
-            <option value="hidden">Ẩn — chỉ admin xem được</option>
-          </select>
-        </Field>
-        <Hint>Sự kiện tự chuyển sang “Đã kết thúc” (vẫn hiện cho mọi người) sau ngày kết thúc.</Hint>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <span className="t-caption-xs" style={{ color: "var(--color-mute)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            Trạng thái hiển thị
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
+            <button
+              type="button"
+              onClick={() => setStatus(!form.status)}
+              style={{
+                width: 48,
+                height: 24,
+                background: form.status ? 'var(--color-primary)' : 'var(--color-surface-elevated)',
+                border: '1px solid var(--color-hairline-strong)',
+                borderRadius: 2,
+                position: 'relative',
+                cursor: 'pointer',
+                transition: 'background-color 150ms ease',
+                padding: 0,
+              }}
+              aria-label={form.status ? "Ẩn sự kiện" : "Hiện sự kiện"}
+            >
+              <span
+                style={{
+                  width: 18,
+                  height: 18,
+                  background: '#fff',
+                  borderRadius: 1,
+                  position: 'absolute',
+                  top: 2,
+                  left: form.status ? 26 : 2,
+                  transition: 'left 150ms ease',
+                }}
+              />
+            </button>
+            <span style={{ fontSize: 'var(--fs-body-sm)', fontWeight: 700, color: form.status ? 'var(--color-primary)' : 'var(--color-mute)' }}>
+              {form.status ? 'HIỆN' : 'ẨN'}
+            </span>
+          </div>
+        </div>
+        {/* <Hint>Sự kiện tự chuyển sang “Đã kết thúc” (vẫn hiện cho mọi người) sau ngày kết thúc.</Hint> */}
       </div>
 
       {/* Rounds */}
