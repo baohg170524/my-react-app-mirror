@@ -20,8 +20,8 @@ export interface EventModel {
 
 /** Map a backend EventModel to the card UI `Event` shape. */
 function toUiEvent(e: EventModel): Event {
-  // Backend has no status — derive it from the end date.
-  const open = new Date(e.endDate).getTime() >= Date.now();
+  // Use backend status if present, otherwise derive it from the end date.
+  const open = e.status !== undefined ? e.status : new Date(e.endDate).getTime() >= Date.now();
   return {
     id: e.id,
     title: e.eventName?.trim() || "(Chưa đặt tên)",
