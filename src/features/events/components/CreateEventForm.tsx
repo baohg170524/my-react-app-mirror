@@ -6,6 +6,7 @@ import {
   type ChangeEvent,
   type ReactNode,
 } from "react";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AxiosError } from "axios";
 import { eventsApi, type CreateEventPayload } from "../api/events";
@@ -552,6 +553,7 @@ function EventFormBody({
   initialTrackIds: string[];
 }) {
   const isEdit = !!eventId;
+  const router = useRouter();
   const [form, setForm] = useState<EventForm>(() => initialForm);
   const [formError, setFormError] = useState<string | null>(null);
   // Original round/track ids — used to delete the ones removed during editing.
@@ -569,9 +571,12 @@ function EventFormBody({
 
   const createMutation = useMutation({
     mutationFn: (payload: CreateEventPayload) => eventsApi.create(payload),
-    onSuccess: () => {
+    onSuccess: (data) => {
       // Refresh any event listings once they move to the real API.
       queryClient.invalidateQueries({ queryKey: ["events"] });
+      if (data?.id) {
+        router.push(`/events/${data.id}/manage`);
+      }
     },
   });
 
