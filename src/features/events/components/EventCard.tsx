@@ -1,9 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
 import { useUserRole } from "@/hooks/useUserRole";
-import { manageApi } from "../api/manage";
 import type { Event } from "../types/event.types";
 
 interface Props {
@@ -11,20 +9,6 @@ interface Props {
   onJoin: (id: string) => void;
   isJoining: boolean;
   joinError?: string | null;
-}
-
-/** Number of distinct teams in an event (from its roles). Only runs when
- *  authenticated — the roles endpoint requires a token. */
-function useEventTeamCount(eventId: string): number {
-  const enabled =
-    typeof window !== "undefined" && !!localStorage.getItem("accessToken");
-  const { data } = useQuery({
-    queryKey: ["eventTeamCount", eventId],
-    queryFn: () => manageApi.listEventRoles(eventId),
-    enabled,
-    staleTime: 2 * 60_000,
-  });
-  return new Set((data ?? []).map((r) => r.teamId).filter(Boolean)).size;
 }
 
 function formatDate(iso: string) {
@@ -43,7 +27,6 @@ export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
   const isLoggedIn = typeof window !== "undefined" && !!localStorage.getItem("accessToken");
   // Only disable the join action/button for logged in non-admins when closed or joining
   const joinDisabled = !isAdmin && isLoggedIn && (!isOpen || isJoining);
-  const teamCount = useEventTeamCount(event.id);
 
   return (
     <article
@@ -100,13 +83,6 @@ export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
         </svg>
         {formatDate(event.startDate)}
       </p>
-
-      {/* Team count badge */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-xs)", flex: 1 }}>
-        <span className="badge-tag" style={{ fontSize: "var(--fs-utility-xs)" }}>
-          {teamCount} đội tham gia
-        </span>
-      </div>
 
       {/* Open event — role-aware dashboard at /events/[id] handles admin redirect to /manage */}
       <div style={{ marginTop: "var(--space-sm)" }}>

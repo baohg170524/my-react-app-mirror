@@ -147,17 +147,12 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
 
       <EventStructureView eventId={eventId} />
 
-      {canEdit && (
-        <div className="pt-2">
+      <div className="pt-2 flex gap-3">
+        {canEdit && (
           <Button variant="secondary" size="md" onClick={() => setIsEditing(true)}>
             Chỉnh sửa sự kiện
           </Button>
-        </div>
-      )}
-      <div className="pt-2 flex gap-3">
-        <Button variant="secondary" size="md" onClick={() => setIsEditing(true)}>
-          Chỉnh sửa sự kiện
-        </Button>
+        )}
         <Button
           variant="outline"
           size="md"
