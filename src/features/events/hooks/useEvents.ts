@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import eventService from '../api/eventService';
 import { eventsApi } from '../api/events';
 import { manageApi } from '../api/manage';
+import { eventRolesApi } from '../api/eventRoles';
 
 export const useEvent = (eventId: string) => {
   return useQuery({
@@ -173,5 +174,15 @@ export const useJoinEvent = () => {
       queryClient.invalidateQueries({ queryKey: ['events', 'my'] });
       queryClient.invalidateQueries({ queryKey: ['events', 'all'] });
     },
+  });
+};
+
+export const useUserEventRole = (userId: string, eventId: string) => {
+  return useQuery({
+    queryKey: ['userEventRole', userId, eventId],
+    queryFn: () => eventRolesApi.getUserRole(userId, eventId),
+    enabled: !!userId && !!eventId,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
   });
 };

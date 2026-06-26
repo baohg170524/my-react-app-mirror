@@ -151,18 +151,10 @@ const ADMIN_LINKS: NavLink[] = [
 
 const MENTOR_LINKS: NavLink[] = [
   { label: "Sự kiện",    href: "/" },
-  { label: "Chấm điểm", href: "/scoring" },
-  { label: "Xếp hạng",  href: "/leaderboard" },
-  { label: "Bài nộp",   href: "/submission" },
-  { label: "Phúc khảo", href: "/appeals" },
 ];
 
 const STUDENT_LINKS: NavLink[] = [
   { label: "Sự kiện",    href: "/" },
-  { label: "Xếp hạng",  href: "/team-ranking" },
-  { label: "Nộp bài",   href: "/submit-project" },
-  { label: "Phúc khảo", href: "/team-appeal" },
-  { label: "Đăng ký",   href: "/dang-ky" },
 ];
 
 const GUEST_LINKS: NavLink[] = [
