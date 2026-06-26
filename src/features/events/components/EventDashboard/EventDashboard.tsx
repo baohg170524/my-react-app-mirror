@@ -3,7 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
-import { EventDetailTab } from '../AdminEventDashboard/tabs/EventDetailTab';
+import { EventDetailTab } from './tabs/EventDetail';
 import { CreateTeamTab } from './tabs/CreateTeam';
 import { MyTeamTab } from './tabs/MyTeam';
 import { SubmissionTab } from './tabs/Submission';
@@ -57,7 +57,7 @@ export function EventDashboard({ eventId, userId }: EventDashboardProps) {
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'detail':        return <EventDetailTab eventId={eventId} />;
+      case 'detail':        return <EventDetailTab eventId={eventId} userId={userId} />;
       case 'register':      return <CompetitionRegistrationTab userId={userId} />;
       case 'createTeam':    return <CreateTeamTab  eventId={eventId} userId={userId} />;
       case 'myTeam':        return <MyTeamTab      eventId={eventId} userId={userId} />;
