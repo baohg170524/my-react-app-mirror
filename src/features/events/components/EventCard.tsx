@@ -44,6 +44,22 @@ export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
           background: event.status === "open" ? "var(--color-primary)" : "var(--color-ash)",
         }}
       />
+      {/* Event Photo */}
+      <div style={{ width: "100%", height: 160, borderRadius: "var(--radius-sm)", overflow: "hidden", position: "relative", flexShrink: 0, marginTop: "var(--space-xs)" }}>
+        {event.photoEventUrl ? (
+          <img
+            src={event.photoEventUrl}
+            alt={event.title}
+            style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.4s ease" }}
+            onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
+            onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+          />
+        ) : (
+          <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, rgba(118, 185, 0, 0.1) 0%, rgba(118, 185, 0, 0.02) 100%)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ fontSize: 40, opacity: 0.2 }}>📸</span>
+          </div>
+        )}
+      </div>
 
       {/* Status badge */}
       <div style={{ display: "flex", justifyContent: "flex-end" }}>

@@ -15,6 +15,7 @@ import { templatesApi, type TemplateSummary } from "../api/templates";
 import { manageApi } from "../api/manage";
 import { roundsApi, tracksApi } from "../api/roundTrack";
 import { usersApi, type UserSummary } from "@/services/api";
+import { storageApi } from "@/services/api/storage";
 
 // ─── Form state types (mirror the create-event payload) ───────────────────────
 
@@ -57,6 +58,7 @@ interface EventForm {
   endDate: string;
   description: string;
   status: boolean;
+  photoEventUrl: string | null;
   rounds: RoundForm[];
 }
 
@@ -88,6 +90,7 @@ const emptyEvent = (): EventForm => ({
   endDate: "",
   description: "",
   status: true,
+  photoEventUrl: null,
   rounds: [emptyRound()],
 });
 
@@ -452,6 +455,145 @@ function UserSearchSelect({
       </div>
 
       {hint && <Hint>{hint}</Hint>}
+    </div>
+  );
+}
+
+// ─── Image Upload ─────────────────────────────────────────────────────────────
+
+function EventPhotoUpload({
+  value,
+  onChange,
+}: {
+  value: string | null;
+  onChange: (url: string | null) => void;
+}) {
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setError("Chỉ chấp nhận tệp hình ảnh (.png, .jpg, .jpeg, ...)");
+      return;
+    }
+
+    setIsUploading(true);
+    setError(null);
+    try {
+      const url = await storageApi.upload(file);
+      onChange(url);
+    } catch (err) {
+      setError((err as Error).message || "Tải ảnh lên thất bại.");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Chỉ chấp nhận tệp hình ảnh (.png, .jpg, .jpeg, ...)");
+      return;
+    }
+    setIsUploading(true);
+    setError(null);
+    try {
+      const url = await storageApi.upload(file);
+      onChange(url);
+    } catch (err) {
+      setError((err as Error).message || "Tải ảnh lên thất bại.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <span className="t-caption-xs" style={{ color: "var(--color-mute)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+        Ảnh đại diện sự kiện
+      </span>
+      {value ? (
+        <div style={{ position: "relative", width: "100%", height: 240, borderRadius: "var(--radius-sm)", overflow: "hidden", border: "1px solid var(--color-hairline)" }}>
+          <img src={value} alt="Event Photo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <div style={{ position: "absolute", top: 8, right: 8, display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              className="btn btn-sm"
+              style={{ background: "rgba(0,0,0,0.6)", color: "white", border: "none" }}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              Thay đổi
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              style={{ background: "rgba(255,255,255,0.9)", border: "none" }}
+              onClick={() => onChange(null)}
+            >
+              Xóa ảnh
+            </button>
+          </div>
+          <input
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            ref={fileInputRef}
+            onChange={handleFileChange}
+          />
+        </div>
+      ) : (
+        <div
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+          style={{
+            border: "2px dashed var(--color-primary)",
+            borderRadius: "var(--radius-sm)",
+            padding: "var(--space-xxl)",
+            textAlign: "center",
+            cursor: isUploading ? "not-allowed" : "pointer",
+            background: "linear-gradient(135deg, rgba(118, 185, 0, 0.05) 0%, rgba(118, 185, 0, 0.01) 100%)",
+            transition: "all 0.2s ease",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 8,
+            opacity: isUploading ? 0.7 : 1,
+          }}
+        >
+          <div style={{ fontSize: 32, color: "var(--color-mute)", marginBottom: 8 }}>
+            {isUploading ? "⏳" : "📸"}
+          </div>
+          <span className="t-body-strong" style={{ color: "var(--color-primary)" }}>
+            {isUploading ? "Đang tải ảnh lên..." : "Nhấn để chọn hoặc kéo thả ảnh vào đây"}
+          </span>
+          <span className="t-caption-sm" style={{ color: "var(--color-mute)" }}>
+            Hỗ trợ PNG, JPG, JPEG. Tối đa 5MB.
+          </span>
+          <input
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            disabled={isUploading}
+          />
+        </div>
+      )}
+      {error && (
+        <span className="t-caption-sm" style={{ color: "var(--color-error)", marginTop: 4 }}>
+          {error}
+        </span>
+      )}
     </div>
   );
 }
@@ -822,6 +964,7 @@ function EditEventLoader({
     endDate: isoToLocalInput(event.endDate),
     description: event.description ?? "",
     status: event.status ?? false,
+    photoEventUrl: event.photoEventUrl ?? null,
     rounds: orderedRounds.map((r) => ({
       id: r.id,
       roundName: r.roundName ?? "",
@@ -954,6 +1097,7 @@ function EventFormBody({
         endDate: toIso(form.endDate),
         description: form.description.trim(),
         status: form.status,
+        photoEventUrl: form.photoEventUrl || null,
       });
 
       for (let ri = 0; ri < form.rounds.length; ri++) {
@@ -1107,6 +1251,7 @@ function EventFormBody({
       endDate: toIso(form.endDate),
       description: form.description.trim(),
       status: form.status,
+      photoEventUrl: form.photoEventUrl || null,
       rounds: form.rounds.map((r, ri) => ({
         roundName: r.roundName.trim(),
         roundNumber: ri + 1,
@@ -1294,6 +1439,12 @@ function EventFormBody({
             💡 Hệ thống tự động xác định Mùa và Năm dựa vào ngày bắt đầu của sự kiện.
           </span>
         </div>
+        
+        <EventPhotoUpload 
+          value={form.photoEventUrl} 
+          onChange={(url) => setForm(f => ({ ...f, photoEventUrl: url }))} 
+        />
+
         <TextArea label="Mô tả" value={form.description} onChange={(v) => setField("description", v)} />
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <span className="t-caption-xs" style={{ color: "var(--color-mute)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>
