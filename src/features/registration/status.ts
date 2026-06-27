@@ -9,9 +9,12 @@ export function resolveRegistrationStatus(
   rejections: UserRejectionModel[],
 ): ResolvedRegistration {
   if (profile?.isApproved) return { status: 'approved', reason: null };
-  if (rejections.length) {
-    const latest = [...rejections].sort((a, b) => b.createdTime.localeCompare(a.createdTime))[0];
-    return { status: 'rejected', reason: latest.reason };
+  
+  // Find active rejection
+  const activeRejection = rejections.find((r) => r.isActive);
+  if (activeRejection) {
+    return { status: 'rejected', reason: activeRejection.reason };
   }
+  
   return { status: 'pending', reason: null };
 }

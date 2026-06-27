@@ -27,6 +27,10 @@ jest.mock('@/features/registration/hooks/useRegistration', () => ({
   useRegistration: () => ({ status: 'approved' }),
 }));
 
+jest.mock('@/features/events/hooks/useEvents', () => ({
+  useUserEventRole: () => ({ data: { roleName: 'STUDENT' }, isLoading: false }),
+}));
+
 function renderSidebar() {
   return render(
     <EventDashboardProvider>

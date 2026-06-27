@@ -99,6 +99,17 @@ export function useLogin() {
       const profile = loginResponseToProfile(data);
       persistUser(profile);
       queryClient.setQueryData(AUTH_KEYS.me, profile);
+      queryClient.setQueryData(["users", "profile"], {
+        id: data.userId,
+        email: data.email,
+        fullName: data.fullName,
+        isAdmin: data.isAdmin,
+        isStudent: data.isStudent,
+        studentCode: null,
+        schoolId: null,
+        isApproved: false,
+        isFpt: false,
+      });
       // replace (not push) so Back doesn't return to the login screen
       router.replace("/");
     },

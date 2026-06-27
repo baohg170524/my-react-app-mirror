@@ -34,7 +34,12 @@ export function useRegistration(userId: string) {
   };
 
   const submit = async (cmd: UpdateStudentProfileCommand) => {
-    await authApi.submitStudentProfile(cmd);
+    const isFirstTime = !profileQ.data?.studentCode;
+    if (isFirstTime) {
+      await authApi.submitStudentProfile(cmd);
+    } else {
+      await authApi.updateStudentProfile(cmd);
+    }
     invalidate();
   };
 
@@ -49,6 +54,7 @@ export function useRegistration(userId: string) {
     profile: (profileQ.data ?? null) as UserSummary | null,
     status,
     reason,
+    rejectionCount: rejectionsQ.data?.length ?? 0,
     isLoading: profileQ.isLoading || rejectionsQ.isLoading,
     submit,
     clearRejections,

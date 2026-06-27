@@ -1,42 +1,82 @@
-'use client';
-
-import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useRef, useState, useEffect, type ChangeEvent, type FormEvent } from 'react';
 import { storageApi, schoolsApi, type UpdateStudentProfileCommand } from '@/services/api';
 
 interface Props {
-  defaults: { fullName: string };
+  defaults: {
+    fullName: string;
+    studentCode?: string;
+    isFpt?: boolean;
+    schoolId?: string | null;
+    photoStudentCardUrl?: string | null;
+  };
   onSubmit: (cmd: UpdateStudentProfileCommand) => void | Promise<void>;
 }
 
 export function RegistrationForm({ defaults, onSubmit }: Props) {
   const [fullName, setFullName] = useState(defaults.fullName);
-  const [schoolChoice, setSchoolChoice] = useState<'FPT' | 'OTHER'>('FPT');
+  const [schoolChoice, setSchoolChoice] = useState<'FPT' | 'OTHER'>(
+    defaults.isFpt !== false ? 'FPT' : 'OTHER',
+  );
   const [schoolName, setSchoolName] = useState('');
-  const [studentCode, setStudentCode] = useState('');
-  const [card, setCard] = useState<{ preview: string; file: File } | null>(null);
+  const [studentCode, setStudentCode] = useState(defaults.studentCode ?? '');
+  const [card, setCard] = useState<{ preview: string; file?: File } | null>(
+    defaults.photoStudentCardUrl ? { preview: defaults.photoStudentCardUrl } : null,
+  );
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const needsCard = schoolChoice === 'OTHER';
 
+  useEffect(() => {
+    if (defaults.schoolId && schoolChoice === 'OTHER') {
+      schoolsApi
+        .list(1000)
+        .then((res) => {
+          const school = res.data.find((s) => s.id === defaults.schoolId);
+          if (school) {
+            setSchoolName(school.schoolName);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [defaults.schoolId, schoolChoice]);
+
   function selectCard(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (!file.type.startsWith('image/')) { setError('Vui lòng chọn một file ảnh hợp lệ.'); return; }
-    if (file.size > 5 * 1024 * 1024) { setError('Ảnh thẻ không được vượt quá 5MB.'); return; }
+    if (!file.type.startsWith('image/')) {
+      setError('Vui lòng chọn một file ảnh hợp lệ.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Ảnh thẻ không được vượt quá 5MB.');
+      return;
+    }
     const reader = new FileReader();
-    reader.onload = () => { setError(''); setCard({ preview: reader.result as string, file }); };
+    reader.onload = () => {
+      setError('');
+      setCard({ preview: reader.result as string, file });
+    };
     reader.readAsDataURL(file);
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError('');
-    if (!studentCode.trim()) { setError('Vui lòng nhập mã số sinh viên.'); return; }
-    if (needsCard && !schoolName.trim()) { setError('Vui lòng nhập tên trường của bạn.'); return; }
-    if (needsCard && !card) { setError('Vui lòng tải ảnh thẻ sinh viên.'); return; }
+    if (!studentCode.trim()) {
+      setError('Vui lòng nhập mã số sinh viên.');
+      return;
+    }
+    if (needsCard && !schoolName.trim()) {
+      setError('Vui lòng nhập tên trường của bạn.');
+      return;
+    }
+    if (needsCard && !card) {
+      setError('Vui lòng tải ảnh thẻ sinh viên.');
+      return;
+    }
 
     setBusy(true);
     try {
@@ -62,9 +102,13 @@ export function RegistrationForm({ defaults, onSubmit }: Props) {
       }
 
       // Upload card for non-FPT students.
-      let photoStudentCardUrl: string | null = null;
+      let photoStudentCardUrl: string | null = defaults.photoStudentCardUrl ?? null;
       if (card) {
-        photoStudentCardUrl = await storageApi.upload(card.file);
+        if (card.file) {
+          photoStudentCardUrl = await storageApi.upload(card.file);
+        }
+      } else {
+        photoStudentCardUrl = null;
       }
 
       await onSubmit({

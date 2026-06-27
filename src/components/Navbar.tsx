@@ -323,9 +323,14 @@ export function Navbar() {
           {isAuthenticated ? (
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               {user?.fullName && (
-                <span style={{ fontSize: "var(--fs-body-sm)", color: "var(--color-on-dark-mute)" }}>
+                <Link 
+                  href="/profile"
+                  style={{ fontSize: "var(--fs-body-sm)", color: "var(--color-on-dark-mute)", textDecoration: "none", transition: "color 0.2s" }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-primary)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-on-dark-mute)")}
+                >
                   {user.fullName}
-                </span>
+                </Link>
               )}
               <button
                 type="button"

@@ -131,6 +131,7 @@ export interface UserRejectionModel {
   userId: string;
   rejectedBy: string;
   reason: string | null;
+  isActive: boolean;
   createdTime: string;
   lastUpdatedTime: string;
 }

@@ -1,26 +1,24 @@
 'use client';
 
 import { useState } from 'react';
-import { useRegistration } from '../hooks/useRegistration';
-import { RegistrationForm } from './RegistrationForm';
-import { RegistrationStatusCard } from './RegistrationStatusCard';
+import { useRouter } from 'next/navigation';
+import { useRegistration } from '@/features/registration/hooks/useRegistration';
+import { RegistrationForm } from '@/features/registration/components/RegistrationForm';
+import { RegistrationStatusCard } from '@/features/registration/components/RegistrationStatusCard';
 import { useCurrentUser } from '@/hooks/useAuth';
-import { useEventDashboard } from '@/features/events/contexts/EventDashboardContext';
 
-interface Props { userId: string; }
-
-export function CompetitionRegistrationTab({ userId }: Props) {
+export function GlobalProfile() {
+  const router = useRouter();
   const { data: user } = useCurrentUser();
-  const { setActiveTab } = useEventDashboard();
-  const { profile, status, reason, rejectionCount, isLoading, submit, clearRejections } = useRegistration(userId);
+  const { profile, status, reason, rejectionCount, isLoading, submit, clearRejections } = useRegistration(user?.id ?? '');
   const [editing, setEditing] = useState(false);
 
-  if (isLoading) return <div className="t-body-md text-mute p-6">Đang tải…</div>;
+  if (isLoading) return <div className="t-body-md text-mute p-6 text-center">Đang tải hồ sơ...</div>;
 
   if (editing) {
     return (
-      <div className="p-1 md:p-2">
-        <h2 className="t-heading-md mb-4">Đăng ký thi đấu</h2>
+      <div className="card max-w-[40rem] mx-auto mt-8 p-6 shadow-sm bg-white rounded-lg">
+        <h2 className="t-heading-md mb-6">Cập nhật hồ sơ</h2>
         <RegistrationForm
           defaults={{
             fullName: profile?.fullName ?? user?.fullName ?? '',
@@ -39,13 +37,13 @@ export function CompetitionRegistrationTab({ userId }: Props) {
   }
 
   return (
-    <div className="p-1 md:p-2">
+    <div className="flex justify-center mt-8 px-4">
       <RegistrationStatusCard
         status={status}
         reason={reason}
         profile={profile}
         rejectionCount={rejectionCount}
-        onRegisterTeam={() => setActiveTab('createTeam')}
+        onRegisterTeam={() => router.push('/')}
         onEdit={() => setEditing(true)}
         onResubmit={async () => {
           await clearRejections();
