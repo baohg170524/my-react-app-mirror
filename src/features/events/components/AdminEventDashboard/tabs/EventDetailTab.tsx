@@ -112,6 +112,11 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
       <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-3">
         <Card title="Chi tiết sự kiện" className="lg:col-span-2">
           <div className="space-y-4">
+            {event.photoEventUrl && (
+              <div className="w-full h-64 md:h-80 rounded-sm overflow-hidden border border-hairline mb-4 relative">
+                <img src={event.photoEventUrl} alt={event.title} className="w-full h-full object-cover" />
+              </div>
+            )}
             <p className="t-body-md text-body">{event.description}</p>
             <div className="space-y-3">
               <div className="flex justify-between items-baseline">

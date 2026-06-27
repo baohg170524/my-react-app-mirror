@@ -7,9 +7,7 @@ import {
   type FormEvent,
 } from "react";
 import { useLogin, useRegister } from "@/hooks/useAuth";
-import type { AxiosError } from "axios";
-import { schoolsApi } from "@/services/api";
-import type { ApiError, SchoolModel } from "@/services/api";
+import { getErrorMessage } from "@/lib/apiError";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
@@ -96,9 +94,11 @@ export default function AuthPage() {
   const registerMutation = useRegister();
 
   const isPending = loginMutation.isPending || registerMutation.isPending;
-  const serverError =
-    (loginMutation.error as AxiosError<ApiError>)?.response?.data?.message ||
-    (registerMutation.error as AxiosError<ApiError>)?.response?.data?.message;
+  const serverError = loginMutation.error
+    ? getErrorMessage(loginMutation.error)
+    : registerMutation.error
+      ? getErrorMessage(registerMutation.error)
+      : undefined;
 
   const isRegister = mode === "register";
 

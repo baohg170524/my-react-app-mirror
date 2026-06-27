@@ -6,6 +6,11 @@ interface ApiErrorBody {
   errors?: Record<string, string[]>;
 }
 
+/** Reword backend phrasings into friendlier user-facing Vietnamese. */
+function humanizeMessage(message: string): string {
+  return message.replace(/đã tồn tại trong hệ thống/gi, 'đã được sử dụng');
+}
+
 /**
  * Extract a user-facing message from a failed API call.
  *
@@ -20,11 +25,11 @@ export function getErrorMessage(e: unknown, fallback?: string): string {
 
   // 1. Field-level validation errors from the backend.
   const fieldMsgs = data?.errors ? Object.values(data.errors).flat() : [];
-  if (fieldMsgs.length) return fieldMsgs.join(' ');
+  if (fieldMsgs.length) return humanizeMessage(fieldMsgs.join(' '));
 
   // 2. A human-readable message from the backend.
   if (data?.message && !/Exception|was thrown/i.test(data.message)) {
-    return data.message;
+    return humanizeMessage(data.message);
   }
 
   // 3. Caller's action-specific fallback (e.g. "Tạo sự kiện thất bại…").

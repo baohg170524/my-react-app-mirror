@@ -10,12 +10,14 @@ import {
   removeFromTemplate,
 } from '../services/templateService';
 import { getCriteria } from '../services/criteriaService';
+import { useNotify } from '@/components/NotificationProvider';
 
 const BLANK_TMPL = { templateName: '', description: '' };
 const BLANK_CRIT = { criteriaId: '', weight: 0, maxScore: 10 };
 const COLORS = ['#76b900', '#0046a4', '#df6500', '#952fc6', '#0D9488', '#5a8d00'];
 
 export default function TemplatePage({ sn }) {
+  const notify = useNotify();
   const [templates,   setTemplates]   = useState([]);
   const [allCriteria, setAllCriteria] = useState([]); // criteria pool cho dropdown
   const [expanded,    setExpanded]    = useState(null);
@@ -72,9 +74,9 @@ export default function TemplatePage({ sn }) {
       await deleteTemplate(id);
       setTemplates(p => p.filter(t => t.id !== id));
       if (expanded === id) setExpanded(null);
-      sn('Đã xóa bộ tiêu chí.');
+      notify.success('Đã xóa bộ tiêu chí thành công!');
     } catch {
-      sn('Lỗi khi xóa bộ tiêu chí', 'e');
+      notify.error('Lỗi khi xóa bộ tiêu chí. Vui lòng thử lại.');
     }
   };
 
