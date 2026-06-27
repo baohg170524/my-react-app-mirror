@@ -2,12 +2,13 @@
 
 import React, { useRef, useState, useMemo } from 'react';
 import { Plus } from 'lucide-react';
-import type { AxiosError } from 'axios';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEventRoles, useEventTracks } from '@/features/events/hooks/useEvents';
 import { manageApi, EVENT_ROLE } from '@/features/events/api/manage';
 import type { TrackItem } from '@/features/events/api/manage';
 import { usersApi, type UserSummary } from '@/services/api';
+import { useNotify } from '@/components/NotificationProvider';
+import { getErrorMessage } from '@/lib/apiError';
 import { Card } from '../../EventDashboard/Card';
 import { Button } from '../../EventDashboard/Button';
 import { CardSkeleton } from '../../EventDashboard/SkeletonLoaders';
@@ -24,17 +25,6 @@ interface RoleRow {
   roleId: string;
   trackName: string | null;
 }
-
-const errMsg = (e: unknown): string => {
-  const res = (e as AxiosError<{ message?: string; statusCode?: number; errors?: Record<string, string[]> }>)?.response;
-  if (!res && e instanceof Error && e.message) return e.message;
-  const data = res?.data;
-  const fieldMsgs = data?.errors ? Object.values(data.errors).flat() : [];
-  if (fieldMsgs.length) return fieldMsgs.join(' ');
-  if (data?.message && !/Exception|was thrown/i.test(data.message)) return data.message;
-  const status = res?.status ?? data?.statusCode;
-  return `Thao tác thất bại${status ? ` (lỗi ${status})` : ''}. Vui lòng thử lại.`;
-};
 
 const ROLE_LABELS: Record<string, string> = {
   EventCoordinator: 'Ban tổ chức sự kiện',
@@ -64,18 +54,24 @@ export function RoleListTab({ eventId }: RoleListTabProps) {
   const { data: tracks = [] } = useEventTracks(eventId);
   
   const queryClient = useQueryClient();
+  const notify = useNotify();
   const [adding, setAdding] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ['eventRoles', eventId] });
-    
+
   const onMutationOk = () => {
     setActionError(null);
+    notify.success('Đã gỡ vai trò thành công!');
     invalidate();
   };
-  
-  const onMutationError = (e: unknown) => setActionError(errMsg(e));
+
+  const onMutationError = (e: unknown) => {
+    const msg = getErrorMessage(e);
+    setActionError(msg);
+    notify.error(msg);
+  };
 
   const removeRoleMutation = useMutation({
     mutationFn: async (roleId: string) => {
@@ -247,6 +243,7 @@ function AddRolePanel({
   const [selectedRole, setSelectedRole] = useState<number>(EVENT_ROLE.EventCoordinator);
   const [selectedTrackId, setSelectedTrackId] = useState<string>('');
   const [actionError, setActionError] = useState<string | null>(null);
+  const notify = useNotify();
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -265,22 +262,37 @@ function AddRolePanel({
     timerRef.current = setTimeout(() => setDebounced(v.trim()), 250);
   };
 
+  const onInviteError = (e: unknown) => {
+    const msg = getErrorMessage(e, 'Không thể thêm người này.');
+    setActionError(msg);
+    notify.error(msg);
+  };
+
   const inviteCoordinatorMutation = useMutation({
     mutationFn: manageApi.inviteEventCoordinator,
-    onSuccess,
-    onError: (e) => setActionError(errMsg(e))
+    onSuccess: () => {
+      notify.success('Đã mời Ban tổ chức sự kiện (EC) thành công!');
+      onSuccess();
+    },
+    onError: onInviteError,
   });
-  
+
   const inviteJudgeMutation = useMutation({
     mutationFn: manageApi.inviteJudge,
-    onSuccess,
-    onError: (e) => setActionError(errMsg(e))
+    onSuccess: () => {
+      notify.success('Đã mời Giám khảo (Judge) thành công!');
+      onSuccess();
+    },
+    onError: onInviteError,
   });
 
   const inviteMentorMutation = useMutation({
     mutationFn: manageApi.inviteMentor,
-    onSuccess,
-    onError: (e) => setActionError(errMsg(e))
+    onSuccess: () => {
+      notify.success('Đã mời Cố vấn (Mentor) thành công!');
+      onSuccess();
+    },
+    onError: onInviteError,
   });
 
   const busy = inviteCoordinatorMutation.isPending || inviteJudgeMutation.isPending || inviteMentorMutation.isPending;

@@ -1,5 +1,7 @@
 import { useRef, useState, useEffect, type ChangeEvent, type FormEvent } from 'react';
 import { storageApi, schoolsApi, type UpdateStudentProfileCommand } from '@/services/api';
+import { useNotify } from '@/components/NotificationProvider';
+import { getErrorMessage } from '@/lib/apiError';
 
 interface Props {
   defaults: {
@@ -25,6 +27,7 @@ export function RegistrationForm({ defaults, onSubmit }: Props) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const notify = useNotify();
 
   const needsCard = schoolChoice === 'OTHER';
 
@@ -118,8 +121,11 @@ export function RegistrationForm({ defaults, onSubmit }: Props) {
         isFpt: schoolChoice === 'FPT',
         fullName: fullName.trim(),
       });
-    } catch {
-      setError('Đã xảy ra lỗi. Vui lòng thử lại.');
+      notify.success('Đã gửi hồ sơ đăng ký. Vui lòng chờ ban tổ chức xét duyệt.');
+    } catch (e) {
+      const msg = getErrorMessage(e, 'Đã xảy ra lỗi. Vui lòng thử lại.');
+      setError(msg);
+      notify.error(msg);
     } finally {
       setBusy(false);
     }

@@ -8,6 +8,8 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useCurrentUser } from '@/hooks/useAuth';
 import { isJudgeRole, isMentorRole } from '@/features/events/api/manage';
 import { eventsApi } from '@/features/events/api/events';
+import { useNotify } from '@/components/NotificationProvider';
+import { getErrorMessage } from '@/lib/apiError';
 import { Card } from '../../EventDashboard/Card';
 import { Button } from '../../EventDashboard/Button';
 import { CardSkeleton } from '../../EventDashboard/SkeletonLoaders';
@@ -28,6 +30,7 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
   const canEdit = globalRole === 'admin' || eventRole?.roleName === 'EventCoordinator' || eventRole?.roleName === 'Admin';
   const router = useRouter();
   const queryClient = useQueryClient();
+  const notify = useNotify();
 
   const teamCount = new Set(roles.map((r) => r.teamId).filter(Boolean)).size;
   const judgeCount = new Set(
@@ -43,13 +46,12 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
   const deleteMutation = useMutation({
     mutationFn: () => eventsApi.remove(eventId),
     onSuccess: () => {
-      alert("Xóa sự kiện thành công!");
+      notify.success("Xóa sự kiện thành công!");
       queryClient.invalidateQueries({ queryKey: ['events'] });
       router.push('/');
     },
-    onError: (error: any) => {
-      const responseMessage = error?.response?.data?.message || error?.message;
-      alert(`Không thể xóa sự kiện: ${responseMessage || "Đã xảy ra lỗi không xác định."}`);
+    onError: (e) => {
+      notify.error(getErrorMessage(e, "Không thể xóa sự kiện. Vui lòng thử lại."));
     }
   });
 
@@ -57,11 +59,11 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
     if (!event) return;
 
     if (event.status === 'open') {
-      alert("Sự kiện đang ở trạng thái công khai. Vui lòng chỉnh sửa và chuyển sự kiện về trạng thái Ẩn trước khi xóa.");
+      notify.error("Sự kiện đang ở trạng thái công khai. Vui lòng chỉnh sửa và chuyển sự kiện về trạng thái Ẩn trước khi xóa.");
       return;
     }
     if (teamCount > 0) {
-      alert("Không thể xóa sự kiện đã có đội thi đăng ký để bảo vệ thông tin đăng ký của sinh viên.");
+      notify.error("Không thể xóa sự kiện đã có đội thi đăng ký để bảo vệ thông tin đăng ký của sinh viên.");
       return;
     }
 

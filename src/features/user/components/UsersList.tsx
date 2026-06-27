@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { AxiosError } from "axios";
 import {
   usersApi,
   schoolsApi,
@@ -13,12 +12,11 @@ import {
 } from "@/services/api";
 import { useIsAuthenticated } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
+import { getErrorMessage } from "@/lib/apiError";
 
 const PAGE_SIZE = 20;
 
-const errMsg = (e: unknown): string =>
-  (e as AxiosError<{ message?: string }>)?.response?.data?.message ??
-  "Thao tác thất bại. Vui lòng thử lại.";
+const errMsg = getErrorMessage;
 
 function Badge({
   children,
@@ -105,11 +103,7 @@ export function UsersList() {
       setActionError(null);
       queryClient.invalidateQueries({ queryKey: ["users", "list"] });
     },
-    onError: (e) =>
-      setActionError(
-        (e as AxiosError<{ message?: string }>)?.response?.data?.message ??
-          "Thao tác thất bại. Vui lòng thử lại.",
-      ),
+    onError: (e) => setActionError(errMsg(e)),
   });
 
   function handleToggle(u: UserSummary) {

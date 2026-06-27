@@ -15,6 +15,8 @@ import { templatesApi, type TemplateSummary } from "../api/templates";
 import { manageApi } from "../api/manage";
 import { roundsApi, tracksApi } from "../api/roundTrack";
 import { usersApi, type UserSummary } from "@/services/api";
+import { useNotify } from "@/components/NotificationProvider";
+import { getErrorMessage } from "@/lib/apiError";
 
 // ─── Form state types (mirror the create-event payload) ───────────────────────
 
@@ -876,6 +878,7 @@ function EventFormBody({
   const originalRoundIds = useRef<string[]>(initialRoundIds);
   const originalTrackIds = useRef<string[]>(initialTrackIds);
   const queryClient = useQueryClient();
+  const notify = useNotify();
 
   const templatesQuery = useQuery({
     queryKey: ["templates"],
@@ -937,10 +940,12 @@ function EventFormBody({
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["events"] });
+      notify.success("Tạo sự kiện thành công!");
       if (data?.id) {
         router.push(`/events/${data.id}/manage`);
       }
     },
+    onError: (e) => notify.error(getErrorMessage(e, "Tạo sự kiện thất bại. Vui lòng thử lại.")),
   });
 
   const editMutation = useMutation({
@@ -1003,7 +1008,9 @@ function EventFormBody({
       queryClient.invalidateQueries({ queryKey: ["eventModel", eventId] });
       queryClient.invalidateQueries({ queryKey: ["rounds", eventId] });
       queryClient.invalidateQueries({ queryKey: ["tracks", eventId] });
+      notify.success("Cập nhật sự kiện thành công!");
     },
+    onError: (e) => notify.error(getErrorMessage(e, "Cập nhật sự kiện thất bại. Vui lòng thử lại.")),
   });
 
   const activeMutation = isEdit ? editMutation : createMutation;

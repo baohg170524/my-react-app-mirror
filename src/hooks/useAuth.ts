@@ -9,6 +9,8 @@ import type {
   RegisterRequest,
   UserProfile,
 } from "@/services/api";
+import { useNotify } from "@/components/NotificationProvider";
+import { getErrorMessage } from "@/lib/apiError";
 
 // ─── Query keys ───────────────────────────────────────────────────────────────
 
@@ -91,6 +93,7 @@ export function useIsAuthenticated(): boolean {
 export function useLogin() {
   const queryClient = useQueryClient();
   const router = useRouter();
+  const notify = useNotify();
 
   return useMutation({
     mutationFn: (payload: LoginRequest) => authApi.login(payload),
@@ -99,9 +102,12 @@ export function useLogin() {
       const profile = loginResponseToProfile(data);
       persistUser(profile);
       queryClient.setQueryData(AUTH_KEYS.me, profile);
+      notify.success(`Đăng nhập thành công. Chào mừng ${profile.fullName}!`);
       // replace (not push) so Back doesn't return to the login screen
       router.replace("/");
     },
+    onError: (e) =>
+      notify.error(getErrorMessage(e, "Đăng nhập thất bại. Vui lòng kiểm tra email và mật khẩu.")),
   });
 }
 
@@ -110,20 +116,27 @@ export function useLogin() {
  * user in here. Caller should switch the UI to login mode on success.
  */
 export function useRegister() {
+  const notify = useNotify();
+
   return useMutation({
     mutationFn: (payload: RegisterRequest) => authApi.register(payload),
+    onSuccess: () =>
+      notify.success("Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản."),
+    onError: (e) => notify.error(getErrorMessage(e, "Đăng ký thất bại. Vui lòng thử lại.")),
   });
 }
 
 export function useLogout() {
   const queryClient = useQueryClient();
   const router = useRouter();
+  const notify = useNotify();
 
   return useMutation({
     mutationFn: authApi.logout,
     onSuccess: () => {
       clearTokens();
       queryClient.clear();
+      notify.success("Đã đăng xuất.");
       router.push("/auth");
     },
     onError: () => {

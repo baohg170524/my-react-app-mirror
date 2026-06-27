@@ -2,25 +2,16 @@
 
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
-import type { AxiosError } from 'axios';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEventRoles } from '@/features/events/hooks/useEvents';
 import { manageApi, type EventRoleUser } from '@/features/events/api/manage';
 import { usersApi, schoolsApi } from '@/services/api';
+import { useNotify } from '@/components/NotificationProvider';
+import { getErrorMessage } from '@/lib/apiError';
 import { Card } from '../../EventDashboard/Card';
 import { CardSkeleton } from '../../EventDashboard/SkeletonLoaders';
 
 const PAGE_SIZE = 20;
-
-const errMsg = (e: unknown): string => {
-  const res = (e as AxiosError<{ message?: string; statusCode?: number; errors?: Record<string, string[]> }>)?.response;
-  const data = res?.data;
-  const fieldMsgs = data?.errors ? Object.values(data.errors).flat() : [];
-  if (fieldMsgs.length) return fieldMsgs.join(' ');
-  if (data?.message && !/Exception|was thrown/i.test(data.message)) return data.message;
-  const status = res?.status ?? data?.statusCode;
-  return `Thao tác thất bại${status ? ` (lỗi ${status})` : ''}. Vui lòng thử lại.`;
-};
 
 /** One pending registrant: a not-yet-approved user, with every role id they
  *  hold in this event (so "Từ chối" can remove all of them). */
@@ -37,6 +28,7 @@ interface AccountApprovalTabProps {
 export function AccountApprovalTab({ eventId }: AccountApprovalTabProps) {
   const { data: roles = [], isLoading, error } = useEventRoles(eventId);
   const queryClient = useQueryClient();
+  const notify = useNotify();
   const [page, setPage] = useState(1);
   const [actionError, setActionError] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ url: string; name: string } | null>(null);
@@ -58,13 +50,18 @@ export function AccountApprovalTab({ eventId }: AccountApprovalTabProps) {
     queryClient.invalidateQueries({ queryKey: ['users', 'list'] });
     queryClient.invalidateQueries({ queryKey: ['users', 'profile'] });
   };
-  const onErr = (e: unknown) => setActionError(errMsg(e));
+  const onErr = (e: unknown) => {
+    const msg = getErrorMessage(e);
+    setActionError(msg);
+    notify.error(msg);
+  };
 
   // Approve = activate the account globally (POST /Users/{id}/approve).
   const approveMutation = useMutation({
     mutationFn: (r: Registrant) => usersApi.approve(r.userId),
     onSuccess: () => {
       setActionError(null);
+      notify.success('Đã duyệt tài khoản thành công!');
       invalidate();
     },
     onError: onErr,
@@ -79,6 +76,7 @@ export function AccountApprovalTab({ eventId }: AccountApprovalTabProps) {
     },
     onSuccess: () => {
       setActionError(null);
+      notify.success('Đã từ chối tài khoản thành công!');
       invalidate();
     },
     onError: onErr,

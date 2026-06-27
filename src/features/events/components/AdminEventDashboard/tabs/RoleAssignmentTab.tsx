@@ -2,11 +2,12 @@
 
 import React, { useRef, useState } from 'react';
 import { UserPlus, ChevronDown } from 'lucide-react';
-import type { AxiosError } from 'axios';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEventRoles, useEventTracks } from '@/features/events/hooks/useEvents';
 import { isEventCoordinatorRole, isJudgeRole, isMentorRole, manageApi, EVENT_ROLE } from '@/features/events/api/manage';
 import { usersApi, type UserSummary } from '@/services/api';
+import { useNotify } from '@/components/NotificationProvider';
+import { getErrorMessage } from '@/lib/apiError';
 import { Card } from '../../EventDashboard/Card';
 import { Button } from '../../EventDashboard/Button';
 import { CardSkeleton } from '../../EventDashboard/SkeletonLoaders';
@@ -22,22 +23,12 @@ const ASSIGNABLE_ROLES = [
   { value: EVENT_ROLE.Mentor, label: 'Người hướng dẫn', needsTrack: true },
 ] as const;
 
-const errMsg = (e: unknown): string => {
-  const res = (e as AxiosError<{ message?: string; statusCode?: number; errors?: Record<string, string[]> }>)?.response;
-  if (!res && e instanceof Error && e.message) return e.message;
-  const data = res?.data;
-  const fieldMsgs = data?.errors ? Object.values(data.errors).flat() : [];
-  if (fieldMsgs.length) return fieldMsgs.join(' ');
-  if (data?.message && !/Exception|was thrown/i.test(data.message)) return data.message;
-  const status = res?.status ?? data?.statusCode;
-  return `Thao tác thất bại${status ? ` (lỗi ${status})` : ''}. Vui lòng thử lại.`;
-};
-
 export function RoleAssignmentTab({ eventId }: RoleAssignmentTabProps) {
   const { data: roles = [], isLoading: rolesLoading, error } = useEventRoles(eventId);
   const { data: tracks = [], isLoading: tracksLoading } = useEventTracks(eventId);
   const isLoading = rolesLoading || tracksLoading;
   const queryClient = useQueryClient();
+  const notify = useNotify();
   const [adding, setAdding] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [activeKey, setActiveKey] = useState<'coordinator' | 'judge' | 'mentor'>('coordinator');
@@ -48,16 +39,27 @@ export function RoleAssignmentTab({ eventId }: RoleAssignmentTabProps) {
     setActionError(null);
     invalidate();
   };
-  const onErr = (e: unknown) => setActionError(errMsg(e));
+  const showErr = (e: unknown, fallback?: string) => {
+    const msg = getErrorMessage(e, fallback);
+    setActionError(msg);
+    notify.error(msg);
+  };
+  const onErr = (e: unknown) => showErr(e);
 
   const assignMutation = useMutation({
     mutationFn: manageApi.assignRole,
-    onSuccess: onOk,
-    onError: onErr,
+    onSuccess: () => {
+      notify.success('Đã phân vai trò thành công!');
+      onOk();
+    },
+    onError: (e) => showErr(e, 'Không thể thêm người này.'),
   });
   const removeMutation = useMutation({
     mutationFn: (roleId: string) => manageApi.removeRole(roleId),
-    onSuccess: onOk,
+    onSuccess: () => {
+      notify.success('Đã gỡ vai trò thành công!');
+      onOk();
+    },
     onError: onErr,
   });
   const busy = assignMutation.isPending || removeMutation.isPending;

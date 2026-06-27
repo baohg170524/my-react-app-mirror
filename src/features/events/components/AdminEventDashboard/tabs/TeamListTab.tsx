@@ -2,11 +2,12 @@
 
 import React, { useRef, useState } from 'react';
 import { Search } from 'lucide-react';
-import type { AxiosError } from 'axios';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEventRoles, useTeams } from '@/features/events/hooks/useEvents';
 import { isMentorRole, manageApi, EVENT_ROLE } from '@/features/events/api/manage';
 import { usersApi, type UserSummary } from '@/services/api';
+import { useNotify } from '@/components/NotificationProvider';
+import { getErrorMessage } from '@/lib/apiError';
 import { Card } from '../../EventDashboard/Card';
 import { CardSkeleton } from '../../EventDashboard/SkeletonLoaders';
 
@@ -41,21 +42,12 @@ const roleLabelOf = (roleName: string | null): string => {
   }
 };
 
-const errMsg = (e: unknown): string => {
-  const res = (e as AxiosError<{ message?: string; statusCode?: number; errors?: Record<string, string[]> }>)?.response;
-  const data = res?.data;
-  const fieldMsgs = data?.errors ? Object.values(data.errors).flat() : [];
-  if (fieldMsgs.length) return fieldMsgs.join(' ');
-  if (data?.message && !/Exception|was thrown/i.test(data.message)) return data.message;
-  const status = res?.status ?? data?.statusCode;
-  return `Thao tác thất bại${status ? ` (lỗi ${status})` : ''}. Vui lòng thử lại.`;
-};
-
 export function TeamListTab({ eventId }: TeamListTabProps) {
   const { data: roles = [], isLoading: rolesLoading, error } = useEventRoles(eventId);
   const { data: allTeams = [], isLoading: teamsLoading } = useTeams();
   const isLoading = rolesLoading || teamsLoading;
   const queryClient = useQueryClient();
+  const notify = useNotify();
   const [editTeam, setEditTeam] = useState<{ id: string; name: string } | null>(null);
   const [viewTeamId, setViewTeamId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -67,7 +59,12 @@ export function TeamListTab({ eventId }: TeamListTabProps) {
     setEditTeam(null);
     invalidate();
   };
-  const onErr = (e: unknown) => setActionError(errMsg(e));
+  const showErr = (e: unknown, fallback?: string) => {
+    const msg = getErrorMessage(e, fallback);
+    setActionError(msg);
+    notify.error(msg);
+  };
+  const onErr = (e: unknown) => showErr(e);
 
   // Set/replace a team's mentor: remove the old one first (if any), then assign.
   const setMentorMutation = useMutation({
@@ -80,12 +77,18 @@ export function TeamListTab({ eventId }: TeamListTabProps) {
         roleName: EVENT_ROLE.Mentor,
       });
     },
-    onSuccess: onOk,
-    onError: onErr,
+    onSuccess: (_data, vars) => {
+      notify.success(vars.oldRoleId ? 'Đã đổi mentor cho đội thành công!' : 'Đã thêm mentor cho đội thành công!');
+      onOk();
+    },
+    onError: (e) => showErr(e, 'Không thể thêm người này.'),
   });
   const removeMentorMutation = useMutation({
     mutationFn: (roleId: string) => manageApi.removeRole(roleId),
-    onSuccess: onOk,
+    onSuccess: () => {
+      notify.success('Đã xóa mentor khỏi đội thành công!');
+      onOk();
+    },
     onError: onErr,
   });
   const busy = setMentorMutation.isPending || removeMentorMutation.isPending;

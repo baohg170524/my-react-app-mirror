@@ -2,23 +2,15 @@
 
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, X, Search } from 'lucide-react';
-import type { AxiosError } from 'axios';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { usersApi, schoolsApi, type UserSummary } from '@/services/api';
 import { Navbar } from '@/components/Navbar';
 import Notif from '@/components/Notif';
+import { getErrorMessage } from '@/lib/apiError';
 
 const PAGE_SIZE = 20;
 
-const errMsg = (e: unknown): string => {
-  const res = (e as AxiosError<{ message?: string; statusCode?: number; errors?: Record<string, string[]> }>)?.response;
-  const data = res?.data;
-  const fieldMsgs = data?.errors ? Object.values(data.errors).flat() : [];
-  if (fieldMsgs.length) return fieldMsgs.join(' ');
-  if (data?.message && !/Exception|was thrown/i.test(data.message)) return data.message;
-  const status = res?.status ?? data?.statusCode;
-  return `Thao tác thất bại${status ? ` (lỗi ${status})` : ''}. Vui lòng thử lại.`;
-};
+const errMsg = getErrorMessage;
 
 export default function ApprovalRoute() {
   const queryClient = useQueryClient();

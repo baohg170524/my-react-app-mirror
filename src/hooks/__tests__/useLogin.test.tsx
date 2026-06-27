@@ -3,6 +3,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useLogin } from '@/hooks/useAuth';
 import { authApi } from '@/services/api';
+import { NotificationProvider } from '@/components/NotificationProvider';
 
 jest.mock('@/services/api', () => ({
   authApi: { login: jest.fn(), logout: jest.fn() },
@@ -15,7 +16,9 @@ function makeWrapper() {
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <NotificationProvider>{children}</NotificationProvider>
+    </QueryClientProvider>
   );
   return { queryClient, wrapper };
 }
