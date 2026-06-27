@@ -3,8 +3,9 @@
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { useEvent, useEventRoles } from '@/features/events/hooks/useEvents';
+import { useEvent, useEventRoles, useUserEventRole } from '@/features/events/hooks/useEvents';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useCurrentUser } from '@/hooks/useAuth';
 import { isJudgeRole, isMentorRole } from '@/features/events/api/manage';
 import { eventsApi } from '@/features/events/api/events';
 import { Card } from '../../EventDashboard/Card';
@@ -21,8 +22,10 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
   const { data: event, isLoading, error } = useEvent(eventId);
   const { data: roles = [] } = useEventRoles(eventId);
   const [isEditing, setIsEditing] = useState(false);
-  // Every role sees the same event detail; only admins may edit it.
-  const canEdit = useUserRole() === 'admin';
+  const { data: currentUser } = useCurrentUser();
+  const { data: eventRole } = useUserEventRole(currentUser?.id ?? '', eventId);
+  const globalRole = useUserRole();
+  const canEdit = globalRole === 'admin' || eventRole?.roleName === 'EventCoordinator' || eventRole?.roleName === 'Admin';
   const router = useRouter();
   const queryClient = useQueryClient();
 

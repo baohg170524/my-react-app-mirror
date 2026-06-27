@@ -41,7 +41,7 @@ export function RegistrationStatusCard({
 
   const { data: schoolsData } = useQuery({
     queryKey: ['schools'],
-    queryFn: () => schoolsApi.list(),
+    queryFn: () => schoolsApi.list(1000),
     staleTime: 5 * 60_000,
   });
   const schools = schoolsData?.data ?? [];

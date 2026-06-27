@@ -26,6 +26,7 @@ interface RegisterForm {
   fullName: string;
   email: string;
   password: string;
+  confirmPassword?: string;
 }
 
 // ─── Tiny field component ─────────────────────────────────────────────────────
@@ -84,6 +85,7 @@ export default function AuthPage() {
     fullName: "",
     email: "",
     password: "",
+    confirmPassword: "",
   });
   const [clientError, setClientError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -160,6 +162,10 @@ export default function AuthPage() {
       setClientError("Vui lòng nhập mật khẩu.");
       return;
     }
+    if (registerForm.password !== registerForm.confirmPassword) {
+      setClientError("Mật khẩu nhập lại không khớp.");
+      return;
+    }
 
     registerMutation.mutate(
       {
@@ -182,6 +188,7 @@ export default function AuthPage() {
             fullName: "",
             email: "",
             password: "",
+            confirmPassword: "",
           });
           setMode("login");
         },
@@ -805,6 +812,20 @@ export default function AuthPage() {
                     }))
                   }
                   placeholder="Tối thiểu 8 ký tự"
+                  autoComplete="new-password"
+                />
+
+                <Field
+                  label="Nhập lại mật khẩu"
+                  type="password"
+                  value={registerForm.confirmPassword || ""}
+                  onChange={(e) =>
+                    setRegisterForm((f) => ({
+                      ...f,
+                      confirmPassword: e.target.value,
+                    }))
+                  }
+                  placeholder="Nhập lại mật khẩu để xác nhận"
                   autoComplete="new-password"
                 />
 

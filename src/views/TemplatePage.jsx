@@ -342,6 +342,13 @@ export default function TemplatePage({ sn }) {
               </div>
             </div>
 
+            {critF.weight > 0 && critF.maxScore > 0 && critF.weight !== critF.maxScore && (
+              <div className="mb-6 p-3 text-xs" style={{ background: 'rgba(223,101,0,0.1)', color: '#df6500', borderRadius: 2, border: '1px solid rgba(223,101,0,0.3)' }}>
+                <strong>Lưu ý:</strong> Trọng số là <strong>{critF.weight}%</strong> nhưng điểm tối đa là <strong>{critF.maxScore}</strong>.
+                Hệ thống sẽ tự động quy đổi: 1 điểm chấm tương đương <strong>{((critF.weight / critF.maxScore) || 0).toFixed(2)}%</strong> tổng điểm. Hãy chắc chắn đây là ý đồ của bạn.
+              </div>
+            )}
+
             <div className="flex justify-end gap-3">
               <button className="btn btn-outline" onClick={closeCrit}>Hủy</button>
               <button className="btn btn-primary" onClick={saveCrit} disabled={saving}>

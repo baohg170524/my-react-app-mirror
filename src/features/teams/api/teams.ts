@@ -84,8 +84,8 @@ export const teamsApi = {
     await apiClient.post(`/Teams/${encodeURIComponent(teamId)}/leave`);
   },
 
-  invite: async (teamId: string, invitedUserId: string): Promise<void> => {
-    await apiClient.post(`/Teams/${encodeURIComponent(teamId)}/invitations`, { invitedUserId });
+  invite: async (teamId: string, email: string): Promise<void> => {
+    await apiClient.post(`/Teams/${encodeURIComponent(teamId)}/invitations`, { email });
   },
 
   respondInvitation: async (invitationId: string, accept: boolean): Promise<void> => {
@@ -114,5 +114,16 @@ export const teamsApi = {
       ),
     ];
     return Promise.all(teamIds.map((id) => buildTeam(id, roles)));
+  },
+
+  /** Get pending invitation for the current user to a specific team (if any). */
+  getMyInvitation: async (teamId: string): Promise<{ invitationId: string; status: string; notes?: string } | null> => {
+    try {
+      const { data } = await apiClient.get(`/Teams/${encodeURIComponent(teamId)}/my-invitation`);
+      return data;
+    } catch (e: any) {
+      if (e?.response?.status === 404) return null;
+      throw e;
+    }
   },
 };
