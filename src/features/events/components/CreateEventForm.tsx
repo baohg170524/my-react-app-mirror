@@ -1445,10 +1445,10 @@ function EventFormBody({
             💡 Hệ thống tự động xác định Mùa và Năm dựa vào ngày bắt đầu của sự kiện.
           </span>
         </div>
-        
-        <EventPhotoUpload 
-          value={form.photoEventUrl} 
-          onChange={(url) => setForm(f => ({ ...f, photoEventUrl: url }))} 
+
+        <EventPhotoUpload
+          value={form.photoEventUrl}
+          onChange={(url) => setForm(f => ({ ...f, photoEventUrl: url }))}
         />
 
         <TextArea label="Mô tả" value={form.description} onChange={(v) => setField("description", v)} />

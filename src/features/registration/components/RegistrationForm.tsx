@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect, type ChangeEvent, type FormEvent } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { storageApi, schoolsApi, type UpdateStudentProfileCommand } from '@/services/api';
 import { useNotify } from '@/components/NotificationProvider';
 import { getErrorMessage } from '@/lib/apiError';
@@ -14,12 +15,42 @@ interface Props {
   onSubmit: (cmd: UpdateStudentProfileCommand) => void | Promise<void>;
 }
 
+// ── OLD VERSION (commented out) ───────────────────────────────────────────────
+// export function RegistrationForm({ defaults, onSubmit }: Props) {
+//   const [fullName, setFullName] = useState(defaults.fullName);
+//   const [schoolChoice, setSchoolChoice] = useState<'FPT' | 'OTHER'>(
+//     defaults.isFpt !== false ? 'FPT' : 'OTHER',
+//   );
+//   const [schoolName, setSchoolName] = useState('');   // ← chỉ là text input đơn giản
+//   const [studentCode, setStudentCode] = useState(defaults.studentCode ?? '');
+//   ...
+//   useEffect(() => {
+//     if (defaults.schoolId && schoolChoice === 'OTHER') {
+//       schoolsApi.list(1000).then((res) => {
+//         const school = res.data.find((s) => s.id === defaults.schoolId);
+//         if (school) setSchoolName(school.schoolName);
+//       }).catch(() => {});
+//     }
+//   }, [defaults.schoolId, schoolChoice]);
+//   ...
+//   // Resolve schoolId khi submit: POST /Schools nếu chưa có → tìm theo tên
+// }
+// ─────────────────────────────────────────────────────────────────────────────
+
 export function RegistrationForm({ defaults, onSubmit }: Props) {
   const [fullName, setFullName] = useState(defaults.fullName);
   const [schoolChoice, setSchoolChoice] = useState<'FPT' | 'OTHER'>(
     defaults.isFpt !== false ? 'FPT' : 'OTHER',
   );
-  const [schoolName, setSchoolName] = useState('');
+  // search text người dùng gõ
+  const [schoolSearch, setSchoolSearch] = useState('');
+  // school đã chọn từ dropdown
+  const [selectedSchool, setSelectedSchool] = useState<
+    | { id: string; schoolName: string }
+    | null
+  >(null);
+  const [showDropdown, setShowDropdown] = useState(false);
+
   const [studentCode, setStudentCode] = useState(defaults.studentCode ?? '');
   const [card, setCard] = useState<{ preview: string; file?: File } | null>(
     defaults.photoStudentCardUrl ? { preview: defaults.photoStudentCardUrl } : null,
@@ -27,53 +58,84 @@ export function RegistrationForm({ defaults, onSubmit }: Props) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const notify = useNotify();
+
 
   const needsCard = schoolChoice === 'OTHER';
 
+  // ── Load danh sách trường từ DB ──────────────────────────────────────────
+  const { data: schoolsData } = useQuery({
+    queryKey: ['schools'],
+    queryFn: () => schoolsApi.list(1000),
+    staleTime: 5 * 60_000,
+    enabled: schoolChoice === 'OTHER',
+  });
+  const allSchools = schoolsData?.data ?? [];
+
+  // Filter theo search text
+  const filtered = schoolSearch.trim().length === 0
+    ? allSchools.slice(0, 8)
+    : allSchools.filter((s) =>
+      s.schoolName.toLowerCase().includes(schoolSearch.toLowerCase()),
+    ).slice(0, 8);
+
+  // ── Khi load lần đầu, điền tên trường cũ vào ────────────────────────────
   useEffect(() => {
-    if (defaults.schoolId && schoolChoice === 'OTHER') {
-      schoolsApi
-        .list(1000)
-        .then((res) => {
-          const school = res.data.find((s) => s.id === defaults.schoolId);
-          if (school) {
-            setSchoolName(school.schoolName);
-          }
-        })
-        .catch(() => {});
+    if (defaults.schoolId && schoolChoice === 'OTHER' && allSchools.length > 0) {
+      const school = allSchools.find((s) => s.id === defaults.schoolId);
+      if (school) {
+        setSelectedSchool(school);
+        setSchoolSearch(school.schoolName);
+      }
     }
-  }, [defaults.schoolId, schoolChoice]);
+  }, [defaults.schoolId, schoolChoice, allSchools]);
+
+  // ── Đóng dropdown khi click ra ngoài ────────────────────────────────────
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // ── Handlers ─────────────────────────────────────────────────────────────
+  function handleSchoolInputChange(e: ChangeEvent<HTMLInputElement>) {
+    setSchoolSearch(e.target.value);
+    setSelectedSchool(null); // reset lựa chọn khi gõ lại
+    setShowDropdown(true);
+  }
+
+  function handleSelectSchool(school: { id: string; schoolName: string }) {
+    setSelectedSchool(school);
+    setSchoolSearch(school.schoolName);
+    setShowDropdown(false);
+  }
 
   function selectCard(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      setError('Vui lòng chọn một file ảnh hợp lệ.');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Ảnh thẻ không được vượt quá 5MB.');
-      return;
-    }
+    if (!file.type.startsWith('image/')) { setError('Vui lòng chọn một file ảnh hợp lệ.'); return; }
+    if (file.size > 5 * 1024 * 1024) { setError('Ảnh thẻ không được vượt quá 5MB.'); return; }
     const reader = new FileReader();
-    reader.onload = () => {
-      setError('');
-      setCard({ preview: reader.result as string, file });
-    };
+    reader.onload = () => { setError(''); setCard({ preview: reader.result as string, file }); };
     reader.readAsDataURL(file);
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError('');
+
     if (!studentCode.trim()) {
       setError('Vui lòng nhập mã số sinh viên.');
       return;
     }
-    if (needsCard && !schoolName.trim()) {
-      setError('Vui lòng nhập tên trường của bạn.');
+    if (needsCard && !schoolSearch.trim()) {
+      setError('Vui lòng chọn hoặc nhập tên trường của bạn.');
       return;
     }
     if (needsCard && !card) {
@@ -83,34 +145,24 @@ export function RegistrationForm({ defaults, onSubmit }: Props) {
 
     setBusy(true);
     try {
-      // Resolve schoolId
+      // ── Resolve schoolId ────────────────────────────────────────────────
       let schoolId: string | null = null;
+
       if (schoolChoice === 'FPT') {
         const res = await schoolsApi.list();
         const fpt = res.data.find((s) => s.schoolName.toUpperCase().includes('FPT'));
         schoolId = fpt?.id ?? null;
-      } else {
-        const name = schoolName.trim();
-        try {
-          const created = await schoolsApi.create({ schoolName: name });
-          schoolId = created.id;
-        } catch {
-          // School already exists — find it by name (case-insensitive).
-          const res = await schoolsApi.list(1000);
-          const existing = res.data.find(
-            (s) => s.schoolName.trim().toLowerCase() === name.toLowerCase(),
-          );
-          if (existing) schoolId = existing.id;
-        }
+
+      } else if (selectedSchool?.id) {
+        // Đã chọn trường có sẵn từ dropdown
+        schoolId = selectedSchool.id;
       }
 
-      // Upload card for non-FPT students.
+      // ── Upload ảnh thẻ ───────────────────────────────────────────────────
       let photoStudentCardUrl: string | null = defaults.photoStudentCardUrl ?? null;
-      if (card) {
-        if (card.file) {
-          photoStudentCardUrl = await storageApi.upload(card.file);
-        }
-      } else {
+      if (card?.file) {
+        photoStudentCardUrl = await storageApi.upload(card.file);
+      } else if (!card) {
         photoStudentCardUrl = null;
       }
 
@@ -132,13 +184,12 @@ export function RegistrationForm({ defaults, onSubmit }: Props) {
   }
 
   const labelStyle = {
-    fontSize: 11,
-    fontWeight: 700,
-    letterSpacing: '0.08em',
-    textTransform: 'uppercase' as const,
+    fontSize: 11, fontWeight: 700,
+    letterSpacing: '0.08em', textTransform: 'uppercase' as const,
     color: 'var(--color-mute)',
   };
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4 max-w-[36rem]">
       {error && (
@@ -147,6 +198,7 @@ export function RegistrationForm({ defaults, onSubmit }: Props) {
         </p>
       )}
 
+      {/* Họ và tên */}
       <label className="flex flex-col gap-1.5">
         <span style={labelStyle}>Họ và tên</span>
         <input
@@ -156,30 +208,108 @@ export function RegistrationForm({ defaults, onSubmit }: Props) {
         />
       </label>
 
+      {/* Chọn FPT / Khác */}
       <label className="flex flex-col gap-1.5">
         <span style={labelStyle}>Trường</span>
         <select
           className="text-input"
           value={schoolChoice}
-          onChange={(e) => setSchoolChoice(e.target.value as 'FPT' | 'OTHER')}
+          onChange={(e) => {
+            setSchoolChoice(e.target.value as 'FPT' | 'OTHER');
+            setSelectedSchool(null);
+            setSchoolSearch('');
+          }}
         >
-          <option value="FPT">FPT</option>
-          <option value="OTHER">Khác</option>
+          <option value="FPT">FPT University</option>
+          <option value="OTHER">Trường khác</option>
         </select>
       </label>
 
+      {/* Tìm kiếm trường — chỉ hiện khi chọn OTHER */}
       {needsCard && (
-        <label className="flex flex-col gap-1.5">
-          <span style={labelStyle}>Tên trường</span>
+        <div className="flex flex-col gap-1.5" ref={dropdownRef} style={{ position: 'relative' }}>
+          <span style={labelStyle}>Tìm kiếm trường</span>
+
           <input
             className="text-input"
-            value={schoolName}
-            onChange={(e) => setSchoolName(e.target.value)}
-            placeholder="VD: Đại học Bách Khoa"
+            value={schoolSearch}
+            onChange={handleSchoolInputChange}
+            onFocus={() => setShowDropdown(true)}
+            placeholder="Gõ tên trường để tìm kiếm..."
+            autoComplete="off"
           />
-        </label>
+
+          {/* Tag hiển thị trường đã chọn */}
+          {selectedSchool && (
+            <div className="flex items-center gap-2 mt-1">
+              <span
+                className="t-caption-sm font-bold px-2 py-1 rounded-sm"
+                style={{
+                  background: selectedSchool.id ? 'var(--color-primary-soft)' : 'rgba(229,32,32,0.08)',
+                  color: selectedSchool.id ? 'var(--color-primary)' : 'var(--color-error)',
+                  border: `1px solid ${selectedSchool.id ? 'var(--color-primary)' : 'var(--color-error)'}`,
+                }}
+              >
+                {selectedSchool.id ? '✓ Đã chọn:' : '… Sẽ tạo mới:'} {selectedSchool.schoolName}
+              </span>
+              <button
+                type="button"
+                className="t-caption-sm"
+                style={{ color: 'var(--color-mute)', background: 'none', border: 'none', cursor: 'pointer' }}
+                onClick={() => { setSelectedSchool(null); setSchoolSearch(''); }}
+              >
+                Xóa
+              </button>
+            </div>
+          )}
+
+          {/* Dropdown gợi ý */}
+          {showDropdown && schoolSearch.length > 0 && (
+            <div
+              style={{
+                position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+                background: '#ffffff',
+                border: '1px solid var(--color-hairline-strong)',
+                borderRadius: 'var(--radius-sm)',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+                marginTop: 4, maxHeight: 220, overflowY: 'auto',
+              }}
+            >
+              {/* Kết quả tìm kiếm */}
+              {filtered.length > 0 && (
+                <>
+                  <div
+                    className="t-caption-sm font-bold uppercase tracking-wider px-3 py-2"
+                    style={{ color: 'var(--color-mute)', borderBottom: '1px solid var(--color-hairline)' }}
+                  >
+                    Trường có sẵn
+                  </div>
+                  {filtered.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onMouseDown={() => handleSelectSchool(s)}
+                      className="w-full text-left px-3 py-2.5 t-body-sm hover:bg-black/5 transition-colors"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'block' }}
+                    >
+                      {s.schoolName}
+                    </button>
+                  ))}
+                </>
+              )}
+
+              {/* Không tìm thấy gì */}
+              {filtered.length === 0 && (
+                <div className="px-3 py-3 t-caption-sm text-mute">
+                  Không tìm thấy trường nào khớp.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
+      {/* MSSV */}
       <label className="flex flex-col gap-1.5">
         <span style={labelStyle}>Mã số sinh viên</span>
         <input
@@ -190,6 +320,7 @@ export function RegistrationForm({ defaults, onSubmit }: Props) {
         />
       </label>
 
+      {/* Ảnh thẻ */}
       {needsCard && (
         <div className="flex flex-col gap-1.5">
           <span style={labelStyle}>Ảnh thẻ sinh viên</span>
@@ -219,13 +350,7 @@ export function RegistrationForm({ defaults, onSubmit }: Props) {
               Tải ảnh thẻ
             </button>
           )}
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            onChange={selectCard}
-            style={{ display: 'none' }}
-          />
+          <input ref={fileRef} type="file" accept="image/*" onChange={selectCard} style={{ display: 'none' }} />
         </div>
       )}
 
