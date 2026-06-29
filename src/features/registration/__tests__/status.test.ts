@@ -10,7 +10,8 @@ const profile = (over: Partial<UserSummary> = {}): UserSummary => ({
 
 const rej = (over: Partial<UserRejectionModel> = {}): UserRejectionModel => ({
   id: 'r1', userId: 'u1', rejectedBy: 'admin', reason: 'thiếu ảnh thẻ',
-  createdTime: '2026-06-24T00:00:00Z', ...over,
+  isActive: true,
+  createdTime: '2026-06-24T00:00:00Z', lastUpdatedTime: '2026-06-24T00:00:00Z', ...over,
 });
 
 describe('resolveRegistrationStatus', () => {
@@ -19,17 +20,16 @@ describe('resolveRegistrationStatus', () => {
       .toEqual({ status: 'approved', reason: null });
   });
 
-  test('rejected when a rejection exists — uses latest reason', () => {
-    expect(resolveRegistrationStatus(profile(), [rej()]))
+  test('rejected when an active rejection exists', () => {
+    expect(resolveRegistrationStatus(profile(), [rej({ isActive: true, reason: 'thiếu ảnh thẻ' })]))
       .toEqual({ status: 'rejected', reason: 'thiếu ảnh thẻ' });
   });
 
-  test('multiple rejections → latest reason', () => {
+  test('pending when rejections exist but none are active (isActive: false)', () => {
     const out = resolveRegistrationStatus(profile(), [
-      rej({ id: 'old', reason: 'cũ', createdTime: '2026-06-23T12:00:00Z' }),
-      rej({ id: 'new', reason: 'mới', createdTime: '2026-06-24T12:00:00Z' }),
+      rej({ id: 'old', reason: 'cũ', isActive: false }),
     ]);
-    expect(out).toEqual({ status: 'rejected', reason: 'mới' });
+    expect(out).toEqual({ status: 'pending', reason: null });
   });
 
   test('pending when no rejection and profile not approved', () => {

@@ -12,7 +12,7 @@ interface Props { userId: string; }
 export function CompetitionRegistrationTab({ userId }: Props) {
   const { data: user } = useCurrentUser();
   const { setActiveTab } = useEventDashboard();
-  const { profile, status, reason, isLoading, submit, clearRejections } = useRegistration(userId);
+  const { profile, status, reason, rejectionCount, isLoading, submit, clearRejections } = useRegistration(userId);
   const [editing, setEditing] = useState(false);
 
   if (isLoading) return <div className="t-body-md text-mute p-6">Đang tải…</div>;
@@ -22,7 +22,13 @@ export function CompetitionRegistrationTab({ userId }: Props) {
       <div className="p-1 md:p-2">
         <h2 className="t-heading-md mb-4">Đăng ký thi đấu</h2>
         <RegistrationForm
-          defaults={{ fullName: profile?.fullName ?? user?.fullName ?? '' }}
+          defaults={{
+            fullName: profile?.fullName ?? user?.fullName ?? '',
+            studentCode: profile?.studentCode ?? '',
+            isFpt: profile?.isFpt ?? true,
+            schoolId: profile?.schoolId ?? null,
+            photoStudentCardUrl: profile?.photoStudentCardUrl ?? null,
+          }}
           onSubmit={async (cmd) => {
             await submit(cmd);
             setEditing(false);
@@ -38,6 +44,7 @@ export function CompetitionRegistrationTab({ userId }: Props) {
         status={status}
         reason={reason}
         profile={profile}
+        rejectionCount={rejectionCount}
         onRegisterTeam={() => setActiveTab('createTeam')}
         onEdit={() => setEditing(true)}
         onResubmit={async () => {

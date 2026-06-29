@@ -7,6 +7,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import type { AxiosError } from "axios";
 import { authApi } from "@/services/api";
 import type { ApiError } from "@/services/api";
+import { useNotify } from "@/components/NotificationProvider";
+import { getErrorMessage } from "@/lib/apiError";
 
 // ─── Status view ──────────────────────────────────────────────────────────────
 
@@ -104,9 +106,13 @@ function StatusIcon({ icon }: { icon: View["icon"] }) {
 
 function ResendForm() {
   const [email, setEmail] = useState("");
+  const notify = useNotify();
 
   const resend = useMutation({
     mutationFn: (email: string) => authApi.resendVerification(email),
+    onSuccess: () =>
+      notify.success("Đã gửi lại email xác thực. Vui lòng kiểm tra hộp thư của bạn."),
+    onError: (e) => notify.error(getErrorMessage(e, "Không gửi được email xác thực.")),
   });
 
   const serverError = (resend.error as AxiosError<ApiError>)?.response?.data

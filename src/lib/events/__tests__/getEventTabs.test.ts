@@ -24,13 +24,25 @@ describe('getEventTabs', () => {
       .toEqual(['detail', 'register', 'myTeam', 'submission', 'results', 'leaderboard']);
   });
 
-  test('judge → detail + judgeAssigned + leaderboard', () => {
-    expect(getEventTabs({ role: 'judge', hasTeam: false }).map((t) => t.id))
+  test('judge event role → detail + judgeAssigned + leaderboard', () => {
+    expect(getEventTabs({ role: 'student', eventRoleName: 'Judge', hasTeam: false }).map((t) => t.id))
       .toEqual(['detail', 'judgeAssigned', 'leaderboard']);
   });
 
-  test('admin → detail only (admins are redirected to the manage page)', () => {
+  test('mentor event role → detail + myTeam + submission + results + leaderboard', () => {
+    expect(getEventTabs({ role: 'student', eventRoleName: 'Mentor', hasTeam: false }).map((t) => t.id))
+      .toEqual(['detail', 'myTeam', 'submission', 'results', 'leaderboard']);
+  });
+
+  test('admin or EC event role → detail + manage', () => {
+    expect(getEventTabs({ role: 'student', eventRoleName: 'EventCoordinator', hasTeam: false }).map((t) => t.id))
+      .toEqual(['detail', 'manage']);
     expect(getEventTabs({ role: 'admin', hasTeam: false }).map((t) => t.id))
+      .toEqual(['detail', 'manage']);
+  });
+
+  test('global mentor but no event role → detail only', () => {
+    expect(getEventTabs({ role: 'judge', hasTeam: false }).map((t) => t.id))
       .toEqual(['detail']);
   });
 });

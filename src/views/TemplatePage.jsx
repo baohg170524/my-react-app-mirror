@@ -10,6 +10,7 @@ import {
   removeFromTemplate,
 } from '../services/templateService';
 import { getCriteria } from '../services/criteriaService';
+import { useNotify } from '@/components/NotificationProvider';
 
 const BLANK_TMPL = { templateName: '', description: '' };
 const BLANK_CRIT = { criteriaId: '', weight: 0, maxScore: 10 };
@@ -17,6 +18,7 @@ const COLORS = ['#76b900', '#0046a4', '#df6500', '#952fc6', '#0D9488', '#5a8d00'
 const PAGE_SIZE = 10;
 
 export default function TemplatePage({ sn }) {
+  const notify = useNotify();
   const [templates,   setTemplates]   = useState([]);
   const [allCriteria, setAllCriteria] = useState([]); // criteria pool cho dropdown
   const [expanded,    setExpanded]    = useState(null);
@@ -75,9 +77,9 @@ export default function TemplatePage({ sn }) {
       await deleteTemplate(id);
       setTemplates(p => p.filter(t => t.id !== id));
       if (expanded === id) setExpanded(null);
-      sn('Đã xóa bộ tiêu chí.');
+      notify.success('Đã xóa bộ tiêu chí thành công!');
     } catch {
-      sn('Lỗi khi xóa bộ tiêu chí', 'e');
+      notify.error('Lỗi khi xóa bộ tiêu chí. Vui lòng thử lại.');
     }
   };
 
@@ -363,6 +365,13 @@ export default function TemplatePage({ sn }) {
                 />
               </div> */}
             </div>
+
+            {critF.weight > 0 && critF.maxScore > 0 && critF.weight !== critF.maxScore && (
+              <div className="mb-6 p-3 text-xs" style={{ background: 'rgba(223,101,0,0.1)', color: '#df6500', borderRadius: 2, border: '1px solid rgba(223,101,0,0.3)' }}>
+                <strong>Lưu ý:</strong> Trọng số là <strong>{critF.weight}%</strong> nhưng điểm tối đa là <strong>{critF.maxScore}</strong>.
+                Hệ thống sẽ tự động quy đổi: 1 điểm chấm tương đương <strong>{((critF.weight / critF.maxScore) || 0).toFixed(2)}%</strong> tổng điểm. Hãy chắc chắn đây là ý đồ của bạn.
+              </div>
+            )}
 
             <div className="flex justify-end gap-3">
               <button className="btn btn-outline" onClick={closeCrit}>Hủy</button>

@@ -147,22 +147,16 @@ const ADMIN_LINKS: NavLink[] = [
   { label: "Bài nộp",    href: "/submission" },
   { label: "Phúc khảo",  href: "/appeals" },
   { label: "Phê duyệt",  href: "/approval" },
+  { label: "Người dùng", href: "/users" },
+  { label: "Trường học", href: "/schools" },
 ];
 
 const MENTOR_LINKS: NavLink[] = [
   { label: "Sự kiện",    href: "/" },
-  { label: "Chấm điểm", href: "/scoring" },
-  { label: "Xếp hạng",  href: "/leaderboard" },
-  { label: "Bài nộp",   href: "/submission" },
-  { label: "Phúc khảo", href: "/appeals" },
 ];
 
 const STUDENT_LINKS: NavLink[] = [
   { label: "Sự kiện",    href: "/" },
-  { label: "Xếp hạng",  href: "/team-ranking" },
-  { label: "Nộp bài",   href: "/submit-project" },
-  { label: "Phúc khảo", href: "/team-appeal" },
-  { label: "Đăng ký",   href: "/dang-ky" },
 ];
 
 const GUEST_LINKS: NavLink[] = [
@@ -331,9 +325,14 @@ export function Navbar() {
           {isAuthenticated ? (
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               {user?.fullName && (
-                <span style={{ fontSize: "var(--fs-body-sm)", color: "var(--color-on-dark-mute)" }}>
+                <Link 
+                  href="/profile"
+                  style={{ fontSize: "var(--fs-body-sm)", color: "var(--color-on-dark-mute)", textDecoration: "none", transition: "color 0.2s" }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-primary)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-on-dark-mute)")}
+                >
                   {user.fullName}
-                </span>
+                </Link>
               )}
               <button
                 type="button"

@@ -4,7 +4,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
 import Notif from '@/components/Notif';
 import EditModal from '@/components/EditModal';
-import ScoringPage from '@/pages/ScoringPage';
+import ScoringPage from '@/views/ScoringPage';
 import { useCurrentUser } from '@/hooks/useAuth';
 import { eventRolesApi } from '@/features/events/api/eventRoles';
 import { tracksApi } from '@/features/events/api/roundTrack';

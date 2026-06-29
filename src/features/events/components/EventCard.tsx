@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
-import { manageApi } from "../api/manage";
+import { useUserRole } from "@/hooks/useUserRole";
 import type { Event } from "../types/event.types";
 
 interface Props {
@@ -10,20 +9,6 @@ interface Props {
   onJoin: (id: string) => void;
   isJoining: boolean;
   joinError?: string | null;
-}
-
-/** Number of distinct teams in an event (from its roles). Only runs when
- *  authenticated — the roles endpoint requires a token. */
-function useEventTeamCount(eventId: string): number {
-  const enabled =
-    typeof window !== "undefined" && !!localStorage.getItem("accessToken");
-  const { data } = useQuery({
-    queryKey: ["eventTeamCount", eventId],
-    queryFn: () => manageApi.listEventRoles(eventId),
-    enabled,
-    staleTime: 2 * 60_000,
-  });
-  return new Set((data ?? []).map((r) => r.teamId).filter(Boolean)).size;
 }
 
 function formatDate(iso: string) {
@@ -37,8 +22,11 @@ function formatDate(iso: string) {
 }
 
 export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
-  const joinDisabled = event.status === "closed" || isJoining;
-  const teamCount = useEventTeamCount(event.id);
+  const isAdmin = useUserRole() === "admin";
+  const isOpen = event.status === "open";
+  const isLoggedIn = typeof window !== "undefined" && !!localStorage.getItem("accessToken");
+  // Only disable the join action/button for logged in non-admins when closed or joining
+  const joinDisabled = !isAdmin && isLoggedIn && (!isOpen || isJoining);
 
   return (
     <article
@@ -56,6 +44,22 @@ export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
           background: event.status === "open" ? "var(--color-primary)" : "var(--color-ash)",
         }}
       />
+      {/* Event Photo */}
+      <div style={{ width: "100%", height: 160, borderRadius: "var(--radius-sm)", overflow: "hidden", position: "relative", flexShrink: 0, marginTop: "var(--space-xs)" }}>
+        {event.photoEventUrl ? (
+          <img
+            src={event.photoEventUrl}
+            alt={event.title}
+            style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.4s ease" }}
+            onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
+            onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+          />
+        ) : (
+          <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, rgba(118, 185, 0, 0.1) 0%, rgba(118, 185, 0, 0.02) 100%)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ fontSize: 40, opacity: 0.2 }}>📸</span>
+          </div>
+        )}
+      </div>
 
       {/* Status badge */}
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
@@ -72,20 +76,20 @@ export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
       </div>
 
       {/* Title — the only link on card */}
-      
-        <h3
-          className="card__title"
-          style={{
-            margin: 0,
-            color: "var(--color-ink)",
-            transition: "color 150ms",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-primary)")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-ink)")}
-        >
-          {event.title}
-        </h3>
-      
+
+      <h3
+        className="card__title"
+        style={{
+          margin: 0,
+          color: "var(--color-ink)",
+          transition: "color 150ms",
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-primary)")}
+        onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-ink)")}
+      >
+        {event.title}
+      </h3>
+
 
       {/* Start Date */}
       <p style={{ margin: 0, fontSize: "var(--fs-caption-md)", color: "var(--color-mute)", display: "flex", alignItems: "center", gap: 6 }}>
@@ -96,30 +100,29 @@ export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
         {formatDate(event.startDate)}
       </p>
 
-      {/* Team count badge */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-xs)", flex: 1 }}>
-        <span className="badge-tag" style={{ fontSize: "var(--fs-utility-xs)" }}>
-          {teamCount} đội tham gia
-        </span>
-      </div>
-
       {/* Open event — role-aware dashboard at /events/[id] handles admin redirect to /manage */}
       <div style={{ marginTop: "var(--space-sm)" }}>
         <Link
-        href={`/events/${event.id}`}
-        style={{ textDecoration: "none" }}
-      >
-        <button
-          className="btn btn-primary btn-sm"
-          style={{ width: "100%", minHeight: 44 }}
-          disabled={joinDisabled}
-          onClick={() => onJoin(event.id)}
-          aria-label={`Tham gia: ${event.title}`}
+          href={`/events/${event.id}`}
+          style={{ textDecoration: "none" }}
         >
-          {isJoining ? "Đang xử lý…" : "Tham gia"}
-        </button>
+          <button
+            className="btn btn-primary btn-sm"
+            style={{ width: "100%", minHeight: 44 }}
+            disabled={joinDisabled}
+            onClick={isAdmin || !isLoggedIn ? undefined : () => onJoin(event.id)}
+            aria-label={`Xem chi tiết: ${event.title}`}
+          >
+            {isAdmin
+              ? "Xem chi tiết"
+              : isJoining
+                ? "Đang xử lý…"
+                : event.status === "closed"
+                  ? "Đã kết thúc"
+                  : "Xem chi tiết"}
+          </button>
         </Link>
-        
+
         {joinError && (
           <p style={{ margin: "6px 0 0", fontSize: "var(--fs-caption-sm)", color: "var(--color-error)" }}>
             {joinError}

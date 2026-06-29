@@ -7,9 +7,9 @@ import {
   type FormEvent,
 } from "react";
 import { useLogin, useRegister } from "@/hooks/useAuth";
-import type { AxiosError } from "axios";
-import { schoolsApi } from "@/services/api";
-import type { ApiError, SchoolModel } from "@/services/api";
+import { getErrorMessage } from "@/lib/apiError";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -18,12 +18,13 @@ type Mode = "login" | "register";
 interface LoginForm {
   email: string;
   password: string;
-} 
+}
 
 interface RegisterForm {
   fullName: string;
   email: string;
   password: string;
+  confirmPassword?: string;
 }
 
 // ─── Tiny field component ─────────────────────────────────────────────────────
@@ -82,6 +83,7 @@ export default function AuthPage() {
     fullName: "",
     email: "",
     password: "",
+    confirmPassword: "",
   });
   const [clientError, setClientError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -92,9 +94,11 @@ export default function AuthPage() {
   const registerMutation = useRegister();
 
   const isPending = loginMutation.isPending || registerMutation.isPending;
-  const serverError =
-    (loginMutation.error as AxiosError<ApiError>)?.response?.data?.message ||
-    (registerMutation.error as AxiosError<ApiError>)?.response?.data?.message;
+  const serverError = loginMutation.error
+    ? getErrorMessage(loginMutation.error)
+    : registerMutation.error
+      ? getErrorMessage(registerMutation.error)
+      : undefined;
 
   const isRegister = mode === "register";
 
@@ -158,6 +162,10 @@ export default function AuthPage() {
       setClientError("Vui lòng nhập mật khẩu.");
       return;
     }
+    if (registerForm.password !== registerForm.confirmPassword) {
+      setClientError("Mật khẩu nhập lại không khớp.");
+      return;
+    }
 
     registerMutation.mutate(
       {
@@ -180,6 +188,7 @@ export default function AuthPage() {
             fullName: "",
             email: "",
             password: "",
+            confirmPassword: "",
           });
           setMode("login");
         },
@@ -581,6 +590,13 @@ export default function AuthPage() {
           cursor: pointer;
         }
 
+        .hover-primary {
+          transition: color 100ms linear;
+        }
+        .hover-primary:hover {
+          color: var(--color-primary) !important;
+        }
+
         /* ── responsive ───────────────────────────────────────────────────── */
         @media (max-width: 768px) {
           .auth-dark { display: none; }
@@ -653,6 +669,25 @@ export default function AuthPage() {
           </div>
 
           <div className="auth-form-inner">
+            {/* Back to Home */}
+            <Link
+              href="/"
+              className="hover-primary"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 13,
+                color: "var(--color-mute)",
+                textDecoration: "none",
+                marginBottom: 8,
+                width: "fit-content",
+              }}
+            >
+              <ArrowLeft size={16} />
+              Quay lại trang chủ
+            </Link>
+
             {/* heading */}
             <div>
               <h2 className="auth-form-heading">
@@ -777,6 +812,20 @@ export default function AuthPage() {
                     }))
                   }
                   placeholder="Tối thiểu 8 ký tự"
+                  autoComplete="new-password"
+                />
+
+                <Field
+                  label="Nhập lại mật khẩu"
+                  type="password"
+                  value={registerForm.confirmPassword || ""}
+                  onChange={(e) =>
+                    setRegisterForm((f) => ({
+                      ...f,
+                      confirmPassword: e.target.value,
+                    }))
+                  }
+                  placeholder="Nhập lại mật khẩu để xác nhận"
                   autoComplete="new-password"
                 />
 

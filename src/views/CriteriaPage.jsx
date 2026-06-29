@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import {
+  getCriteria,
   createCriteria,
   updateCriteria,
   deleteCriteria,
@@ -22,24 +23,25 @@ export default function CriteriaPage({ criteria, setCriteria, sn }) {
   const openEdit = (c) => { setF({ criteriaName: c.label, description: c.desc ?? '', isActive: c.isActive !== false }); setEd(c.id); };
   const close    = ()  => setEd(null);
 
+  const refresh = () => getCriteria().then(setCriteria).catch(console.error);
+
   const save = async () => {
     if (!f.criteriaName.trim()) { sn('Vui lòng điền tên tiêu chí', 'e'); return; }
     setSaving(true);
     try {
       if (ed === 'new') {
-        const created = await createCriteria(f);
-        if (created) setCriteria(p => [...p, created]);
+        await createCriteria(f);
         sn('Đã thêm tiêu chí!');
       } else {
-        const updated = await updateCriteria(ed, f);
-        if (updated) setCriteria(p => p.map(c => c.id === ed ? { ...c, ...updated } : c));
+        await updateCriteria(ed, f);
         sn('Đã cập nhật tiêu chí!');
       }
       close();
+      await refresh();
     } catch (e) {
       const msg = e?.response?.data?.message ?? e?.message ?? 'Lỗi khi lưu tiêu chí';
       sn(msg, 'e');
-      console.error('[createCriteria]', e?.response?.status, e?.response?.data ?? e);
+      console.error('[saveCriteria]', e?.response?.status, e?.response?.data ?? e);
     } finally {
       setSaving(false);
     }
@@ -48,8 +50,8 @@ export default function CriteriaPage({ criteria, setCriteria, sn }) {
   const del = async (id) => {
     try {
       await deleteCriteria(id);
-      setCriteria(p => p.filter(c => c.id !== id));
       sn('Đã xóa tiêu chí.');
+      await refresh();
     } catch {
       sn('Lỗi khi xóa tiêu chí', 'e');
     }
@@ -58,8 +60,8 @@ export default function CriteriaPage({ criteria, setCriteria, sn }) {
   const toggle = async (id, currentActive) => {
     try {
       await toggleCriteriaStatus(id);
-      setCriteria(p => p.map(c => c.id === id ? { ...c, isActive: !currentActive } : c));
       sn(currentActive ? 'Đã tắt tiêu chí.' : 'Đã bật tiêu chí.');
+      await refresh();
     } catch {
       sn('Lỗi khi thay đổi trạng thái', 'e');
     }

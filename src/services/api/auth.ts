@@ -53,7 +53,11 @@ export const authApi = {
     await apiClient.post("/Auth/resend-verification", { email });
   },
 
-  /** POST /api/Auth/student-profiles — submit/update the caller's student proof. */
+  /** POST /api/Auth/student-profiles — submit the caller's student proof. */
   submitStudentProfile: (payload: UpdateStudentProfileCommand): Promise<void> =>
     apiClient.post("/Auth/student-profiles", payload).then(() => undefined),
+
+  /** PUT /api/Auth/student-profiles — update/resubmit the caller's student proof. */
+  updateStudentProfile: (payload: UpdateStudentProfileCommand): Promise<void> =>
+    apiClient.put("/Auth/student-profiles", payload).then(() => undefined),
 };

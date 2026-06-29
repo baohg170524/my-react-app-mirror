@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Navbar } from '@/components/Navbar';
 import Notif from '@/components/Notif';
-import CriteriaPage from '@/pages/CriteriaPage';
+import CriteriaPage from '@/views/CriteriaPage';
 import { getCriteria } from '@/services/criteriaService';
 
 export default function CriteriaPoolRoute() {
@@ -10,7 +10,9 @@ export default function CriteriaPoolRoute() {
   const [notif,    setNotif]    = useState(null);
 
   useEffect(() => {
-    getCriteria().then(setCriteria).catch(console.error);
+    getCriteria()
+      .then(setCriteria)
+      .catch(err => console.error('[criteria/pool] load failed', err));
   }, []);
 
   const sn = useCallback((m, t = 's') => {

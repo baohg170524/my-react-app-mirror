@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { Navbar } from '@/components/Navbar';
-import SubmissionPage from '@/pages/SubmissionPage';
+import SubmissionPage from '@/views/SubmissionPage';
 import { getAllSubmissions } from '@/services/submissionService';
 
 export default function SubmissionRoute() {

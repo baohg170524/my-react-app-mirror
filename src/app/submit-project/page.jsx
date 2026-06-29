@@ -2,7 +2,7 @@
 import { useState, useCallback } from 'react';
 import { Navbar } from '@/components/Navbar';
 import Notif from '@/components/Notif';
-import SubmitProjectPage from '@/pages/SubmitProjectPage';
+import SubmitProjectPage from '@/views/SubmitProjectPage';
 import { INIT_TEAMS, INIT_SUBMISSIONS, MY_TEAM_ID } from '@/data';
 
 export default function SubmitProjectRoute() {

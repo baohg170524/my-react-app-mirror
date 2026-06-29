@@ -7,6 +7,11 @@ export interface EventRoleUser {
   id: string | null;
   email: string | null;
   fullName: string | null;
+  isApproved?: boolean;
+  isFpt?: boolean;
+  schoolId?: string | null;
+  studentCode?: string | null;
+  photoStudentCardUrl?: string | null;
 }
 
 /** Matches backend EventRoleModel (a user's role within an event). */
@@ -63,6 +68,8 @@ export interface FinalResult {
 
 // ─── Role classifiers (roleName is a free string in the response) ──────────────
 
+export const isEventCoordinatorRole = (r: EventRole) =>
+  (r.roleName ?? "").toLowerCase() === "eventcoordinator";
 export const isJudgeRole = (r: EventRole) =>
   (r.roleName ?? "").toLowerCase() === "judge";
 export const isMentorRole = (r: EventRole) =>
@@ -73,10 +80,12 @@ export const isMentorRole = (r: EventRole) =>
 
 export const manageApi = {
   /** GET /api/EventRoles/event — every role (judge/mentor/competitor) in an event. */
-  listEventRoles: async (eventId: string): Promise<EventRole[]> => {
+  listEventRoles: async (eventId: string, roleName?: number): Promise<EventRole[]> => {
+    const params: Record<string, any> = { EventId: eventId, PageNumber: 1, PageSize: 200 };
+    if (roleName !== undefined && roleName !== null) params.RoleName = roleName;
     const { data } = await apiClient.get<PagedResult<EventRole>>(
       "/EventRoles/event",
-      { params: { EventId: eventId, PageNumber: 1, PageSize: 200 } },
+      { params },
     );
     return data.data ?? [];
   },
@@ -136,15 +145,27 @@ export const manageApi = {
   /** DELETE /api/EventRoles/{id} — remove a role assignment. */
   removeRole: (id: string): Promise<void> =>
     apiClient.delete(`/EventRoles/${encodeURIComponent(id)}`).then(() => undefined),
+
+  /** POST /api/EventCoordinators/invite — invite an event coordinator. */
+  inviteEventCoordinator: (payload: InviteEventCoordinatorPayload): Promise<void> =>
+    apiClient.post("/EventCoordinators/invite", payload).then(() => undefined),
+
+  /** POST /api/Judges/invite — invite a judge into a track. */
+  inviteJudge: (payload: InviteJudgePayload): Promise<void> =>
+    apiClient.post("/Judges/invite", payload).then(() => undefined),
+
+  /** POST /api/Mentors/invite — invite a mentor into a track. */
+  inviteMentor: (payload: InviteMentorPayload): Promise<void> =>
+    apiClient.post("/Mentors/invite", payload).then(() => undefined),
 };
 
 /** EventRoleType enum values (0–4). */
 export const EVENT_ROLE = {
-  Admin: 0,
-  EventCoordinator: 1,
-  Judge: 2,
-  Mentor: 3,
-  Participant: 4,
+  EventCoordinator: 0,
+  Judge: 1,
+  Mentor: 2,
+  TeamLeader: 3,
+  TeamMember: 4,
 } as const;
 
 export interface AssignRolePayload {
@@ -155,4 +176,27 @@ export interface AssignRolePayload {
   /** EventRoleType enum value (e.g. EVENT_ROLE.Judge = 2). */
   roleName: number;
   trackId?: string | null;
+}
+
+export interface InviteJudgePayload {
+  eventId: string;
+  trackId: string;
+  judgeEmail: string;
+  judgeFullName: string;
+  notes: string;
+}
+
+export interface InviteMentorPayload {
+  eventId: string;
+  trackId: string;
+  mentorEmail: string;
+  mentorFullName: string;
+  notes: string;
+}
+
+export interface InviteEventCoordinatorPayload {
+  eventId: string;
+  coordinatorEmail: string;
+  coordinatorFullName: string;
+  notes: string;
 }

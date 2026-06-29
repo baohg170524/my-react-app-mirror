@@ -3,7 +3,7 @@ export { authApi } from "./auth";
 export { schoolsApi } from "./schools";
 export { storageApi } from "./storage";
 export { fptMockApi } from "./fptMock";
-export { usersApi, type UserSummary } from "./users";
+export { usersApi, type UserSummary, type CreateUserPayload, type UpdateUserPayload } from "./users";
 export {
   scoresApi,
   scoreDetailsApi,
@@ -27,4 +27,5 @@ export type {
   SchoolModel,
   UpdateStudentProfileCommand,
   UserProfile,
+  UserRejectionModel,
 } from "./types";

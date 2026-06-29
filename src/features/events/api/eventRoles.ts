@@ -21,11 +21,11 @@ export const eventRolesApi = {
    * Lấy eventRoleId + trackId của judge đang đăng nhập.
    * ⚠ eventRoleId ≠ userId — phải lấy từ endpoint này cho Scores/save.
    */
-  getUserRole: async (userId: string, eventId: string): Promise<EventRoleModel> => {
-    const { data } = await apiClient.get<EventRoleModel>("/EventRoles/user-role", {
+  getUserRole: async (userId: string, eventId: string): Promise<EventRoleModel | null> => {
+    const { data } = await apiClient.get<EventRoleModel | null>("/EventRoles/user-role", {
       params: { UserId: userId, EventId: eventId },
     });
-    return data;
+    return data || null;
   },
 
   /**

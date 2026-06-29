@@ -10,6 +10,9 @@ import { useCurrentUser } from '@/hooks/useAuth';
 import { useMyTeamForEvent } from '@/features/teams/hooks/useTeams';
 import { getEventTabs, type EventTabId } from '@/lib/events/getEventTabs';
 import { useRegistration } from '@/features/registration/hooks/useRegistration';
+import { useRouter } from 'next/navigation';
+import { useUserEventRole } from '@/features/events/hooks/useEvents';
+import { resolveEventRole, roleNameToNumber } from '@/lib/events/eventRole';
 
 interface SidebarProps { eventId: string; }
 
@@ -26,12 +29,21 @@ const ICON: Record<EventTabId, React.ComponentType<{ size?: number; className?: 
 };
 
 export function Sidebar({ eventId }: SidebarProps) {
+  const router = useRouter();
   const { activeTab, setActiveTab } = useEventDashboard();
   const role = useUserRole();
   const { data: user } = useCurrentUser();
+  const { data: eventRole } = useUserEventRole(user?.id ?? '', eventId);
   const { data: team } = useMyTeamForEvent(eventId, user?.id ?? '');
   const { status: registrationStatus } = useRegistration(user?.id ?? '');
-  const tabs = getEventTabs({ role, hasTeam: !!team, registrationStatus });
+  const tabs = getEventTabs({ role, eventRoleName: eventRole?.roleName, hasTeam: !!team, registrationStatus });
+
+  const getDisplayRoleLabel = () => {
+    if (role === 'admin') return 'Admin';
+    const eventRoleNum = roleNameToNumber(eventRole?.roleName);
+    const { label } = resolveEventRole(eventRoleNum !== null ? [eventRoleNum] : []);
+    return label;
+  };
 
   return (
     <aside
@@ -49,7 +61,13 @@ export function Sidebar({ eventId }: SidebarProps) {
                 <button
                   role="tab"
                   aria-selected={isActive}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => {
+                    if (tab.id === 'manage') {
+                      router.push(`/events/${eventId}/manage`);
+                    } else {
+                      setActiveTab(tab.id);
+                    }
+                  }}
                   style={{ color: 'var(--color-on-dark)' }}
                   className={`w-full px-4 py-4 flex items-center gap-3 border-b border-hairline-strong transition-colors duration-150 cursor-pointer min-h-12 ${
                     isActive
@@ -75,7 +93,7 @@ export function Sidebar({ eventId }: SidebarProps) {
         <div className="hidden md:flex flex-col flex-1 min-w-0">
           <p className="text-on-dark text-body-sm font-bold truncate">{user?.fullName ?? '—'}</p>
           <span className="inline-block bg-primary/20 text-primary text-caption-xs px-2 py-1 rounded-full text-xs mt-1 w-fit font-semibold">
-            {role ?? 'guest'}
+            {getDisplayRoleLabel()}
           </span>
         </div>
       </div>

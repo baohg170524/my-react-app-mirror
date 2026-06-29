@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, MoreHorizontal } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { AxiosError } from "axios";
 import {
   usersApi,
   schoolsApi,
@@ -13,12 +12,13 @@ import {
 } from "@/services/api";
 import { useIsAuthenticated } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useAllEvents } from "@/features/events/hooks/useEvents";
+import { useNotify } from "@/components/NotificationProvider";
+import { getErrorMessage } from "@/lib/apiError";
 
 const PAGE_SIZE = 20;
 
-const errMsg = (e: unknown): string =>
-  (e as AxiosError<{ message?: string }>)?.response?.data?.message ??
-  "Thao tác thất bại. Vui lòng thử lại.";
+const errMsg = getErrorMessage;
 
 function Badge({
   children,
@@ -62,27 +62,157 @@ const td: React.CSSProperties = {
   verticalAlign: "top",
 };
 
+// ─── Kebab (…) action menu ───────────────────────────────────────────────────────
+
+type MenuItem = {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  tone?: "primary" | "danger" | "neutral";
+};
+
+/** Gom các nút thao tác của một dòng vào menu dấu ba chấm. Dùng position:fixed
+ *  để dropdown không bị cắt bởi vùng overflow của bảng. */
+function ActionMenu({ items }: { items: MenuItem[] }) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; right: number }>({ top: 0, right: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    const onDoc = (e: MouseEvent) => {
+      if (
+        menuRef.current && !menuRef.current.contains(e.target as Node) &&
+        btnRef.current && !btnRef.current.contains(e.target as Node)
+      ) setOpen(false);
+    };
+    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onEsc);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onEsc);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [open]);
+
+  if (items.length === 0) return <span style={{ color: "var(--color-mute)" }}>—</span>;
+
+  const toggle = () => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (r) setPos({ top: r.bottom + 4, right: Math.max(8, window.innerWidth - r.right) });
+    setOpen((o) => !o);
+  };
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={toggle}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Thao tác"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 32,
+          height: 32,
+          background: "none",
+          border: "1px solid var(--color-hairline-strong)",
+          borderRadius: "var(--radius-sm)",
+          color: "var(--color-ink)",
+          cursor: "pointer",
+        }}
+      >
+        <MoreHorizontal size={16} aria-hidden="true" />
+      </button>
+      {open && (
+        <div
+          ref={menuRef}
+          role="menu"
+          style={{
+            position: "fixed",
+            top: pos.top,
+            right: pos.right,
+            minWidth: 168,
+            background: "var(--color-canvas)",
+            border: "1px solid var(--color-hairline)",
+            borderRadius: "var(--radius-sm)",
+            boxShadow: "0 8px 24px rgba(0,0,0,.18)",
+            padding: "4px 0",
+            zIndex: 200,
+          }}
+        >
+          {items.map((it, i) => (
+            <button
+              key={i}
+              type="button"
+              role="menuitem"
+              disabled={it.disabled}
+              onClick={() => { setOpen(false); it.onClick(); }}
+              className="t-body-sm"
+              style={{
+                display: "block",
+                width: "100%",
+                textAlign: "left",
+                background: "none",
+                border: "none",
+                padding: "8px 14px",
+                cursor: it.disabled ? "not-allowed" : "pointer",
+                opacity: it.disabled ? 0.5 : 1,
+                fontWeight: 600,
+                color:
+                  it.tone === "danger" ? "var(--color-error)" :
+                  it.tone === "primary" ? "var(--color-primary)" :
+                  "var(--color-ink)",
+                whiteSpace: "nowrap",
+              }}
+              onMouseEnter={(e) => { if (!it.disabled) e.currentTarget.style.background = "var(--color-surface-soft)"; }}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+            >
+              {it.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 export function UsersList() {
   const isAuthenticated = useIsAuthenticated();
   const isAdmin = useUserRole() === "admin";
   const queryClient = useQueryClient();
+  const notify = useNotify();
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
   const [filter, setFilter] = useState<"all" | "pending">("all");
+  const [eventId, setEventId] = useState("");
   const [page, setPage] = useState(1);
   const [actionError, setActionError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [editUser, setEditUser] = useState<UserSummary | null>(null);
+  const [preview, setPreview] = useState<{ url: string; name: string } | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const eventsQuery = useAllEvents(isAdmin);
+
   const usersQuery = useQuery({
-    queryKey: ["users", "list", filter, debounced, page],
+    queryKey: ["users", "list", filter, debounced, eventId, page],
     queryFn: () =>
       usersApi.list({
         search: debounced,
         pageNumber: page,
         pageSize: PAGE_SIZE,
         isApproved: filter === "pending" ? false : undefined,
+        eventId: eventId || undefined,
       }),
     enabled: isAuthenticated,
     staleTime: 60_000,
@@ -101,24 +231,94 @@ export function UsersList() {
         isFpt: u.isFpt,
         photoStudentCardUrl: null,
       }),
-    onSuccess: () => {
+    onSuccess: (_data, u) => {
       setActionError(null);
+      notify.success(u.isApproved ? "Đã thu hồi duyệt tài khoản!" : "Đã kích hoạt tài khoản!");
       queryClient.invalidateQueries({ queryKey: ["users", "list"] });
     },
-    onError: (e) =>
-      setActionError(
-        (e as AxiosError<{ message?: string }>)?.response?.data?.message ??
-          "Thao tác thất bại. Vui lòng thử lại.",
-      ),
+    onError: (e) => {
+      const msg = errMsg(e);
+      setActionError(msg);
+      notify.error(msg);
+    },
   });
 
   function handleToggle(u: UserSummary) {
     if (u.isApproved && typeof window !== "undefined" &&
-      !window.confirm(`Vô hiệu hóa tài khoản ${u.fullName || u.email}?`)) {
+      !window.confirm(`Thu hồi duyệt tài khoản ${u.fullName || u.email}? Tài khoản sẽ trở về trạng thái "Chờ duyệt" và không thể tham gia cho đến khi được duyệt lại.`)) {
       return;
     }
     setActionError(null);
     toggleMutation.mutate(u);
+  }
+
+  // Duyệt hồ sơ sinh viên (POST /Users/{id}/approve).
+  const approveMutation = useMutation({
+    mutationFn: (u: UserSummary) => usersApi.approve(u.id),
+    onSuccess: () => {
+      setActionError(null);
+      notify.success("Đã duyệt tài khoản thành công!");
+      queryClient.invalidateQueries({ queryKey: ["users", "list"] });
+    },
+    onError: (e) => {
+      const msg = errMsg(e);
+      setActionError(msg);
+      notify.error(msg);
+    },
+  });
+
+  // Từ chối hồ sơ sinh viên kèm lý do (POST /Users/{id}/reject).
+  const rejectMutation = useMutation({
+    mutationFn: (vars: { u: UserSummary; reason: string }) => usersApi.reject(vars.u.id, vars.reason),
+    onSuccess: () => {
+      setActionError(null);
+      notify.success("Đã từ chối tài khoản thành công!");
+      queryClient.invalidateQueries({ queryKey: ["users", "list"] });
+    },
+    onError: (e) => {
+      const msg = errMsg(e);
+      setActionError(msg);
+      notify.error(msg);
+    },
+  });
+
+  function handleReject(u: UserSummary) {
+    if (typeof window === "undefined") return;
+    const reason = window.prompt(
+      `Lý do từ chối đăng ký của ${u.fullName || u.email || "tài khoản này"}:`,
+      "",
+    );
+    if (reason === null) return; // hủy
+    if (!reason.trim()) {
+      setActionError("Vui lòng nhập lý do từ chối.");
+      return;
+    }
+    setActionError(null);
+    rejectMutation.mutate({ u, reason: reason.trim() });
+  }
+
+  // Xoá tài khoản = soft delete (DELETE /Users/{id}) — chặn truy cập hệ thống.
+  const deleteMutation = useMutation({
+    mutationFn: (u: UserSummary) => usersApi.remove(u.id),
+    onSuccess: () => {
+      setActionError(null);
+      notify.success("Đã xoá tài khoản thành công!");
+      queryClient.invalidateQueries({ queryKey: ["users", "list"] });
+    },
+    onError: (e) => {
+      const msg = errMsg(e);
+      setActionError(msg);
+      notify.error(msg);
+    },
+  });
+
+  function handleDelete(u: UserSummary) {
+    if (typeof window !== "undefined" &&
+      !window.confirm(`Xoá tài khoản ${u.fullName || u.email || "này"}? Tài khoản sẽ bị chặn truy cập hệ thống.`)) {
+      return;
+    }
+    setActionError(null);
+    deleteMutation.mutate(u);
   }
   const schoolsQuery = useQuery({
     queryKey: ["schools"],
@@ -133,9 +333,14 @@ export function UsersList() {
     onSuccess: () => {
       setActionError(null);
       setShowCreate(false);
+      notify.success("Đã tạo tài khoản thành công!");
       queryClient.invalidateQueries({ queryKey: ["users", "list"] });
     },
-    onError: (e) => setActionError(errMsg(e)),
+    onError: (e) => {
+      const msg = errMsg(e);
+      setActionError(msg);
+      notify.error(msg);
+    },
   });
 
   // Admin: edit a user's info (name, student code, school, status).
@@ -155,9 +360,14 @@ export function UsersList() {
     onSuccess: () => {
       setActionError(null);
       setEditUser(null);
+      notify.success("Đã cập nhật tài khoản thành công!");
       queryClient.invalidateQueries({ queryKey: ["users", "list"] });
     },
-    onError: (e) => setActionError(errMsg(e)),
+    onError: (e) => {
+      const msg = errMsg(e);
+      setActionError(msg);
+      notify.error(msg);
+    },
   });
 
   const users = usersQuery.data?.data ?? [];
@@ -179,7 +389,7 @@ export function UsersList() {
 
   return (
     <main tabIndex={-1} style={{ outline: "none", minHeight: "100vh" }}>
-      <div className="container" style={{ paddingTop: "var(--space-section)" }}>
+      <div className="container" style={{ paddingTop: "var(--space-section)", maxWidth: "min(1400px, 96vw)" }}>
         <div className="card" style={{ padding: "var(--space-xxl)", gap: "var(--space-xl)" }}>
           {/* Header */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "var(--space-md)" }}>
@@ -189,7 +399,7 @@ export function UsersList() {
                 {!isAuthenticated
                   ? "Danh sách tài khoản trong hệ thống"
                   : filter === "pending"
-                    ? `${total} tài khoản bị vô hiệu hóa`
+                    ? `${total} tài khoản chờ duyệt`
                     : `${total} người dùng`}
               </p>
             </div>
@@ -201,6 +411,21 @@ export function UsersList() {
                 placeholder="Tìm theo tên hoặc email…"
                 style={{ width: 280, maxWidth: "100%" }}
               />
+              <select
+                className="text-input"
+                value={eventId}
+                onChange={(e) => {
+                  setEventId(e.target.value);
+                  setPage(1);
+                }}
+                style={{ width: 220, maxWidth: "100%" }}
+                aria-label="Lọc theo sự kiện"
+              >
+                <option value="">Tất cả sự kiện</option>
+                {(eventsQuery.data ?? []).map((ev) => (
+                  <option key={ev.id} value={ev.id}>{ev.title}</option>
+                ))}
+              </select>
               {isAdmin && (
                 <button
                   type="button"
@@ -231,7 +456,7 @@ export function UsersList() {
             <div style={{ display: "flex", gap: "var(--space-sm)" }}>
               {([
                 { id: "all", label: "Tất cả" },
-                { id: "pending", label: "Bị vô hiệu hóa" },
+                { id: "pending", label: "Chờ duyệt" },
               ] as const).map(({ id, label }) => (
                 <button
                   key={id}
@@ -262,7 +487,7 @@ export function UsersList() {
             </p>
           ) : users.length === 0 ? (
             <p className="t-body-sm" style={{ color: "var(--color-mute)", textAlign: "center", padding: "var(--space-xl)" }}>
-              {filter === "pending" ? "Không có tài khoản bị vô hiệu hóa." : "Không có người dùng nào."}
+              {filter === "pending" ? "Không có tài khoản chờ duyệt." : "Không có người dùng nào."}
             </p>
           ) : (
             <>
@@ -273,6 +498,7 @@ export function UsersList() {
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr>
+                      <th style={th}>Ảnh thẻ</th>
                       <th style={th}>Họ tên</th>
                       <th style={th}>Email</th>
                       <th style={th}>MSSV</th>
@@ -286,8 +512,82 @@ export function UsersList() {
                     {users.map((u) => {
                       const pending =
                         toggleMutation.isPending && toggleMutation.variables?.id === u.id;
+                      const approveBusy =
+                        approveMutation.isPending && approveMutation.variables?.id === u.id;
+                      const rejectBusy =
+                        rejectMutation.isPending && rejectMutation.variables?.u.id === u.id;
+                      const deleteBusy =
+                        deleteMutation.isPending && deleteMutation.variables?.id === u.id;
+
+                      // Gom thao tác theo vòng đời tài khoản (chỉ có cờ isApproved):
+                      //  • Chờ duyệt  → Duyệt / Từ chối / Sửa
+                      //  • Đã duyệt   → Sửa / Vô hiệu hóa
+                      const menuItems: MenuItem[] = [];
+                      if (isAdmin && !u.isApproved) {
+                        menuItems.push({
+                          label: approveBusy ? "Đang lưu…" : "Duyệt",
+                          tone: "primary",
+                          disabled: approveBusy || rejectBusy,
+                          onClick: () => { setActionError(null); approveMutation.mutate(u); },
+                        });
+                        menuItems.push({
+                          label: rejectBusy ? "Đang xử lý…" : "Từ chối",
+                          tone: "danger",
+                          disabled: approveBusy || rejectBusy,
+                          onClick: () => handleReject(u),
+                        });
+                      }
+                      if (isAdmin) {
+                        menuItems.push({
+                          label: "Sửa",
+                          onClick: () => { setActionError(null); setEditUser(u); },
+                        });
+                      }
+                      if (u.isApproved) {
+                        menuItems.push({
+                          label: pending ? "Đang lưu…" : "Thu hồi duyệt",
+                          tone: "danger",
+                          disabled: pending,
+                          onClick: () => handleToggle(u),
+                        });
+                      } else if (!isAdmin) {
+                        menuItems.push({
+                          label: pending ? "Đang lưu…" : "Kích hoạt",
+                          tone: "primary",
+                          disabled: pending,
+                          onClick: () => handleToggle(u),
+                        });
+                      }
+                      if (isAdmin) {
+                        menuItems.push({
+                          label: deleteBusy ? "Đang xoá…" : "Xoá tài khoản",
+                          tone: "danger",
+                          disabled: deleteBusy,
+                          onClick: () => handleDelete(u),
+                        });
+                      }
+
                       return (
                         <tr key={u.id}>
+                          <td style={td}>
+                            {u.photoStudentCardUrl ? (
+                              <button
+                                type="button"
+                                onClick={() => setPreview({ url: u.photoStudentCardUrl!, name: u.fullName ?? "" })}
+                                aria-label={`Xem ảnh thẻ của ${u.fullName || u.email || "người dùng"}`}
+                                style={{ display: "block", background: "none", border: "none", padding: 0, cursor: "pointer" }}
+                              >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={u.photoStudentCardUrl}
+                                  alt="Ảnh thẻ sinh viên"
+                                  style={{ width: 56, height: 40, objectFit: "cover", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-hairline)" }}
+                                />
+                              </button>
+                            ) : (
+                              <span style={{ color: "var(--color-mute)" }}>—</span>
+                            )}
+                          </td>
                           <td style={{ ...td, fontWeight: 700 }}>{u.fullName || "—"}</td>
                           <td style={td}>{u.email || "—"}</td>
                           <td style={td}>{u.studentCode || "—"}</td>
@@ -301,53 +601,57 @@ export function UsersList() {
                           </td>
                           <td style={td}>
                             <Badge tone={u.isApproved ? "success" : "warning"}>
-                              {u.isApproved ? "Hoạt động" : "Vô hiệu hóa"}
+                              {u.isApproved ? "Đã duyệt" : "Chờ duyệt"}
                             </Badge>
                           </td>
                           <td style={{ ...td, textAlign: "right" }}>
-                            <div style={{ display: "inline-flex", gap: "var(--space-sm)", justifyContent: "flex-end" }}>
-                              {isAdmin && (
+                            {filter === "pending" && isAdmin ? (
+                              <div style={{ display: "inline-flex", gap: "var(--space-sm)", justifyContent: "flex-end" }}>
                                 <button
                                   type="button"
+                                  disabled={approveBusy || rejectBusy}
                                   onClick={() => {
                                     setActionError(null);
-                                    setEditUser(u);
+                                    approveMutation.mutate(u);
                                   }}
                                   className="t-caption-sm"
                                   style={{
                                     fontWeight: 700,
                                     background: "none",
-                                    border: "1px solid var(--color-hairline-strong)",
-                                    color: "var(--color-ink)",
+                                    border: "1px solid var(--color-primary)",
+                                    color: "var(--color-primary)",
                                     borderRadius: "var(--radius-sm)",
                                     padding: "4px 10px",
-                                    cursor: "pointer",
+                                    cursor: approveBusy || rejectBusy ? "not-allowed" : "pointer",
+                                    opacity: approveBusy || rejectBusy ? 0.5 : 1,
                                     whiteSpace: "nowrap",
                                   }}
                                 >
-                                  Sửa
+                                  {approveBusy ? "Đang lưu…" : "Duyệt"}
                                 </button>
-                              )}
-                              <button
-                                type="button"
-                                disabled={pending}
-                                onClick={() => handleToggle(u)}
-                                className="t-caption-sm"
-                                style={{
-                                  fontWeight: 700,
-                                  background: "none",
-                                  border: `1px solid ${u.isApproved ? "var(--color-error)" : "var(--color-primary)"}`,
-                                  color: u.isApproved ? "var(--color-error)" : "var(--color-primary)",
-                                  borderRadius: "var(--radius-sm)",
-                                  padding: "4px 10px",
-                                  cursor: pending ? "not-allowed" : "pointer",
-                                  opacity: pending ? 0.5 : 1,
-                                  whiteSpace: "nowrap",
-                                }}
-                              >
-                                {pending ? "Đang lưu…" : u.isApproved ? "Vô hiệu hóa" : "Kích hoạt"}
-                              </button>
-                            </div>
+                                <button
+                                  type="button"
+                                  disabled={approveBusy || rejectBusy}
+                                  onClick={() => handleReject(u)}
+                                  className="t-caption-sm"
+                                  style={{
+                                    fontWeight: 700,
+                                    background: "none",
+                                    border: "1px solid var(--color-error)",
+                                    color: "var(--color-error)",
+                                    borderRadius: "var(--radius-sm)",
+                                    padding: "4px 10px",
+                                    cursor: approveBusy || rejectBusy ? "not-allowed" : "pointer",
+                                    opacity: approveBusy || rejectBusy ? 0.5 : 1,
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  {rejectBusy ? "Đang xử lý…" : "Từ chối"}
+                                </button>
+                              </div>
+                            ) : (
+                              <ActionMenu items={menuItems} />
+                            )}
                           </td>
                         </tr>
                       );
@@ -431,6 +735,57 @@ export function UsersList() {
             editMutation.mutate({ id: editUser.id, user: editUser, edits })
           }
         />
+      )}
+
+      {/* Ảnh thẻ phóng to */}
+      {preview && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Ảnh thẻ sinh viên"
+          onClick={() => setPreview(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 100,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+            background: "rgba(0,0,0,0.7)",
+          }}
+        >
+          <div style={{ position: "relative", maxWidth: "90vw", maxHeight: "90vh" }} onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => setPreview(null)}
+              aria-label="Đóng"
+              style={{
+                position: "absolute",
+                top: -12,
+                right: -12,
+                width: 32,
+                height: 32,
+                borderRadius: "50%",
+                background: "var(--color-canvas)",
+                border: "1px solid var(--color-hairline)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "var(--color-ink)",
+                cursor: "pointer",
+              }}
+            >
+              <X size={16} aria-hidden="true" />
+            </button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={preview.url}
+              alt={`Ảnh thẻ của ${preview.name}`}
+              style={{ width: "min(480px, 88vw)", height: "auto", maxHeight: "80vh", objectFit: "contain", borderRadius: "var(--radius-sm)" }}
+            />
+          </div>
+        </div>
       )}
     </main>
   );

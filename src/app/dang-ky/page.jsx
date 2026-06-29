@@ -2,7 +2,7 @@
 import { useState, useCallback } from 'react';
 import { Navbar } from '@/components/Navbar';
 import Notif from '@/components/Notif';
-import DangKyPage from '@/pages/DangKyPage';
+import DangKyPage from '@/views/DangKyPage';
 
 export default function DangKyRoute() {
   const [notif, setNotif] = useState(null);

@@ -1,5 +1,7 @@
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { RegistrationForm } from '../RegistrationForm';
+import { NotificationProvider } from '@/components/NotificationProvider';
 
 // Mock @/services/api so network calls never fire in tests.
 jest.mock('@/services/api', () => ({
@@ -14,10 +16,13 @@ jest.mock('@/services/api', () => ({
   },
 }));
 
+const renderForm = (ui: React.ReactElement) =>
+  render(<NotificationProvider>{ui}</NotificationProvider>);
+
 describe('RegistrationForm', () => {
   test('FPT path: submits UpdateStudentProfileCommand with resolved schoolId', async () => {
     const onSubmit = jest.fn();
-    render(<RegistrationForm defaults={{ fullName: 'Nguyễn Văn A' }} onSubmit={onSubmit} />);
+    renderForm(<RegistrationForm defaults={{ fullName: 'Nguyễn Văn A' }} onSubmit={onSubmit} />);
 
     expect((screen.getByLabelText(/Họ và tên/i) as HTMLInputElement).value).toBe('Nguyễn Văn A');
 
@@ -38,7 +43,7 @@ describe('RegistrationForm', () => {
 
   test('blocks submit when MSSV empty', () => {
     const onSubmit = jest.fn();
-    render(<RegistrationForm defaults={{ fullName: 'A' }} onSubmit={onSubmit} />);
+    renderForm(<RegistrationForm defaults={{ fullName: 'A' }} onSubmit={onSubmit} />);
     fireEvent.click(screen.getByRole('button', { name: /Gửi đăng ký/i }));
     expect(onSubmit).not.toHaveBeenCalled();
     expect(screen.getByText(/Vui lòng nhập mã số sinh viên/i)).toBeInTheDocument();

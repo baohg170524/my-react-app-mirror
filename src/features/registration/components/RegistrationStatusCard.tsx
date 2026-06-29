@@ -10,6 +10,7 @@ interface Props {
   onRegisterTeam: () => void;
   onEdit: () => void;
   onResubmit: () => Promise<void> | void;
+  rejectionCount?: number;
 }
 
 const BADGE: Record<Props['status'], { label: string; bg: string; fg: string; bd: string }> = {
@@ -34,12 +35,13 @@ export function RegistrationStatusCard({
   onRegisterTeam,
   onEdit,
   onResubmit,
+  rejectionCount,
 }: Props) {
   const badge = BADGE[status];
 
   const { data: schoolsData } = useQuery({
     queryKey: ['schools'],
-    queryFn: () => schoolsApi.list(),
+    queryFn: () => schoolsApi.list(1000),
     staleTime: 5 * 60_000,
   });
   const schools = schoolsData?.data ?? [];
@@ -54,12 +56,26 @@ export function RegistrationStatusCard({
     <div className="card flex flex-col gap-4" style={{ padding: 'var(--space-xl)', maxWidth: '40rem' }}>
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h2 className="t-heading-md m-0">Đăng ký thi đấu</h2>
-        <span
-          className="badge-tag"
-          style={{ background: badge.bg, color: badge.fg, border: `1px solid ${badge.bd}` }}
-        >
-          {badge.label}
-        </span>
+        <div className="flex items-center gap-2">
+          {rejectionCount !== undefined && rejectionCount > 0 && (
+            <span
+              className="badge-tag"
+              style={{
+                background: 'rgba(229,32,32,0.05)',
+                color: 'var(--color-error)',
+                border: '1px solid rgba(229,32,32,0.2)',
+              }}
+            >
+              Bị từ chối {rejectionCount} lần
+            </span>
+          )}
+          <span
+            className="badge-tag"
+            style={{ background: badge.bg, color: badge.fg, border: `1px solid ${badge.bd}` }}
+          >
+            {badge.label}
+          </span>
+        </div>
       </div>
 
       {status === 'rejected' && reason && (
@@ -93,9 +109,14 @@ export function RegistrationStatusCard({
         </button>
       )}
       {status === 'approved' && (
-        <button type="button" className="btn btn-primary w-fit" onClick={onRegisterTeam}>
-          Đăng ký đội
-        </button>
+        <div className="flex gap-2">
+          <button type="button" className="btn btn-primary w-fit" onClick={onRegisterTeam}>
+            Đăng ký đội
+          </button>
+          <button type="button" className="btn btn-secondary w-fit" onClick={onEdit}>
+            Cập nhật hồ sơ
+          </button>
+        </div>
       )}
       {status === 'rejected' && (
         <button type="button" className="btn btn-secondary w-fit" onClick={onResubmit}>

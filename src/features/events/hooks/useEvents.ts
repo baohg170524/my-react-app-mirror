@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import eventService from '../api/eventService';
 import { eventsApi } from '../api/events';
 import { manageApi } from '../api/manage';
+import { eventRolesApi } from '../api/eventRoles';
 
 export const useEvent = (eventId: string) => {
   return useQuery({
@@ -14,10 +15,10 @@ export const useEvent = (eventId: string) => {
   });
 };
 
-export const useAllEvents = () => {
+export const useAllEvents = (isAdmin: boolean) => {
   return useQuery({
-    queryKey: ['events', 'all'],
-    queryFn: () => eventsApi.list(), // real API: GET /api/Events
+    queryKey: ['events', 'all', isAdmin],
+    queryFn: () => eventsApi.list(isAdmin ? undefined : true), // real API: GET /api/Events
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
 };
@@ -25,10 +26,10 @@ export const useAllEvents = () => {
 // ─── Admin manage page (real API) ──────────────────────────────────────────────
 
 /** All roles (judge/mentor/competitor) in an event — admin manage page. */
-export const useEventRoles = (eventId: string) =>
+export const useEventRoles = (eventId: string, roleName?: number) =>
   useQuery({
-    queryKey: ['eventRoles', eventId],
-    queryFn: () => manageApi.listEventRoles(eventId),
+    queryKey: ['eventRoles', eventId, roleName],
+    queryFn: () => manageApi.listEventRoles(eventId, roleName),
     enabled: !!eventId,
     staleTime: 2 * 60 * 1000,
   });
@@ -173,5 +174,15 @@ export const useJoinEvent = () => {
       queryClient.invalidateQueries({ queryKey: ['events', 'my'] });
       queryClient.invalidateQueries({ queryKey: ['events', 'all'] });
     },
+  });
+};
+
+export const useUserEventRole = (userId: string, eventId: string) => {
+  return useQuery({
+    queryKey: ['userEventRole', userId, eventId],
+    queryFn: () => eventRolesApi.getUserRole(userId, eventId),
+    enabled: !!userId && !!eventId,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
   });
 };

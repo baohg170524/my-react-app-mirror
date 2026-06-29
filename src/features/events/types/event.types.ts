@@ -7,4 +7,5 @@ export interface Event {
   endDate: string;
   status: EventStatus;
   description: string;
+  photoEventUrl?: string | null;
 }

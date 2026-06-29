@@ -21,6 +21,8 @@ export interface UserListParams {
   pageSize?: number;
   /** Filter by approval state (e.g. false = chờ xét duyệt). */
   isApproved?: boolean;
+  /** Filter by event — only users registered in this event. */
+  eventId?: string;
 }
 
 /** Matches backend CreateUserRequestModel. */
@@ -61,11 +63,13 @@ export const usersApi = {
     pageNumber = 1,
     pageSize = 50,
     isApproved,
+    eventId,
   }: UserListParams = {}): Promise<PagedResult<UserSummary>> => {
     const { data } = await apiClient.get<PagedResult<UserSummary>>("/Users", {
       params: {
         Search: search.trim() || undefined,
         IsApproved: isApproved,
+        EventId: eventId || undefined,
         PageNumber: pageNumber,
         PageSize: pageSize,
       },
@@ -80,6 +84,10 @@ export const usersApi = {
   /** PUT /api/Users/{id} — update a user (admin only). */
   update: (id: string, payload: UpdateUserPayload): Promise<void> =>
     apiClient.put(`/Users/${encodeURIComponent(id)}`, payload).then(() => undefined),
+
+  /** DELETE /api/Users/{id} — soft-delete a user, i.e. remove their system access (admin only). */
+  remove: (id: string): Promise<void> =>
+    apiClient.delete(`/Users/${encodeURIComponent(id)}`).then(() => undefined),
 
   /** GET /api/Users/profile — the current logged-in user's profile. */
   getProfile: async (): Promise<UserSummary> => {

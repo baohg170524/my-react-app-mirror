@@ -1,0 +1,55 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useRegistration } from '@/features/registration/hooks/useRegistration';
+import { RegistrationForm } from '@/features/registration/components/RegistrationForm';
+import { RegistrationStatusCard } from '@/features/registration/components/RegistrationStatusCard';
+import { useCurrentUser } from '@/hooks/useAuth';
+
+export function GlobalProfile() {
+  const router = useRouter();
+  const { data: user } = useCurrentUser();
+  const { profile, status, reason, rejectionCount, isLoading, submit, clearRejections } = useRegistration(user?.id ?? '');
+  const [editing, setEditing] = useState(false);
+
+  if (isLoading) return <div className="t-body-md text-mute p-6 text-center">Đang tải hồ sơ...</div>;
+
+  if (editing) {
+    return (
+      <div className="card max-w-[40rem] mx-auto mt-8 p-6 shadow-sm bg-white rounded-lg">
+        <h2 className="t-heading-md mb-6">Cập nhật hồ sơ</h2>
+        <RegistrationForm
+          defaults={{
+            fullName: profile?.fullName ?? user?.fullName ?? '',
+            studentCode: profile?.studentCode ?? '',
+            isFpt: profile?.isFpt ?? true,
+            schoolId: profile?.schoolId ?? null,
+            photoStudentCardUrl: profile?.photoStudentCardUrl ?? null,
+          }}
+          onSubmit={async (cmd) => {
+            await submit(cmd);
+            setEditing(false);
+          }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex justify-center mt-8 px-4">
+      <RegistrationStatusCard
+        status={status}
+        reason={reason}
+        profile={profile}
+        rejectionCount={rejectionCount}
+        onRegisterTeam={() => router.push('/')}
+        onEdit={() => setEditing(true)}
+        onResubmit={async () => {
+          await clearRejections();
+          setEditing(true);
+        }}
+      />
+    </div>
+  );
+}

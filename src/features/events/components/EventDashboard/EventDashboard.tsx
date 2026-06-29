@@ -3,7 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
-import { EventDetailTab } from '../AdminEventDashboard/tabs/EventDetailTab';
+import { EventDetailTab } from './tabs/EventDetail';
 import { CreateTeamTab } from './tabs/CreateTeam';
 import { MyTeamTab } from './tabs/MyTeam';
 import { SubmissionTab } from './tabs/Submission';
@@ -12,7 +12,7 @@ import { LeaderboardTab } from './tabs/Leaderboard';
 import { JudgeAssignedTeamsTab } from './tabs/JudgeAssignedTeams';
 import { CompetitionRegistrationTab } from '@/features/registration/components/CompetitionRegistrationTab';
 import { useEventDashboard } from '@/features/events/contexts/EventDashboardContext';
-import { useEvent } from '@/features/events/hooks/useEvents';
+import { useEvent, useUserEventRole } from '@/features/events/hooks/useEvents';
 import { useMyTeamForEvent } from '@/features/teams/hooks/useTeams';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useRouter } from 'next/navigation';
@@ -25,15 +25,17 @@ export function EventDashboard({ eventId, userId }: EventDashboardProps) {
   const { data: event, isLoading: eventLoading } = useEvent(eventId);
   const { data: team } = useMyTeamForEvent(eventId, userId);
   const role = useUserRole();
+  const { data: eventRole } = useUserEventRole(userId, eventId);
+  const isManager = role === 'admin' || eventRole?.roleName === 'EventCoordinator' || eventRole?.roleName === 'Admin';
   const adminRedirected = useRef(false);
 
-  // Admins manage an event on its dedicated page — skip the dashboard entirely.
+  // Admins or ECs manage an event on its dedicated page — skip the dashboard entirely.
   useEffect(() => {
-    if (!adminRedirected.current && role === 'admin') {
+    if (!adminRedirected.current && isManager) {
       adminRedirected.current = true;
       router.replace(`/events/${eventId}/manage`);
     }
-  }, [role, eventId, router]);
+  }, [isManager, eventId, router]);
 
   if (eventLoading) {
     return (
@@ -57,7 +59,7 @@ export function EventDashboard({ eventId, userId }: EventDashboardProps) {
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'detail':        return <EventDetailTab eventId={eventId} />;
+      case 'detail':        return <EventDetailTab eventId={eventId} userId={userId} />;
       case 'register':      return <CompetitionRegistrationTab userId={userId} />;
       case 'createTeam':    return <CreateTeamTab  eventId={eventId} userId={userId} />;
       case 'myTeam':        return <MyTeamTab      eventId={eventId} userId={userId} />;
