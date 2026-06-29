@@ -147,6 +147,7 @@ const ADMIN_LINKS: NavLink[] = [
   { label: "Bài nộp",    href: "/submission" },
   { label: "Phúc khảo",  href: "/appeals" },
   { label: "Phê duyệt",  href: "/approval" },
+  { label: "Người dùng", href: "/users" },
   { label: "Trường học", href: "/schools" },
 ];
 
