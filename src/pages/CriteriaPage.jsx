@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   createCriteria,
   updateCriteria,
@@ -8,11 +8,15 @@ import {
 
 const BLANK = { criteriaName: '', description: '', isActive: true };
 const COLORS = ['#76b900','#0046a4','#df6500','#952fc6','#0D9488','#5a8d00'];
+const PAGE_SIZE = 10;
 
 export default function CriteriaPage({ criteria, setCriteria, sn }) {
   const [ed,     setEd]     = useState(null);
   const [f,      setF]      = useState({ ...BLANK });
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('all'); // 'all' | 'active' | 'inactive'
+  const [page,   setPage]   = useState(1);
 
   const openNew  = ()  => { setF({ ...BLANK }); setEd('new'); };
   const openEdit = (c) => { setF({ criteriaName: c.label, description: c.desc ?? '', isActive: c.isActive !== false }); setEd(c.id); };
@@ -60,6 +64,19 @@ export default function CriteriaPage({ criteria, setCriteria, sn }) {
       sn('Lỗi khi thay đổi trạng thái', 'e');
     }
   };
+
+  const filtered = useMemo(() => {
+    let list = criteria;
+    if (filter === 'active')   list = list.filter(c => c.isActive !== false);
+    if (filter === 'inactive') list = list.filter(c => c.isActive === false);
+    const q = search.trim().toLowerCase();
+    if (q) list = list.filter(c => c.label?.toLowerCase().includes(q) || c.desc?.toLowerCase().includes(q));
+    return list;
+  }, [criteria, search, filter]);
+
+  const totalPages  = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paged       = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const hasWeight = criteria.some(c => c.weight > 0);
   const totalW    = criteria.reduce((s, c) => s + (c.weight ?? 0), 0);
@@ -125,6 +142,38 @@ export default function CriteriaPage({ criteria, setCriteria, sn }) {
         <button className="btn btn-primary" onClick={openNew}>+ Thêm tiêu chí</button>
       </div>
 
+      {/* ── Thanh tìm kiếm + lọc ────────────────────────────────────────────── */}
+      <div className="flex gap-3 mb-5 flex-wrap items-center">
+        <input
+          value={search}
+          onChange={e => { setSearch(e.target.value); setPage(1); }}
+          placeholder="Tìm tiêu chí..."
+          className="input-field flex-1"
+          style={{ minWidth: 180 }}
+        />
+        {search && (
+          <button onClick={() => { setSearch(''); setPage(1); }}
+            className="btn-hover text-xs px-2 py-1"
+            style={{ background: '#f7f7f7', border: '1px solid #ccc', borderRadius: 2, color: '#757575' }}>✕</button>
+        )}
+        {(['all', 'active', 'inactive']).map(f => (
+          <button key={f}
+            onClick={() => { setFilter(f); setPage(1); }}
+            className="btn-hover px-3 py-1.5 text-xs font-bold"
+            style={{
+              borderRadius: 2, border: '1px solid',
+              background:  filter === f ? '#000' : '#f7f7f7',
+              color:       filter === f ? '#fff' : '#757575',
+              borderColor: filter === f ? '#000' : '#cccccc',
+            }}>
+            {f === 'all' ? 'Tất cả' : f === 'active' ? 'Đang bật' : 'Đã tắt'}
+          </button>
+        ))}
+        <span className="text-xs ml-auto" style={{ color: '#757575', whiteSpace: 'nowrap' }}>
+          {filtered.length} / {criteria.length} tiêu chí
+        </span>
+      </div>
+
       {/* ── Thanh trọng số ──────────────────────────────────────────────────── */}
       {hasWeight && (
         <div className="p-5 mb-6" style={{ background: '#f7f7f7', border: '1px solid #cccccc', borderRadius: 2 }}>
@@ -161,9 +210,15 @@ export default function CriteriaPage({ criteria, setCriteria, sn }) {
           <div className="text-sm">Bấm "+ Thêm tiêu chí" để bắt đầu.</div>
         </div>
       )}
+      {criteria.length > 0 && filtered.length === 0 && (
+        <div className="text-center py-10" style={{ color: '#757575' }}>
+          <div className="text-sm">Không tìm thấy tiêu chí nào phù hợp.</div>
+        </div>
+      )}
 
       {/* ── Danh sách tiêu chí ──────────────────────────────────────────────── */}
-      {criteria.map((c) => (
+      {/* {criteria.map((c) => ( */}
+      {paged.map((c) => (
         <div
           key={c.id}
           className="card-hover p-6 mb-3"
@@ -219,6 +274,37 @@ export default function CriteriaPage({ criteria, setCriteria, sn }) {
           </div>
         </div>
       ))}
+
+      {/* ── Phân trang ──────────────────────────────────────────────────────── */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 mt-6">
+          <button
+            className="btn-hover px-3 py-1.5 text-xs font-bold"
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            style={{ background: '#f7f7f7', border: '1px solid #cccccc', color: currentPage === 1 ? '#ccc' : '#000', borderRadius: 2 }}>
+            ← Trước
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
+            <button key={n}
+              className="btn-hover px-3 py-1.5 text-xs font-bold"
+              onClick={() => setPage(n)}
+              style={{
+                borderRadius: 2, border: '1px solid',
+                background:  currentPage === n ? '#000' : '#f7f7f7',
+                color:       currentPage === n ? '#fff' : '#000',
+                borderColor: currentPage === n ? '#000' : '#cccccc',
+              }}>{n}</button>
+          ))}
+          <button
+            className="btn-hover px-3 py-1.5 text-xs font-bold"
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            style={{ background: '#f7f7f7', border: '1px solid #cccccc', color: currentPage === totalPages ? '#ccc' : '#000', borderRadius: 2 }}>
+            Sau →
+          </button>
+        </div>
+      )}
     </div>
   );
 }

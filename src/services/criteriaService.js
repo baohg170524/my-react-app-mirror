@@ -28,7 +28,8 @@ function adaptCriteria(backendItem, templateCriteria) {
 
 // GET /Criterias → PagedResult<Criteria> → .data = array
 export const getCriteria = async (templateId) => {
-  const res   = await apiClient.get(ENDPOINTS.LIST);
+  // const res   = await apiClient.get(ENDPOINTS.LIST); // cũ: backend trả mặc định 10 items
+  const res   = await apiClient.get(ENDPOINTS.LIST, { params: { PageNumber: 1, PageSize: 1000 } });
   const items = res.data?.data ?? [];   // PagedResult.data = []
 
   if (!templateId) {
