@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   getTemplates,
   getTemplateDetail,
@@ -15,6 +15,7 @@ import { useNotify } from '@/components/NotificationProvider';
 const BLANK_TMPL = { templateName: '', description: '' };
 const BLANK_CRIT = { criteriaId: '', weight: 0, maxScore: 10 };
 const COLORS = ['#76b900', '#0046a4', '#df6500', '#952fc6', '#0D9488', '#5a8d00'];
+const PAGE_SIZE = 10;
 
 export default function TemplatePage({ sn }) {
   const notify = useNotify();
@@ -31,6 +32,8 @@ export default function TemplatePage({ sn }) {
   const [critF,     setCritF]    = useState({ ...BLANK_CRIT });
   const [saving,    setSaving]   = useState(false);
   const [search,    setSearch]    = useState('');   // tìm kiếm trong dropdown criteria
+  const [searchTmpl, setSearchTmpl] = useState('');
+  const [pageTmpl,   setPageTmpl]   = useState(1);
 
   useEffect(() => {
     Promise.allSettled([getTemplates(), getCriteria()])
@@ -128,11 +131,13 @@ export default function TemplatePage({ sn }) {
         await addCriteriaToTemplate(templateId, {
           criteriaId: critF.criteriaId,
           weight:     Number(critF.weight),
-          maxScore:   Number(critF.maxScore),
+          // maxScore:   Number(critF.maxScore), // hệ 10 cũ
+          maxScore:   Number(critF.weight), // hệ 100: maxScore = weight
         });
         sn('Đã thêm tiêu chí vào bộ!');
       } else {
-        await updateTemplateCriteria(templateId, editId, { weight: critF.weight, maxScore: critF.maxScore });
+        // await updateTemplateCriteria(templateId, editId, { weight: critF.weight, maxScore: critF.maxScore }); // hệ 10 cũ
+        await updateTemplateCriteria(templateId, editId, { weight: critF.weight, maxScore: critF.weight }); // hệ 100
         sn('Đã cập nhật cấu hình tiêu chí!');
       }
       const detail = await getTemplateDetail(templateId);
@@ -158,6 +163,22 @@ export default function TemplatePage({ sn }) {
       sn('Lỗi khi gỡ tiêu chí', 'e');
     }
   };
+
+  const filteredTemplates = useMemo(() => {
+    const q = searchTmpl.trim().toLowerCase();
+    if (!q) return templates;
+    return templates.filter(t =>
+      t.name?.toLowerCase().includes(q) ||
+      t.description?.toLowerCase().includes(q)
+    );
+  }, [templates, searchTmpl]);
+
+  const totalPagesTmpl  = Math.max(1, Math.ceil(filteredTemplates.length / PAGE_SIZE));
+  const currentPageTmpl = Math.min(pageTmpl, totalPagesTmpl);
+  const pagedTemplates  = filteredTemplates.slice(
+    (currentPageTmpl - 1) * PAGE_SIZE,
+    currentPageTmpl * PAGE_SIZE
+  );
 
   // Template bị khoá: chỉ xem, không sửa/xoá
   const isLocked = (t) => t.isSystem === true || t.name === 'Standard Pitch Deck Evaluation';
@@ -331,7 +352,8 @@ export default function TemplatePage({ sn }) {
                   className="input-field"
                 />
               </div>
-              <div className="flex-1">
+              {/* Điểm tối đa tự động = trọng số (hệ 100) */}
+              {/* <div className="flex-1">
                 <label className="block text-xs font-bold mb-1.5 uppercase tracking-wider" style={{ color: '#757575' }}>
                   Điểm tối đa
                 </label>
@@ -341,7 +363,7 @@ export default function TemplatePage({ sn }) {
                   onChange={e => setCritF({ ...critF, maxScore: Number(e.target.value) })}
                   className="input-field"
                 />
-              </div>
+              </div> */}
             </div>
 
             {critF.weight > 0 && critF.maxScore > 0 && critF.weight !== critF.maxScore && (
@@ -373,6 +395,25 @@ export default function TemplatePage({ sn }) {
         <button className="btn btn-primary" onClick={openNewTmpl}>+ Tạo bộ tiêu chí</button>
       </div>
 
+      {/* ── Thanh tìm kiếm ──────────────────────────────────────────────────── */}
+      <div className="flex gap-3 mb-5 flex-wrap items-center">
+        <input
+          value={searchTmpl}
+          onChange={e => { setSearchTmpl(e.target.value); setPageTmpl(1); }}
+          placeholder="Tìm bộ tiêu chí..."
+          className="input-field flex-1"
+          style={{ minWidth: 200 }}
+        />
+        {searchTmpl && (
+          <button onClick={() => { setSearchTmpl(''); setPageTmpl(1); }}
+            className="btn-hover text-xs px-2 py-1"
+            style={{ background: '#f7f7f7', border: '1px solid #ccc', borderRadius: 2, color: '#757575' }}>✕</button>
+        )}
+        <span className="text-xs ml-auto" style={{ color: '#757575', whiteSpace: 'nowrap' }}>
+          {filteredTemplates.length} / {templates.length} bộ tiêu chí
+        </span>
+      </div>
+
       {/* ── Empty state ─────────────────────────────────────────────────────── */}
       {templates.length === 0 && (
         <div className="text-center py-20" style={{ color: '#757575' }}>
@@ -380,9 +421,15 @@ export default function TemplatePage({ sn }) {
           <div className="text-sm">Bấm "+ Tạo bộ tiêu chí" để bắt đầu.</div>
         </div>
       )}
+      {templates.length > 0 && filteredTemplates.length === 0 && (
+        <div className="text-center py-10" style={{ color: '#757575' }}>
+          <div className="text-sm">Không tìm thấy bộ tiêu chí nào phù hợp.</div>
+        </div>
+      )}
 
       {/* ── Danh sách template ──────────────────────────────────────────────── */}
-      {templates.map(t => {
+      {/* {templates.map(t => { */}
+      {pagedTemplates.map(t => {
         const isOpen = expanded === t.id;
         const cCount = (t.criterias ?? []).length;
         const totalW = (t.criterias ?? []).reduce((s, tc) => s + (tc.weight ?? 0), 0);
@@ -551,6 +598,37 @@ export default function TemplatePage({ sn }) {
           </div>
         );
       })}
+
+      {/* ── Phân trang ──────────────────────────────────────────────────────── */}
+      {totalPagesTmpl > 1 && (
+        <div className="flex justify-center items-center gap-2 mt-6">
+          <button
+            className="btn-hover px-3 py-1.5 text-xs font-bold"
+            onClick={() => setPageTmpl(p => Math.max(1, p - 1))}
+            disabled={currentPageTmpl === 1}
+            style={{ background: '#f7f7f7', border: '1px solid #cccccc', color: currentPageTmpl === 1 ? '#ccc' : '#000', borderRadius: 2 }}>
+            ← Trước
+          </button>
+          {Array.from({ length: totalPagesTmpl }, (_, i) => i + 1).map(n => (
+            <button key={n}
+              className="btn-hover px-3 py-1.5 text-xs font-bold"
+              onClick={() => setPageTmpl(n)}
+              style={{
+                borderRadius: 2, border: '1px solid',
+                background:  currentPageTmpl === n ? '#000' : '#f7f7f7',
+                color:       currentPageTmpl === n ? '#fff' : '#000',
+                borderColor: currentPageTmpl === n ? '#000' : '#cccccc',
+              }}>{n}</button>
+          ))}
+          <button
+            className="btn-hover px-3 py-1.5 text-xs font-bold"
+            onClick={() => setPageTmpl(p => Math.min(totalPagesTmpl, p + 1))}
+            disabled={currentPageTmpl === totalPagesTmpl}
+            style={{ background: '#f7f7f7', border: '1px solid #cccccc', color: currentPageTmpl === totalPagesTmpl ? '#ccc' : '#000', borderRadius: 2 }}>
+            Sau →
+          </button>
+        </div>
+      )}
       </div>
     </>
   );
