@@ -142,11 +142,6 @@ const ADMIN_LINKS: NavLink[] = [
       { label: "Tiêu chí",    href: "/criteria/pool" },
     ],
   },
-  { label: "Chấm điểm",  href: "/scoring" },
-  { label: "Xếp hạng",   href: "/leaderboard" },
-  { label: "Bài nộp",    href: "/submission" },
-  { label: "Phúc khảo",  href: "/appeals" },
-  { label: "Phê duyệt",  href: "/approval" },
   { label: "Người dùng", href: "/users" },
   { label: "Trường học", href: "/schools" },
 ];

@@ -3,20 +3,23 @@ import type { RegistrationStatus } from '@/features/registration/types';
 
 export type EventTabId =
   | 'detail' | 'register' | 'createTeam' | 'myTeam' | 'submission'
-  | 'results' | 'leaderboard' | 'judgeAssigned' | 'manage';
+  | 'results' | 'leaderboard' | 'judgeAssigned' | 'manage'
+  | 'scoring' | 'reviewSubmission';
 
 export interface EventTab { id: EventTabId; label: string; }
 
 const TAB: Record<EventTabId, EventTab> = {
-  detail:        { id: 'detail',        label: 'Chi tiết sự kiện' },
-  register:      { id: 'register',      label: 'Đăng ký thi đấu' },
-  createTeam:    { id: 'createTeam',    label: 'Tạo đội' },
-  myTeam:        { id: 'myTeam',        label: 'Đội của tôi' },
-  submission:    { id: 'submission',    label: 'Nộp bài' },
-  results:       { id: 'results',       label: 'Kết quả' },
-  leaderboard:   { id: 'leaderboard',   label: 'Bảng xếp hạng' },
-  judgeAssigned: { id: 'judgeAssigned', label: 'Đội được phân công' },
-  manage:        { id: 'manage',        label: 'Quản lý' },
+  detail:           { id: 'detail',           label: 'Chi tiết sự kiện' },
+  register:         { id: 'register',          label: 'Đăng ký thi đấu' },
+  createTeam:       { id: 'createTeam',        label: 'Tạo đội' },
+  myTeam:           { id: 'myTeam',            label: 'Đội của tôi' },
+  submission:       { id: 'submission',        label: 'Nộp bài' },
+  results:          { id: 'results',           label: 'Kết quả' },
+  leaderboard:      { id: 'leaderboard',       label: 'Bảng xếp hạng' },
+  judgeAssigned:    { id: 'judgeAssigned',     label: 'Đội được phân công' },
+  manage:           { id: 'manage',            label: 'Quản lý' },
+  scoring:          { id: 'scoring',           label: 'Chấm điểm' },
+  reviewSubmission: { id: 'reviewSubmission',  label: 'Bài nộp' },
 };
 
 export function getEventTabs(args: {
@@ -33,13 +36,14 @@ export function getEventTabs(args: {
   }
 
   // 2. Chỉ khi thực sự được phân làm Judge trong event này
+  //    Chấm điểm & Bài nộp chỉ thấy của hạng mục (track) được giao.
   if (eventRoleName === 'Judge') {
-    return [TAB.detail, TAB.judgeAssigned, TAB.leaderboard];
+    return [TAB.detail, TAB.scoring, TAB.reviewSubmission, TAB.leaderboard];
   }
 
-  // 3. Mentor trong event này
+  // 3. Mentor trong event này — Bài nộp chỉ thấy của hạng mục được phân công.
   if (eventRoleName === 'Mentor') {
-    return [TAB.detail, TAB.myTeam, TAB.submission, TAB.results, TAB.leaderboard];
+    return [TAB.detail, TAB.reviewSubmission, TAB.leaderboard];
   }
 
   // 4. Có vai trò đội (Thí sinh đã có đội)

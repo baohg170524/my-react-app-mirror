@@ -10,6 +10,9 @@ import { TeamListTab } from './tabs/TeamListTab';
 import { RoleListTab } from './tabs/RoleListTab';
 import { AccountApprovalTab } from './tabs/AccountApprovalTab';
 import { LeaderboardTab } from './tabs/LeaderboardTab';
+import ScoringPanel from '../shared/ScoringPanel';
+import SubmissionsPanel from '../shared/SubmissionsPanel';
+import AppealsPanel from '../shared/AppealsPanel';
 
 interface AdminEventDashboardProps {
   eventId: string;
@@ -51,6 +54,12 @@ export function AdminEventDashboard({ eventId, role = 'Admin' }: AdminEventDashb
         return <RoleListTab eventId={eventId} />;
       case 'approvals':
         return <AccountApprovalTab eventId={eventId} />;
+      case 'scoring':
+        return <ScoringPanel eventId={eventId} />;
+      case 'submission':
+        return <SubmissionsPanel eventId={eventId} />;
+      case 'appeal':
+        return <AppealsPanel />;
       case 'leaderboard':
         return <LeaderboardTab eventId={eventId} />;
       default:

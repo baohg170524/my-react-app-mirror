@@ -1,17 +1,10 @@
 'use client';
-import { Suspense, useState, useEffect, useCallback } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
-import Notif from '@/components/Notif';
-import EditModal from '@/components/EditModal';
-import ScoringPage from '@/views/ScoringPage';
+import ScoringPanel from '@/features/events/components/shared/ScoringPanel';
 import { useCurrentUser } from '@/hooks/useAuth';
-import { eventRolesApi } from '@/features/events/api/eventRoles';
-import { tracksApi } from '@/features/events/api/roundTrack';
-import { templatesApi } from '@/features/events/api/templates';
-import { submitResultsApi } from '@/features/events/api/submitResults';
 import { eventsApi } from '@/features/events/api/events';
-import { scoresApi } from '@/services/api';
 
 // ─── Inner component (needs useSearchParams → must be inside Suspense) ────────
 
@@ -22,22 +15,9 @@ function ScoringInner() {
 
   const { data: currentUser } = useCurrentUser();
 
-  const [criteria, setCriteria]       = useState([]);
-  const [teams, setTeams]             = useState([]);
-  const [eventRoleId, setEventRoleId] = useState(null);
-  const [editT, setEditT]             = useState(null);
-  const [notif, setNotif]             = useState(null);
-  const [loading, setLoading]         = useState(true);
-  const [error, setError]             = useState(null);
-
   // Khi không có eventId — event selector
   const [events, setEvents]               = useState([]);
   const [eventsLoading, setEventsLoading] = useState(false);
-
-  const sn = useCallback((m, t = 's') => {
-    setNotif({ m, t });
-    setTimeout(() => setNotif(null), 3000);
-  }, []);
 
   // Load danh sách sự kiện khi chưa có eventId
   useEffect(() => {
@@ -49,122 +29,11 @@ function ScoringInner() {
       .finally(() => setEventsLoading(false));
   }, [eventId, currentUser?.id]);
 
-  // Load dữ liệu chấm điểm khi đã có eventId
-  useEffect(() => {
-    if (!currentUser?.id || !eventId) {
-      setLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-
-    // const load = async () => {
-
-    //   try {
-    //     setLoading(true);
-    //     setError(null);
-
-    //     // 1. Lấy eventRole của judge → eventRoleId + trackId
-    //     const role = await eventRolesApi.getUserRole(currentUser.id, eventId);
-    //       if (cancelled) return;
-
-    //       if (!role) throw new Error('Bạn chưa được phân công vai trò trong sự kiện này');
-    //       if (!role.trackId) throw new Error('Bạn chưa được phân công track trong sự kiện này');
-    //     setEventRoleId(role.id);
-
-    //     // 2. Lấy track → templateId
-    //     const track = await tracksApi.getById(role.trackId);
-    //     if (cancelled) return;
-
-    //     if (!track.templateId) throw new Error('Track chưa được gắn bộ tiêu chí');
-
-    //     // 3. Lấy template → criterias[]
-    //     const template = await templatesApi.getById(track.templateId);
-    //     if (cancelled) return;
-
-    //     const mappedCriteria = (template.criterias ?? []).map(c => ({
-    //       id:      c.criteriaId,
-    //       label:   c.criteriaName,
-    //       labelVi: c.criteriaName,
-    //       weight:  c.weight,
-    //       desc:    c.description ?? '',
-    //       levels:  [],
-    //     }));
-    //     setCriteria(mappedCriteria);
-
-    //     // 4. Lấy danh sách bài nộp của track
-    //     const submissions = await submitResultsApi.list({ trackId: role.trackId });
-    //     if (cancelled) return;
-
-    //     setTeams(submissions.map(s => ({
-    //       id:       s.id,
-    //       name:     s.teamName,
-    //       scores:   Array(mappedCriteria.length).fill(0),
-    //       comments: Array(mappedCriteria.length).fill(''),
-    //     })));
-    //   } catch (e) {
-    //     if (!cancelled) setError(e?.message ?? 'Không thể tải dữ liệu chấm điểm');
-    //   } finally {
-    //     if (!cancelled) setLoading(false);
-    //   }
-    // };
-
-
-    // thay đổi khi có API thật trackId
-const load = async () => {
-  try {
-    setLoading(true);
-    setError(null);
-
-    // ── MOCK DATA ── xóa khi có API thật ──────────────────────
-    const mockCriteria = [
-      { id: 'c1', label: 'Tính sáng tạo',        weight: 30, desc: '' },
-      { id: 'c2', label: 'Kỹ năng trình bày',     weight: 30, desc: '' },
-      { id: 'c3', label: 'Tính khả thi',           weight: 20, desc: '' },
-      { id: 'c4', label: 'Tác động thực tế',       weight: 20, desc: '' },
-    ];
-    const mockTeams = [
-      { id: 's1', name: 'Team Alpha', scores: [0,0,0,0], comments: ['','','',''] },
-      { id: 's2', name: 'Team Beta',  scores: [0,0,0,0], comments: ['','','',''] },
-      { id: 's3', name: 'Team Gamma', scores: [0,0,0,0], comments: ['','','',''] },
-    ];
-    setCriteria(mockCriteria);
-    setTeams(mockTeams);
-    setEventRoleId('mock-role-id');
-    // ── END MOCK ───────────────────────────────────────────────
-
-  } catch (e) {
-    if (!cancelled) setError(e?.message ?? 'Không thể tải dữ liệu chấm điểm');
-  } finally {
-    if (!cancelled) setLoading(false);
-  }
-};
-
-    load();
-    return () => { cancelled = true; };
-  }, [currentUser?.id, eventId]);
-
-  const saveEdit = async (submitResultId, scores, cmts) => {
-    try {
-      await scoresApi.save({
-        eventRoleId,
-        submitResultId,
-        details: criteria.map((c, i) => ({ criteriaId: c.id, score: scores[i] ?? 0 })),
-      });
-      setTeams(p => p.map(t => t.id === submitResultId ? { ...t, scores, comments: cmts } : t));
-      setEditT(null);
-      sn('Đã lưu điểm thành công!');
-    } catch {
-      sn('Lưu điểm thất bại, vui lòng thử lại', 'e');
-    }
-  };
-
   // ── Chưa chọn sự kiện ─────────────────────────────────────────────────────
   if (!eventId) {
     return (
       <>
         <Navbar />
-        <Notif n={notif} />
         <main style={{ minHeight: '100vh', background: '#f7f7f7', padding: '28px 32px', fontFamily: 'Inter, sans-serif' }}>
           <div className="animate-fadeUp" style={{ maxWidth: 640 }}>
             <h2 className="text-xl font-bold mb-1" style={{ color: '#000' }}>Chấm điểm</h2>
@@ -206,48 +75,20 @@ const load = async () => {
     );
   }
 
-  // ── Đã có eventId — flow chấm điểm ────────────────────────────────────────
+  // ── Đã có eventId — flow chấm điểm (tái sử dụng ScoringPanel) ─────────────
   return (
     <>
       <Navbar />
-      <Notif n={notif} />
-      {editT && (
-        <EditModal
-          team={editT}
-          criteria={criteria}
-          onClose={() => setEditT(null)}
-          onSave={(s, c) => saveEdit(editT.id, s, c)}
-        />
-      )}
       <main style={{ minHeight: '100vh', background: '#f7f7f7', padding: '28px 32px', fontFamily: 'Inter, sans-serif' }}>
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <span className="loading loading-spinner" style={{ color: '#76b900' }} />
-            <span className="ml-3 text-sm" style={{ color: '#757575' }}>Đang tải dữ liệu...</span>
-          </div>
-        ) : error ? (
-          <div className="text-center py-20">
-            <p className="text-sm font-semibold mb-4" style={{ color: '#d32f2f' }}>{error}</p>
-            <button
-              className="btn btn-outline text-sm"
-              onClick={() => router.push('/scoring')}
-            >
-              ← Chọn sự kiện khác
-            </button>
-          </div>
-        ) : teams.length === 0 ? (
-          <div className="text-center py-20">
-            <p className="text-sm" style={{ color: '#757575' }}>Chưa có đội nào nộp bài trong track của bạn.</p>
-            <button
-              className="btn btn-outline text-sm mt-4"
-              onClick={() => router.push('/scoring')}
-            >
-              ← Chọn sự kiện khác
-            </button>
-          </div>
-        ) : (
-          <ScoringPage teams={teams} criteria={criteria} onEdit={setEditT} />
-        )}
+        <ScoringPanel eventId={eventId} />
+        <div className="flex justify-start mt-6">
+          <button
+            className="btn btn-outline text-sm"
+            onClick={() => router.push('/scoring')}
+          >
+            ← Chọn sự kiện khác
+          </button>
+        </div>
       </main>
     </>
   );
