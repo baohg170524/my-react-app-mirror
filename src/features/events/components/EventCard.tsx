@@ -75,14 +75,14 @@ export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
               top: 8,
               right: 8,
               zIndex: 2,
-              background: "var(--color-ink)",
-              color: "#fff",
+              background: "rgba(255,255,255,0.95)",
+              color: "#4a7a00",
               fontSize: "var(--fs-caption-sm)",
               fontWeight: 700,
               letterSpacing: "0.4px",
-              padding: "3px 10px",
-              borderRadius: "var(--radius-sm)",
-              boxShadow: "0 1px 5px rgba(0,0,0,0.35)",
+              padding: "4px 11px",
+              borderRadius: 999,
+              boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
             }}
           >
             {myRoleLabel}
