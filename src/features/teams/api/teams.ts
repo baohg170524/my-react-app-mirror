@@ -100,7 +100,7 @@ export const teamsApi = {
   },
 
   respondInvitation: async (invitationId: string, accept: boolean): Promise<void> => {
-    await apiClient.post(`/Teams/invitations/${encodeURIComponent(invitationId)}/respond`, { isAccepted: accept });
+    await apiClient.post(`/Teams/invitations/${encodeURIComponent(invitationId)}/respond?isAccepted=${accept}`);
   },
 
   /**
