@@ -52,6 +52,11 @@ interface TrackForm {
   templateId: string;
   /** Submission requirement checkboxes (serialized to submissionRuleDescription). */
   submissionRequirements: SubmissionRequirements;
+  /**
+   * Raw saved requirement string loaded in edit mode, shown read-only as a
+   * "đã lưu trước đó" reference. `undefined` in create mode (no reference shown).
+   */
+  savedSubmissionRule?: string;
   /** Optional — judge accounts to invite to this track. */
   judgeUserIds: InvitedUser[];
   /** Optional — mentor accounts to invite to this track. */
@@ -682,16 +687,26 @@ function EventPhotoUpload({
 function SubmissionRequirementsField({
   value,
   onChange,
+  savedReference,
 }: {
   value: SubmissionRequirements;
   onChange: (next: SubmissionRequirements) => void;
+  /** When defined (edit mode), shows the saved requirement as a read-only reference. */
+  savedReference?: string;
 }) {
+  const savedLines =
+    savedReference === undefined
+      ? null
+      : savedReference.split("\n").map((l) => l.trim()).filter(Boolean);
+
   const checkboxRow = (
+    key: string,
     checked: boolean,
     label: string,
     onToggle: () => void,
   ) => (
     <label
+      key={key}
       style={{
         display: "flex",
         alignItems: "center",
@@ -716,13 +731,45 @@ function SubmissionRequirementsField({
       <span className="t-caption-xs" style={{ color: "var(--color-mute)" }}>
         Yêu cầu nộp bài
       </span>
+
+      {savedLines !== null && (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 4,
+            padding: "8px 10px",
+            background: "var(--color-surface-soft)",
+            border: "var(--border-hairline)",
+            borderRadius: "var(--radius-sm)",
+          }}
+        >
+          <span className="t-caption-xs" style={{ color: "var(--color-mute)", fontWeight: 700 }}>
+            Đã lưu trước đó
+          </span>
+          {savedLines.length === 0 ? (
+            <span className="t-caption-sm" style={{ color: "var(--color-mute)", fontStyle: "italic" }}>
+              Chưa có yêu cầu nào được lưu.
+            </span>
+          ) : (
+            <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 2 }}>
+              {savedLines.map((line, i) => (
+                <li key={i} className="t-caption-sm" style={{ color: "var(--color-ink)" }}>
+                  {line}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 2 }}>
         {SUBMISSION_URL_OPTIONS.map((opt) =>
-          checkboxRow(value[opt.key], opt.label, () =>
+          checkboxRow(opt.key, value[opt.key], opt.label, () =>
             onChange({ ...value, [opt.key]: !value[opt.key] }),
           ),
         )}
-        {checkboxRow(value.otherEnabled, "Khác", () =>
+        {checkboxRow("other", value.otherEnabled, "Khác", () =>
           onChange({ ...value, otherEnabled: !value.otherEnabled }),
         )}
         {value.otherEnabled && (
@@ -817,6 +864,7 @@ function TrackCard({
       <SubmissionRequirementsField
         value={track.submissionRequirements}
         onChange={(next) => onChange({ submissionRequirements: next })}
+        savedReference={track.savedSubmissionRule}
       />
 
       <UserSearchSelect
@@ -1139,6 +1187,8 @@ function EditEventLoader({
           submissionRequirements: parseSubmissionRequirements(
             submissionRuleByTrackId.get(t.id),
           ),
+          // Keep the raw saved string to show as a read-only reference in edit mode.
+          savedSubmissionRule: submissionRuleByTrackId.get(t.id) ?? "",
           judgeUserIds: [],
           mentorUserIds: [],
         })),
@@ -1283,6 +1333,7 @@ function EventFormBody({
             trackName: t.trackName.trim(),
             templateId: t.templateId.trim() || null,
             description: t.description.trim(),
+            submissionRuleDescription: serializeSubmissionRequirements(t.submissionRequirements),
           };
           let trackId = t.id;
           if (trackId) await tracksApi.update(trackId, trackPayload);
@@ -1309,6 +1360,9 @@ function EventFormBody({
       queryClient.invalidateQueries({ queryKey: ["eventModel", eventId] });
       queryClient.invalidateQueries({ queryKey: ["rounds", eventId] });
       queryClient.invalidateQueries({ queryKey: ["tracks", eventId] });
+      // Refresh the edit form's own data so reopening it reflects the saved
+      // submission requirements (and any other edits) instead of stale cache.
+      queryClient.invalidateQueries({ queryKey: ["eventEditData", eventId] });
       notify.success("Cập nhật sự kiện thành công!");
     },
     onError: (e) => notify.error(getErrorMessage(e, "Cập nhật sự kiện thất bại. Vui lòng thử lại.")),

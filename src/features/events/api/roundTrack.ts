@@ -17,6 +17,13 @@ export interface TrackUpsertPayload {
   trackName: string;
   templateId: string | null;
   description: string;
+  /**
+   * Serialized submission requirements. Persisted by PUT /Tracks/{id}
+   * (UpdateTrackRequestModel). POST /Tracks (CreateTrackRequestModel) does not
+   * yet accept it, so it's ignored when creating a new track until the backend
+   * adds the field there too.
+   */
+  submissionRuleDescription: string;
 }
 
 /** Full track model returned by GET /Tracks/{id}. */
