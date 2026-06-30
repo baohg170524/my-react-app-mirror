@@ -43,10 +43,10 @@ export function useRegistration(userId: string) {
     invalidate();
   };
 
-  /** Re-apply after a rejection: clear prior rejection records (best-effort) then invalidate. */
+  /** Re-apply after a rejection: only refresh. We must NOT delete rejection records —
+   *  the >=2-reject block counts TOTAL records, so deleting would reset the count and
+   *  let a student be rejected unlimited times (mất dữ liệu đếm số lần từ chối). */
   const clearRejections = async () => {
-    const rows = rejectionsQ.data ?? [];
-    await Promise.allSettled(rows.map((r) => userRejectionsApi.remove(r.id)));
     invalidate();
   };
 
