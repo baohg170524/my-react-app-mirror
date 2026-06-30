@@ -180,8 +180,6 @@ export default function TemplatePage({ sn }) {
     currentPageTmpl * PAGE_SIZE
   );
 
-  // Template bị khoá: chỉ xem, không sửa/xoá
-  const isLocked = (t) => t.isSystem === true || t.name === 'Standard Pitch Deck Evaluation';
 
   // ── Render ─────────────────────────────────────────────────────────────────
   if (loading) return (
@@ -464,25 +462,16 @@ export default function TemplatePage({ sn }) {
 
               {/* Actions – stop propagation để không toggle expand */}
               <div className="flex gap-2 ml-4 shrink-0" onClick={e => e.stopPropagation()}>
-                {isLocked(t) ? (
-                  <span className="px-2.5 py-0.5 text-xs font-bold"
-                    style={{ background: '#f7f7f7', border: '1px solid #cccccc', color: '#757575', borderRadius: 2 }}>
-                    Mặc định
-                  </span>
-                ) : (
-                  <>
-                    <button className="btn-hover px-3 py-1.5 text-xs font-bold"
-                      onClick={() => openEditTmpl(t)}
-                      style={{ background: 'rgba(118,185,0,.1)', border: '1px solid rgba(118,185,0,.3)', color: '#5a8d00', borderRadius: 2 }}>
-                      Sửa
-                    </button>
-                    <button className="btn-hover px-3 py-1.5 text-xs font-bold"
-                      onClick={() => delTmpl(t.id)}
-                      style={{ background: 'rgba(229,32,32,.08)', border: '1px solid rgba(229,32,32,.25)', color: '#e52020', borderRadius: 2 }}>
-                      Xóa
-                    </button>
-                  </>
-                )}
+                <button className="btn-hover px-3 py-1.5 text-xs font-bold"
+                  onClick={() => openEditTmpl(t)}
+                  style={{ background: 'rgba(118,185,0,.1)', border: '1px solid rgba(118,185,0,.3)', color: '#5a8d00', borderRadius: 2 }}>
+                  Sửa
+                </button>
+                <button className="btn-hover px-3 py-1.5 text-xs font-bold"
+                  onClick={() => delTmpl(t.id)}
+                  style={{ background: 'rgba(229,32,32,.08)', border: '1px solid rgba(229,32,32,.25)', color: '#e52020', borderRadius: 2 }}>
+                  Xóa
+                </button>
               </div>
             </div>
 
@@ -561,38 +550,32 @@ export default function TemplatePage({ sn }) {
                           <span className="text-sm" style={{ color: '#000' }}>{tc.maxScore}</span>
                         </div>
                         <div className="flex gap-2 justify-end" style={{ width: 110 }}>
-                          {!isLocked(t) && (
-                            <>
-                              <button className="btn-hover px-2.5 py-1 text-xs font-bold"
-                                onClick={() => openEditCrit(t.id, tc)}
-                                style={{ background: 'rgba(118,185,0,.1)', border: '1px solid rgba(118,185,0,.3)', color: '#5a8d00', borderRadius: 2 }}>
-                                Sửa
-                              </button>
-                              <button className="btn-hover px-2.5 py-1 text-xs font-bold"
-                                onClick={() => removeCrit(t.id, tc.criteriaId)}
-                                style={{ background: 'rgba(229,32,32,.08)', border: '1px solid rgba(229,32,32,.25)', color: '#e52020', borderRadius: 2 }}>
-                                Gỡ
-                              </button>
-                            </>
-                          )}
+                          <button className="btn-hover px-2.5 py-1 text-xs font-bold"
+                            onClick={() => openEditCrit(t.id, tc)}
+                            style={{ background: 'rgba(118,185,0,.1)', border: '1px solid rgba(118,185,0,.3)', color: '#5a8d00', borderRadius: 2 }}>
+                            Sửa
+                          </button>
+                          <button className="btn-hover px-2.5 py-1 text-xs font-bold"
+                            onClick={() => removeCrit(t.id, tc.criteriaId)}
+                            style={{ background: 'rgba(229,32,32,.08)', border: '1px solid rgba(229,32,32,.25)', color: '#e52020', borderRadius: 2 }}>
+                            Gỡ
+                          </button>
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
 
-                {!isLocked(t) && (
-                  <button
-                    className="btn-hover text-xs font-bold mt-1"
-                    onClick={() => openAddCrit(t.id)}
-                    style={{
-                      width: '100%', padding: '8px 12px',
-                      background: '#f7f7f7', border: '1px dashed #cccccc',
-                      color: '#757575', borderRadius: 2,
-                    }}>
-                    + Thêm tiêu chí vào bộ
-                  </button>
-                )}
+                <button
+                  className="btn-hover text-xs font-bold mt-1"
+                  onClick={() => openAddCrit(t.id)}
+                  style={{
+                    width: '100%', padding: '8px 12px',
+                    background: '#f7f7f7', border: '1px dashed #cccccc',
+                    color: '#757575', borderRadius: 2,
+                  }}>
+                  + Thêm tiêu chí vào bộ
+                </button>
               </div>
             )}
           </div>

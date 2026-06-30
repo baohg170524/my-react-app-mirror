@@ -3,6 +3,7 @@
 import {
   useState,
   useRef,
+  useEffect,
   type ChangeEvent,
   type FormEvent,
 } from "react";
@@ -74,6 +75,15 @@ function Field({
 
 export default function AuthPage() {
   const [mode, setMode] = useState<Mode>("login");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("mode") === "register") {
+        setMode("register");
+      }
+    }
+  }, []);
 
   const [loginForm, setLoginForm] = useState<LoginForm>({
     email: "",

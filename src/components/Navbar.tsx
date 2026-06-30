@@ -130,6 +130,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useCurrentUser, useIsAuthenticated, useLogout } from "@/hooks/useAuth";
+import { NotificationBell } from "./NotificationBell";
 
 type NavLink = { label: string; href: string; children?: { label: string; href: string }[] };
 
@@ -319,6 +320,7 @@ export function Navbar() {
         <div className="primary-nav__cluster">
           {isAuthenticated ? (
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <NotificationBell />
               {user?.fullName && (
                 <Link 
                   href="/profile"
