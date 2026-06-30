@@ -95,8 +95,9 @@ export const teamsApi = {
     await apiClient.post(`/Teams/${encodeURIComponent(teamId)}/leave`);
   },
 
-  invite: async (teamId: string, email: string): Promise<void> => {
-    await apiClient.post(`/Teams/${encodeURIComponent(teamId)}/invitations`, { email });
+  invite: async (teamId: string, email: string): Promise<any> => {
+    const { data } = await apiClient.post(`/Teams/${encodeURIComponent(teamId)}/invitations`, { email });
+    return data;
   },
 
   respondInvitation: async (invitationId: string, accept: boolean): Promise<void> => {

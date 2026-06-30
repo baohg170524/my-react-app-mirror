@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useMyTeamForEvent, useInviteToTeam, useLeaveTeam } from '@/features/teams/hooks/useTeams';
 import { useEventDashboard } from '@/features/events/contexts/EventDashboardContext';
+import { useNotify } from '@/components/NotificationProvider';
 
 interface Props { eventId: string; userId: string; }
 
@@ -13,6 +14,7 @@ export function MyTeamTab({ eventId, userId }: Props) {
   const invite = useInviteToTeam(teamId);
   const leave  = useLeaveTeam(teamId, eventId, userId);
   const [email, setEmail] = useState('');
+  const notify = useNotify();
 
   if (isLoading) return <div className="p-6 t-body-md text-mute">Đang tải…</div>;
   if (!team) return <div className="p-6 t-body-md text-mute">Bạn chưa có đội.</div>;
@@ -43,7 +45,24 @@ export function MyTeamTab({ eventId, userId }: Props) {
       </div>
 
       <form
-        onSubmit={(e) => { e.preventDefault(); invite.mutate({ email }, { onSuccess: () => setEmail('') }); }}
+        onSubmit={(e) => { 
+          e.preventDefault(); 
+          invite.mutate({ email }, { 
+            onSuccess: (res: any) => { 
+              setEmail(''); 
+              const status = res?.data?.status || res?.status;
+              if (status === 'EmailSentToNonRegisteredUser') {
+                notify.success('Thành viên này hiện chưa có tài khoản. Hệ thống đã gửi email yêu cầu đăng ký. Vui lòng mời lại sau khi họ đã tạo tài khoản và được duyệt!');
+              } else {
+                notify.success('Đã gửi lời mời thành công!');
+              }
+            },
+            onError: (err: any) => {
+              const msg = err?.response?.data?.message || err?.message || 'Mời thất bại.';
+              notify.error(msg);
+            }
+          }); 
+        }}
         className="space-y-2 border border-hairline rounded-sm bg-canvas p-4 md:p-6"
       >
         <h3 className="t-body-md font-bold">Mời thành viên</h3>
@@ -56,7 +75,6 @@ export function MyTeamTab({ eventId, userId }: Props) {
             {invite.isPending ? 'Đang gửi…' : 'Mời'}
           </button>
         </div>
-        {invite.error ? <p className="t-body-sm text-error">Mời thất bại.</p> : null}
       </form>
 
       <button
