@@ -18,6 +18,7 @@ interface TeamDetail {
   id: string;
   name: string | null;
   description: string | null;
+  members?: any[];
 }
 
 const norm = (s: string | null | undefined) => (s ?? '').trim().toLowerCase();
@@ -64,11 +65,21 @@ export const teamsApi = {
 
   getById: async (id: string): Promise<TeamModel> => {
     const { data } = await apiClient.get<TeamDetail>(`/Teams/${encodeURIComponent(id)}`);
+
+    //a
+    // Map members if backend returns them
+    const mappedMembers: TeamMember[] = (data.members || []).map((m: any) => ({
+      userId: m.userId || m.id || '',
+      fullName: m.fullName || m.name || '—',
+      email: m.email || '',
+      isLeader: m.isLeader || (m.roleName && norm(m.roleName).includes('leader')) || false,
+    }));
+
     return {
       id: data.id,
       teamName: data.name?.trim() || '(Chưa đặt tên)',
       description: data.description,
-      members: [],
+      members: mappedMembers,
     };
   },
 
@@ -89,7 +100,7 @@ export const teamsApi = {
   },
 
   respondInvitation: async (invitationId: string, accept: boolean): Promise<void> => {
-    await apiClient.post(`/Teams/invitations/${encodeURIComponent(invitationId)}/respond`, { accept });
+    await apiClient.post(`/Teams/invitations/${encodeURIComponent(invitationId)}/respond`, { isAccepted: accept });
   },
 
   /**
@@ -117,7 +128,14 @@ export const teamsApi = {
   },
 
   /** Get pending invitation for the current user to a specific team (if any). */
-  getMyInvitation: async (teamId: string): Promise<{ invitationId: string; status: string; notes?: string } | null> => {
+  getMyInvitation: async (teamId: string): Promise<{
+    invitationId: string;
+    status: string;
+    notes?: string;
+    inviterName?: string;
+    roleName?: string;
+    expiresAt?: string;
+  } | null> => {
     try {
       const { data } = await apiClient.get(`/Teams/${encodeURIComponent(teamId)}/my-invitation`);
       return data;
