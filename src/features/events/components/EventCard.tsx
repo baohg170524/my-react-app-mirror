@@ -21,12 +21,34 @@ function formatDate(iso: string) {
   }).format(new Date(iso));
 }
 
+/** Nhãn vai trò của user trong event (Judge/Mentor/Team Leader/Team Member/EC).
+ *  Trả null cho admin hoặc vai trò không xác định → không hiển thị badge. */
+function roleLabel(roleName?: string | null): string | null {
+  switch ((roleName ?? "").toLowerCase()) {
+    case "eventcoordinator":
+      return "EC";
+    case "judge":
+      return "Judge";
+    case "mentor":
+      return "Mentor";
+    case "teamleader":
+      return "Team Leader";
+    case "teammember":
+    case "member":
+      return "Team Member";
+    default:
+      return null;
+  }
+}
+
 export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
   const isAdmin = useUserRole() === "admin";
   const isOpen = event.status === "open";
   const isLoggedIn = typeof window !== "undefined" && !!localStorage.getItem("accessToken");
   // Only disable the join action/button for logged in non-admins when closed or joining
   const joinDisabled = !isAdmin && isLoggedIn && (!isOpen || isJoining);
+  // Nhãn vai trò — chỉ có ở danh sách "Của tôi" (event.myRole); admin không hiển thị.
+  const myRoleLabel = isAdmin ? null : roleLabel(event.myRole);
 
   return (
     <article
@@ -46,6 +68,26 @@ export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
       />
       {/* Event Photo */}
       <div style={{ width: "100%", height: 160, borderRadius: "var(--radius-sm)", overflow: "hidden", position: "relative", flexShrink: 0, marginTop: "var(--space-xs)" }}>
+        {myRoleLabel && (
+          <span
+            style={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+              zIndex: 2,
+              background: "var(--color-ink)",
+              color: "#fff",
+              fontSize: "var(--fs-caption-sm)",
+              fontWeight: 700,
+              letterSpacing: "0.4px",
+              padding: "3px 10px",
+              borderRadius: "var(--radius-sm)",
+              boxShadow: "0 1px 5px rgba(0,0,0,0.35)",
+            }}
+          >
+            {myRoleLabel}
+          </span>
+        )}
         {event.photoEventUrl ? (
           <img
             src={event.photoEventUrl}

@@ -80,11 +80,18 @@ export const useMyEvents = (userId?: string) => {
     enabled: !!userId,
     queryFn: async () => {
       const roles = await manageApi.listUserEventRoles(userId as string);
-      const joinedIds = new Set(
-        roles.map((r) => r.eventId).filter((id): id is string => !!id),
-      );
+      // Map mỗi eventId -> vai trò của user (lấy vai trò đầu tiên gặp trong event đó).
+      const roleByEvent = new Map<string, string>();
+      for (const r of roles) {
+        if (r.eventId && r.roleName && !roleByEvent.has(r.eventId)) {
+          roleByEvent.set(r.eventId, r.roleName);
+        }
+      }
       const all = await eventsApi.list();
-      return all.filter((e) => joinedIds.has(e.id));
+      // Gắn myRole vào từng event đã tham gia (chỉ danh sách "Của tôi" mới có field này).
+      return all
+        .filter((e) => roleByEvent.has(e.id))
+        .map((e) => ({ ...e, myRole: roleByEvent.get(e.id) ?? null }));
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
