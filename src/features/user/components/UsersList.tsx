@@ -13,7 +13,6 @@ import {
 import { useIsAuthenticated } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useAllEvents } from "@/features/events/hooks/useEvents";
-import { userRejectionsApi } from "@/features/registration/api/userRejections";
 import { useNotify } from "@/components/NotificationProvider";
 import { getErrorMessage } from "@/lib/apiError";
 
@@ -26,7 +25,7 @@ function Badge({
   tone = "neutral",
 }: {
   children: React.ReactNode;
-  tone?: "neutral" | "primary" | "success" | "warning" | "danger";
+  tone?: "neutral" | "primary" | "success" | "warning" | "danger" | "pending";
 }) {
   const map = {
     neutral: { bg: "var(--color-surface-soft)", fg: "var(--color-mute)", bd: "var(--color-hairline)" },
@@ -34,6 +33,7 @@ function Badge({
     success: { bg: "rgba(118,185,0,0.1)", fg: "var(--color-primary)", bd: "var(--color-primary)" },
     warning: { bg: "var(--color-surface-soft)", fg: "var(--color-stone)", bd: "var(--color-hairline-strong)" },
     danger: { bg: "rgba(220,38,38,0.1)", fg: "var(--color-error)", bd: "var(--color-error)" },
+    pending: { bg: "rgba(245,158,11,0.14)", fg: "#b45309", bd: "rgba(245,158,11,0.55)" },
   }[tone];
   return (
     <span
@@ -219,16 +219,6 @@ export function UsersList() {
     enabled: isAuthenticated,
     staleTime: 60_000,
   });
-
-  // Tải toàn bộ lịch sử từ chối 1 lần → Set userId bị từ chối, để phân biệt
-  // "Bị từ chối" (có bản ghi UserRejection) với "Chờ duyệt" (chưa từng bị).
-  const rejectionsQuery = useQuery({
-    queryKey: ["userRejections", "all"],
-    queryFn: () => userRejectionsApi.listAll(),
-    enabled: isAuthenticated && isAdmin,
-    staleTime: 60_000,
-  });
-  const rejectedIds = new Set((rejectionsQuery.data ?? []).map((r) => r.userId));
 
   // Toggle account active state via isApproved (PUT /Users/{id}).
   const toggleMutation = useMutation({
@@ -612,8 +602,8 @@ export function UsersList() {
                             </Badge>
                           </td>
                           <td style={td}>
-                            <Badge tone={u.isApproved ? "success" : rejectedIds.has(u.id) ? "danger" : "warning"}>
-                              {u.isApproved ? "Đã duyệt" : rejectedIds.has(u.id) ? "Bị từ chối" : "Chờ duyệt"}
+                            <Badge tone={u.isApproved ? "success" : u.isRejected ? "danger" : "pending"}>
+                              {u.isApproved ? "Đã duyệt" : u.isRejected ? "Bị từ chối" : "Chờ duyệt"}
                             </Badge>
                           </td>
                           <td style={{ ...td, textAlign: "right" }}>
