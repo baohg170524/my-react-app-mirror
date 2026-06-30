@@ -72,7 +72,7 @@ type MenuItem = {
 };
 
 /** Gom các nút thao tác của một dòng vào menu dấu ba chấm. Dùng position:fixed
- *  để dropdown không bị cắt bởi vùng overflow của bảng. */
+ *  để dropdown không bị cắt bởi vùng overflow của bảngh. */
 function ActionMenu({ items }: { items: MenuItem[] }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; right: number }>({ top: 0, right: 0 });
@@ -170,8 +170,8 @@ function ActionMenu({ items }: { items: MenuItem[] }) {
                 fontWeight: 600,
                 color:
                   it.tone === "danger" ? "var(--color-error)" :
-                  it.tone === "primary" ? "var(--color-primary)" :
-                  "var(--color-ink)",
+                    it.tone === "primary" ? "var(--color-primary)" :
+                      "var(--color-ink)",
                 whiteSpace: "nowrap",
               }}
               onMouseEnter={(e) => { if (!it.disabled) e.currentTarget.style.background = "var(--color-surface-soft)"; }}
