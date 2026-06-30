@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { teamsApi } from '@/features/teams/api/teams';
 import type { TeamModel } from '@/features/teams/types/team.types';
 import { useState } from 'react';
-import { Check, X } from 'lucide-react';
+import { Check, X, Loader2, Clock, User, Shield } from 'lucide-react';
 
 interface Props {
   teamId: string;
@@ -15,6 +15,7 @@ export function TeamInvitationView({ teamId }: Props) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [confirmingAction, setConfirmingAction] = useState<'accept' | 'reject' | null>(null);
 
   // Fetch team details
   const { data: team, isLoading: isTeamLoading, isError: isTeamError } = useQuery({
@@ -28,6 +29,14 @@ export function TeamInvitationView({ teamId }: Props) {
     queryFn: () => teamsApi.getMyInvitation(teamId),
   });
 
+  if (typeof window !== 'undefined') {
+    console.log('[TeamInvitationView] team:', team);
+    console.log('[TeamInvitationView] isTeamLoading:', isTeamLoading);
+    console.log('[TeamInvitationView] isTeamError:', isTeamError);
+    console.log('[TeamInvitationView] invitation:', invitation);
+    console.log('[TeamInvitationView] isInvLoading:', isInvLoading);
+  }
+
   // Respond mutation
   const respondMutation = useMutation({
     mutationFn: async ({ accept }: { accept: boolean }) => {
@@ -35,6 +44,7 @@ export function TeamInvitationView({ teamId }: Props) {
       await teamsApi.respondInvitation(invitation.invitationId, accept);
     },
     onSuccess: () => {
+      setConfirmingAction(null);
       // Invalidate to refresh dashboard/team state
       queryClient.invalidateQueries({ queryKey: ['teams'] });
       queryClient.invalidateQueries({ queryKey: ['events'] });
@@ -43,6 +53,7 @@ export function TeamInvitationView({ teamId }: Props) {
     },
     onError: (e: any) => {
       setErrorMsg(e?.response?.data?.message || 'Có lỗi xảy ra khi phản hồi lời mời.');
+      setConfirmingAction(null);
     }
   });
 
@@ -52,7 +63,7 @@ export function TeamInvitationView({ teamId }: Props) {
 
   if (isTeamError || !team) {
     return (
-      <div className="card max-w-md mx-auto mt-8 p-6 text-center border border-error bg-error-soft">
+      <div className="card w-full max-w-[28rem] mx-auto mt-8 p-6 text-center border border-error bg-error-soft">
         <h2 className="t-heading-sm text-error">Lỗi truy cập</h2>
         <p className="t-body-sm text-mute mt-2">
           Không tìm thấy thông tin đội thi này hoặc bạn không có quyền xem.
@@ -65,7 +76,7 @@ export function TeamInvitationView({ teamId }: Props) {
   }
 
   return (
-    <div className="card max-w-lg mx-auto mt-8 p-0 overflow-hidden shadow-sm">
+    <div className="card w-full max-w-[32rem] mx-auto mt-8 !p-0 overflow-hidden shadow-sm">
       <div className="bg-surface-soft p-6 border-b border-hairline text-center">
         <h2 className="t-heading-lg mb-2">{team.teamName}</h2>
         <p className="t-body-md text-mute">{team.description || 'Chưa có mô tả'}</p>
@@ -106,30 +117,85 @@ export function TeamInvitationView({ teamId }: Props) {
             </p>
           </div>
           
+          <div className="bg-white p-4 rounded-sm border border-primary/10 flex flex-col gap-2">
+            {(invitation as any).inviterName && (
+              <div className="flex items-center gap-2 text-sm text-body-text">
+                <User className="w-4 h-4 text-mute" />
+                <span className="text-mute w-20">Người mời:</span>
+                <span className="font-bold">{(invitation as any).inviterName}</span>
+              </div>
+            )}
+            {(invitation as any).roleName && (
+              <div className="flex items-center gap-2 text-sm text-body-text">
+                <Shield className="w-4 h-4 text-mute" />
+                <span className="text-mute w-20">Vai trò:</span>
+                <span className="font-bold">{(invitation as any).roleName}</span>
+              </div>
+            )}
+            {(invitation as any).expiresAt && (
+              <div className="flex items-center gap-2 text-sm text-body-text">
+                <Clock className="w-4 h-4 text-mute" />
+                <span className="text-mute w-20">Hết hạn:</span>
+                <span className="font-bold">{new Date((invitation as any).expiresAt).toLocaleDateString('vi-VN')}</span>
+              </div>
+            )}
+            {!(invitation as any).inviterName && !(invitation as any).roleName && !(invitation as any).expiresAt && (
+               <p className="text-sm text-mute italic text-center m-0">Không có thông tin chi tiết lời mời.</p>
+            )}
+          </div>
+          
           {errorMsg && (
             <div className="p-3 bg-error/10 border border-error/20 text-error text-sm rounded-sm text-center">
               {errorMsg}
             </div>
           )}
 
-          <div className="flex gap-3 mt-2">
-            <button
-              type="button"
-              className="btn btn-secondary flex-1 flex items-center justify-center gap-2"
-              onClick={() => respondMutation.mutate({ accept: false })}
-              disabled={respondMutation.isPending}
-            >
-              <X className="w-4 h-4" /> Từ chối
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary flex-1 flex items-center justify-center gap-2"
-              onClick={() => respondMutation.mutate({ accept: true })}
-              disabled={respondMutation.isPending}
-            >
-              <Check className="w-4 h-4" /> Tham gia
-            </button>
-          </div>
+          {confirmingAction ? (
+            <div className="p-4 bg-surface-soft border border-hairline rounded-sm flex flex-col items-center gap-3 mt-2 text-center">
+              <p className="t-body-sm font-bold">
+                Bạn chắc chắn muốn {confirmingAction === 'accept' ? 'tham gia' : 'từ chối'} lời mời này?
+              </p>
+              <div className="flex gap-3 w-full">
+                <button
+                  className="btn btn-outline flex-1"
+                  onClick={() => setConfirmingAction(null)}
+                  disabled={respondMutation.isPending}
+                >
+                  Hủy
+                </button>
+                <button
+                  className={`btn flex-1 flex items-center justify-center gap-2 ${confirmingAction === 'accept' ? 'btn-primary' : 'btn-danger'}`}
+                  onClick={() => respondMutation.mutate({ accept: confirmingAction === 'accept' })}
+                  disabled={respondMutation.isPending}
+                >
+                  {respondMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" /> Đang xử lý...
+                    </>
+                  ) : (
+                    'Xác nhận'
+                  )}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex gap-3 mt-2">
+              <button
+                type="button"
+                className="btn btn-outline-danger flex-1 flex items-center justify-center gap-2"
+                onClick={() => setConfirmingAction('reject')}
+              >
+                <X className="w-4 h-4" /> Từ chối
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary flex-1 flex items-center justify-center gap-2"
+                onClick={() => setConfirmingAction('accept')}
+              >
+                <Check className="w-4 h-4" /> Tham gia
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="p-6 bg-surface-soft border-t border-hairline text-center">
