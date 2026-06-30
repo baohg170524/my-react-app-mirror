@@ -8,4 +8,6 @@ export interface Event {
   status: EventStatus;
   description: string;
   photoEventUrl?: string | null;
+  /** Vai trò của user hiện tại trong event — chỉ được gắn ở danh sách "Của tôi" (useMyEvents). */
+  myRole?: string | null;
 }
