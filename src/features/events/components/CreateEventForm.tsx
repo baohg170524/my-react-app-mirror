@@ -1291,6 +1291,14 @@ function EventFormBody({
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["events"] });
       notify.success("Tạo sự kiện thành công!");
+      // D1: KHÔNG chặn cứng (giám khảo được mời sau), nhưng CẢNH BÁO nếu chưa gắn giám khảo nào.
+      const totalJudges = form.rounds.reduce(
+        (sum, r) => sum + r.tracks.reduce((s, t) => s + (t.judgeUserIds?.length ?? 0), 0),
+        0,
+      );
+      if (totalJudges === 0) {
+        notify.warning("Sự kiện chưa có giám khảo nào. Hãy mời giám khảo trước khi mở chấm điểm.");
+      }
       if (data?.id) {
         router.push(`/events/${data.id}/manage`);
       }
