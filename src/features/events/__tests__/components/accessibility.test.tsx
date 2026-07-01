@@ -46,12 +46,12 @@ describe('Accessibility - Sidebar Navigation (role-aware)', () => {
     expect(screen.getByRole('tablist')).toBeInTheDocument();
   });
 
-  it('renders the approved student-no-team tab set (4 tabs: Chi tiết, Đăng ký thi đấu, Tạo đội, Bảng xếp hạng)', () => {
+  it('renders the approved student-no-team tab set (4 tabs: Chi tiết, Hồ sơ thí sinh, Tạo đội, Bảng xếp hạng)', () => {
     renderSidebar();
     const tabs = screen.getAllByRole('tab');
     expect(tabs.length).toBe(4);
     expect(tabs[0]).toHaveAttribute('aria-label', expect.stringContaining('Chi tiết sự kiện'));
-    expect(tabs[1]).toHaveAttribute('aria-label', expect.stringContaining('Đăng ký thi đấu'));
+    expect(tabs[1]).toHaveAttribute('aria-label', expect.stringContaining('Hồ sơ thí sinh'));
     expect(tabs[2]).toHaveAttribute('aria-label', expect.stringContaining('Tạo đội'));
     expect(tabs[3]).toHaveAttribute('aria-label', expect.stringContaining('Bảng xếp hạng'));
   });
