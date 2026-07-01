@@ -75,12 +75,14 @@ export function MyTeamTab({ eventId, userId }: Props) {
         </div>
       </div>
 
+      {/* Chỉ trưởng nhóm mới mời được (BE chặn 403 với thành viên thường). */}
+      {isLeader && (
       <form
-        onSubmit={(e) => { 
-          e.preventDefault(); 
-          invite.mutate({ email }, { 
-            onSuccess: (res: any) => { 
-              setEmail(''); 
+        onSubmit={(e) => {
+          e.preventDefault();
+          invite.mutate({ email }, {
+            onSuccess: (res: any) => {
+              setEmail('');
               const status = res?.data?.status || res?.status;
               if (status === 'EmailSentToNonRegisteredUser') {
                 notify.success('Thành viên này hiện chưa có tài khoản. Hệ thống đã gửi email yêu cầu đăng ký. Vui lòng mời lại sau khi họ đã tạo tài khoản và được duyệt!');
@@ -92,7 +94,7 @@ export function MyTeamTab({ eventId, userId }: Props) {
               const msg = err?.response?.data?.message || err?.message || 'Mời thất bại.';
               notify.error(msg);
             }
-          }); 
+          });
         }}
         className="space-y-2 border border-hairline rounded-sm bg-canvas p-4 md:p-6"
       >
@@ -107,6 +109,7 @@ export function MyTeamTab({ eventId, userId }: Props) {
           </button>
         </div>
       </form>
+      )}
 
       {isLeader && (
         <div className="border border-hairline rounded-sm bg-canvas p-4 md:p-6 space-y-3">
