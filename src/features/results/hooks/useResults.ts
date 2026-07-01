@@ -6,8 +6,6 @@ import { resultsApi } from '../api/results';
 export const RESULTS_KEYS = {
   teamFinals: (teamId: string) => ['results', 'team', teamId] as const,
   round:      (roundId: string) => ['results', 'round', roundId] as const,
-  teamRound:  (teamId: string, roundId: string) => ['results', 'breakdown', teamId, roundId] as const,
-  details:    (scoreId: string) => ['results', 'details', scoreId] as const,
 };
 
 export const useTeamFinalResults = (teamId: string | undefined) =>
