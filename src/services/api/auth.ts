@@ -60,4 +60,8 @@ export const authApi = {
   /** PUT /api/Auth/student-profiles — update/resubmit the caller's student proof. */
   updateStudentProfile: (payload: UpdateStudentProfileCommand): Promise<void> =>
     apiClient.put("/Auth/student-profiles", payload).then(() => undefined),
+
+  /** POST /api/Auth/request-unblock — user bị khóa (>=2 lần từ chối) gửi yêu cầu gỡ khóa tới ban tổ chức. */
+  requestUnblock: (email: string): Promise<void> =>
+    apiClient.post("/Auth/request-unblock", { email }).then(() => undefined),
 };

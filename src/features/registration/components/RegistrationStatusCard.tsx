@@ -1,7 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { schoolsApi, type UserSummary } from '@/services/api';
+import { schoolsApi, authApi, type UserSummary } from '@/services/api';
 
 interface Props {
   status: 'unregistered' | 'pending' | 'approved' | 'rejected';
@@ -52,6 +53,19 @@ export function RegistrationStatusCard({
       ? 'FPT University'
       : (schools.find((s) => s.id === profile.schoolId)?.schoolName ?? '—')
     : '—';
+
+  // Bị khóa cập nhật hồ sơ khi bị từ chối >= 2 lần (đồng bộ với chặn ở BE).
+  const isBlocked = (rejectionCount ?? 0) >= 2;
+  const [unblock, setUnblock] = useState<'idle' | 'sending' | 'sent'>('idle');
+  const handleUnblock = async () => {
+    if (!profile?.email) return;
+    setUnblock('sending');
+    try {
+      await authApi.requestUnblock(profile.email);
+    } finally {
+      setUnblock('sent'); // endpoint luôn trả thông báo chung (chống dò email) nên coi như đã gửi
+    }
+  };
 
   return (
     <div className="card flex flex-col gap-4" style={{ padding: 'var(--space-xl)', maxWidth: '40rem' }}>
@@ -129,10 +143,31 @@ export function RegistrationStatusCard({
           </button>
         </div>
       )}
-      {status === 'rejected' && (
+      {status === 'rejected' && !isBlocked && (
         <button type="button" className="btn btn-secondary w-fit" onClick={onResubmit}>
           Gửi lại
         </button>
+      )}
+      {status === 'rejected' && isBlocked && (
+        <div className="flex flex-col gap-2">
+          <p className="t-body-sm m-0" style={{ color: 'var(--color-error)' }}>
+            Hồ sơ đã bị từ chối {rejectionCount} lần nên không thể tự cập nhật. Hãy gửi yêu cầu để ban tổ chức hỗ trợ gỡ khóa.
+          </p>
+          {unblock === 'sent' ? (
+            <p className="t-body-sm m-0 text-mute">
+              ✓ Đã gửi yêu cầu gỡ khóa. Vui lòng theo dõi email để nhận phản hồi từ ban tổ chức.
+            </p>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-primary w-fit"
+              onClick={handleUnblock}
+              disabled={unblock === 'sending'}
+            >
+              {unblock === 'sending' ? 'Đang gửi…' : 'Yêu cầu gỡ khóa'}
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
