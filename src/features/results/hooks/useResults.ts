@@ -1,6 +1,6 @@
 'use client';
 
-import { useQueries, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { resultsApi } from '../api/results';
 
 export const RESULTS_KEYS = {
@@ -28,30 +28,38 @@ export const useRoundLeaderboard = (roundId: string | undefined) =>
 
 /**
  * For one team + one round: returns [{ score, details[] }, ...]
- * (one entry per judge that scored the team).
+ * (one entry per judge that scored the team's submission in that round).
+ *
+ * Nguồn: GET /api/Scores/team/{teamId}/breakdown (C9) — endpoint contestant xem được;
+ * fetch 1 lần theo team, lọc theo round + làm phẳng (giám khảo → tiêu chí) tại FE.
  */
 export const useTeamRoundBreakdown = (teamId: string, roundId: string) => {
-  const scoresQ = useQuery({
-    queryKey: RESULTS_KEYS.teamRound(teamId, roundId),
-    queryFn: () => resultsApi.listScoresForTeamRound(teamId, roundId),
+  const q = useQuery({
+    queryKey: ['results', 'team-breakdown', teamId] as const,
+    queryFn: () => resultsApi.getTeamBreakdown(teamId),
     enabled: !!teamId && !!roundId,
     staleTime: 60_000,
   });
 
-  const detailQueries = useQueries({
-    queries: (scoresQ.data ?? []).map((s) => ({
-      queryKey: RESULTS_KEYS.details(s.id),
-      queryFn: () => resultsApi.listScoreDetails(s.id),
-      staleTime: 60_000,
-    })),
-  });
+  const data = (q.data?.submissions ?? [])
+    .filter((s) => s.roundId === roundId)
+    .flatMap((s) =>
+      s.judgeScores.map((js, i) => ({
+        score: {
+          id: `${s.submitResultId}-${i}`,
+          judgeName: js.judgeName,
+          totalScore: js.totalScore,
+          comment: js.comment,
+        },
+        details: js.criteria.map((c, ci) => ({
+          id: `${s.submitResultId}-${i}-${ci}`,
+          criteriaName: c.criteriaName,
+          value: c.value,
+          maxScore: c.maxScore,
+          weight: c.weight,
+        })),
+      })),
+    );
 
-  return {
-    isLoading: scoresQ.isLoading || detailQueries.some((q) => q.isLoading),
-    error: scoresQ.error,
-    data: (scoresQ.data ?? []).map((score, i) => ({
-      score,
-      details: detailQueries[i]?.data ?? [],
-    })),
-  };
+  return { isLoading: q.isLoading, error: q.error, data };
 };
