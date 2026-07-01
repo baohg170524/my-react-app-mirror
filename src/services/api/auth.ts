@@ -64,4 +64,12 @@ export const authApi = {
   /** POST /api/Auth/request-unblock — user bị khóa (>=2 lần từ chối) gửi yêu cầu gỡ khóa tới ban tổ chức. */
   requestUnblock: (email: string): Promise<void> =>
     apiClient.post("/Auth/request-unblock", { email }).then(() => undefined),
+
+  /** POST /api/Auth/forgot-password — gửi email link đặt lại mật khẩu (luôn trả thông báo chung). */
+  forgotPassword: (email: string): Promise<void> =>
+    apiClient.post("/Auth/forgot-password", { email }).then(() => undefined),
+
+  /** POST /api/Auth/reset-password — đặt lại mật khẩu bằng token từ email. */
+  resetPassword: (token: string, newPassword: string): Promise<void> =>
+    apiClient.post("/Auth/reset-password", { token, newPassword }).then(() => undefined),
 };
