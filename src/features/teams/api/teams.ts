@@ -130,6 +130,11 @@ export const teamsApi = {
     await apiClient.post(`/Teams/invitations/${encodeURIComponent(invitationId)}/respond?isAccepted=${accept}`);
   },
 
+  /** POST /api/Teams/{teamId}/transfer-leader — chuyển quyền trưởng nhóm cho 1 thành viên khác. */
+  transferLeader: async (teamId: string, newLeaderUserId: string): Promise<void> => {
+    await apiClient.post(`/Teams/${encodeURIComponent(teamId)}/transfer-leader`, { newLeaderUserId });
+  },
+
   /**
    * The team this user competes in for a given event, or null. Detected via the
    * event's roles (a non-staff role row carrying this user's id + a teamId).

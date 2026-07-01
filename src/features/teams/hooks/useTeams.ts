@@ -64,6 +64,18 @@ export const useInviteToTeam = (teamId: string) => {
   });
 };
 
+export const useTransferLeader = (teamId: string, eventId: string, userId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (newLeaderUserId: string) => teamsApi.transferLeader(teamId, newLeaderUserId),
+    onSuccess: () => {
+      // Vai trò trong đội đổi -> làm mới đội của tôi + chi tiết đội.
+      qc.invalidateQueries({ queryKey: TEAM_KEYS.myTeam(eventId, userId) });
+      qc.invalidateQueries({ queryKey: TEAM_KEYS.detail(teamId) });
+    },
+  });
+};
+
 export const useLeaveTeam = (teamId: string, eventId: string, userId: string) => {
   const qc = useQueryClient();
   return useMutation({

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useMyTeamForEvent, useInviteToTeam, useLeaveTeam, useTeamInvitations } from '@/features/teams/hooks/useTeams';
+import { useMyTeamForEvent, useInviteToTeam, useLeaveTeam, useTeamInvitations, useTransferLeader } from '@/features/teams/hooks/useTeams';
 import { useEventDashboard } from '@/features/events/contexts/EventDashboardContext';
 import { useNotify } from '@/components/NotificationProvider';
 
@@ -21,6 +21,7 @@ export function MyTeamTab({ eventId, userId }: Props) {
   const teamId = team?.id ?? '';
   const invite = useInviteToTeam(teamId);
   const leave  = useLeaveTeam(teamId, eventId, userId);
+  const transfer = useTransferLeader(teamId, eventId, userId);
   const [email, setEmail] = useState('');
   const notify = useNotify();
 
@@ -46,9 +47,27 @@ export function MyTeamTab({ eventId, userId }: Props) {
               <li className="py-2 t-body-sm text-mute">Chưa có thành viên.</li>
             ) : (
               team.members.map((m) => (
-                <li key={m.userId} className="py-2 flex justify-between">
+                <li key={m.userId} className="py-2 flex items-center justify-between gap-3">
                   <span>{m.fullName} <span className="text-mute t-body-sm">({m.email})</span></span>
-                  <span className="text-xs font-bold">{m.isLeader ? 'Trưởng nhóm' : 'Thành viên'}</span>
+                  <span className="flex items-center gap-2">
+                    {isLeader && !m.isLeader && (
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        disabled={transfer.isPending}
+                        onClick={() => {
+                          if (!confirm(`Chuyển quyền trưởng nhóm cho ${m.fullName}? Bạn sẽ trở thành thành viên thường.`)) return;
+                          transfer.mutate(m.userId, {
+                            onSuccess: () => notify.success(`Đã chuyển quyền trưởng nhóm cho ${m.fullName}.`),
+                            onError: (err: any) => notify.error(err?.response?.data?.message || 'Chuyển quyền thất bại.'),
+                          });
+                        }}
+                      >
+                        Chuyển quyền
+                      </button>
+                    )}
+                    <span className="text-xs font-bold whitespace-nowrap">{m.isLeader ? 'Trưởng nhóm' : 'Thành viên'}</span>
+                  </span>
                 </li>
               ))
             )}
