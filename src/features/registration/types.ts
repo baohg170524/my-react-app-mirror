@@ -1,1 +1,1 @@
-export type RegistrationStatus = 'pending' | 'approved' | 'rejected';
+export type RegistrationStatus = 'unregistered' | 'pending' | 'approved' | 'rejected';

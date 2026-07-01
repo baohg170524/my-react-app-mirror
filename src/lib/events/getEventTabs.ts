@@ -10,7 +10,7 @@ export interface EventTab { id: EventTabId; label: string; }
 
 const TAB: Record<EventTabId, EventTab> = {
   detail:           { id: 'detail',           label: 'Chi tiết sự kiện' },
-  register:         { id: 'register',          label: 'Đăng ký thi đấu' },
+  register:         { id: 'register',          label: 'Hồ sơ thí sinh' },
   createTeam:       { id: 'createTeam',        label: 'Tạo đội' },
   myTeam:           { id: 'myTeam',            label: 'Đội của tôi' },
   submission:       { id: 'submission',        label: 'Nộp bài' },
