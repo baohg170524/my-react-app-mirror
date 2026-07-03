@@ -15,6 +15,10 @@ export const invitationsApi = {
   },
 
   respondEventRole: async (invitationId: string, accept: boolean): Promise<void> => {
-    await apiClient.post(`/EventRoles/invitations/${encodeURIComponent(invitationId)}/respond`, { isAccepted: accept });
+    // BE nhận isAccepted qua BODY (RespondEventRoleInvitationRequestModel), không phải query param.
+    await apiClient.post(
+      `/EventRoles/invitations/${encodeURIComponent(invitationId)}/respond`,
+      { isAccepted: accept },
+    );
   }
 };

@@ -41,3 +41,5 @@ yarn-error.log*
 next-env.d.ts
 
 node_modules/
+# email outbox (email test khi chay local - khong commit)
+public/email-outbox/

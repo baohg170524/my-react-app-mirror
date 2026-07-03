@@ -56,7 +56,17 @@ export function NotificationBell() {
     }
   };
 
+  const roleLabel = (role: string) => {
+    switch (role) {
+      case 'EventCoordinator': return 'Điều phối viên (EC)';
+      case 'Judge': return 'Giám khảo';
+      case 'Mentor': return 'Mentor';
+      default: return role;
+    }
+  };
+
   const totalPending = inviteData?.totalPending || 0;
+  const invitations = inviteData?.invitations ?? [];
   const isPending = respondTeamMut.isPending || respondRoleMut.isPending;
 
   return (
@@ -77,44 +87,72 @@ export function NotificationBell() {
       {isOpen && (
         <div className="absolute right-0 mt-2 w-80 bg-surface-dark border border-hairline-strong rounded-sm shadow-xl z-50 overflow-hidden">
           <div className="p-3 border-b border-hairline-strong bg-surface-elevated font-bold text-sm text-on-dark">
-            Lời mời đang chờ ({totalPending})
+            Lời mời & thông báo{totalPending > 0 ? ` (${totalPending} chờ)` : ''}
           </div>
           <div className="max-h-96 overflow-y-auto">
             {isLoading ? (
               <div className="p-6 flex justify-center items-center text-on-dark-mute">
                 <Loader2 className="animate-spin w-5 h-5" />
               </div>
-            ) : totalPending === 0 ? (
+            ) : invitations.length === 0 ? (
               <div className="p-6 text-center text-sm text-on-dark-mute">
                 Bạn không có lời mời nào.
               </div>
             ) : (
               <div className="flex flex-col">
-                {inviteData?.invitations.map((inv) => (
-                  <div key={inv.invitationId} className="p-3 border-b border-hairline-strong hover:bg-surface-elevated transition-colors">
-                    <p className="text-sm text-on-dark leading-snug mb-2">
-                      <span className="font-bold text-primary">{inv.inviterName || 'Hệ thống'}</span> mời bạn tham gia 
-                      <span className="font-bold"> {inv.targetName}</span> với vai trò 
-                      <span className="font-bold text-primary"> {inv.role}</span>.
-                    </p>
-                    <div className="flex justify-end gap-2 mt-2">
-                      <button
-                        onClick={() => handleRespond(inv.invitationId, inv.type, false)}
-                        disabled={isPending}
-                        className="btn-hover px-2 py-1 text-xs flex items-center gap-1 border border-error/50 text-error rounded-sm hover:bg-error/10 disabled:opacity-50"
-                      >
-                        <X size={14} /> Từ chối
-                      </button>
-                      <button
-                        onClick={() => handleRespond(inv.invitationId, inv.type, true)}
-                        disabled={isPending}
-                        className="btn-hover px-2 py-1 text-xs flex items-center gap-1 bg-primary text-white rounded-sm hover:bg-primary-dark disabled:opacity-50"
-                      >
-                        <Check size={14} /> Đồng ý
-                      </button>
+                {invitations.map((inv) => {
+                  const responded = inv.status === 'Accepted' || inv.status === 'Declined';
+
+                  // Thông báo lịch sử: đã đồng ý / đã từ chối (không còn nút)
+                  if (responded) {
+                    const accepted = inv.status === 'Accepted';
+                    return (
+                      <div key={inv.invitationId} className="p-3 border-b border-hairline-strong flex items-start gap-2">
+                        {accepted
+                          ? <Check size={16} className="text-primary mt-0.5 shrink-0" />
+                          : <X size={16} className="text-error mt-0.5 shrink-0" />}
+                        <p className="text-sm text-on-dark-mute leading-snug">
+                          {accepted ? (
+                            <>Bạn đã <span className="font-bold text-primary">nhận</span> vai trò{' '}
+                              <span className="font-bold text-on-dark">{roleLabel(inv.role)}</span> cho sự kiện{' '}
+                              <span className="font-bold text-on-dark">{inv.targetName}</span>.</>
+                          ) : (
+                            <>Bạn đã <span className="font-bold text-error">từ chối</span> lời mời{' '}
+                              <span className="font-bold text-on-dark">{roleLabel(inv.role)}</span> của sự kiện{' '}
+                              <span className="font-bold text-on-dark">{inv.targetName}</span>.</>
+                          )}
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  // Lời mời còn chờ: hiển thị nút Đồng ý / Từ chối
+                  return (
+                    <div key={inv.invitationId} className="p-3 border-b border-hairline-strong hover:bg-surface-elevated transition-colors">
+                      <p className="text-sm text-on-dark leading-snug mb-2">
+                        <span className="font-bold text-primary">{inv.inviterName || 'Hệ thống'}</span> mời bạn tham gia
+                        <span className="font-bold"> {inv.targetName}</span> với vai trò
+                        <span className="font-bold text-primary"> {roleLabel(inv.role)}</span>.
+                      </p>
+                      <div className="flex justify-end gap-2 mt-2">
+                        <button
+                          onClick={() => handleRespond(inv.invitationId, inv.type, false)}
+                          disabled={isPending}
+                          className="btn-hover px-2 py-1 text-xs flex items-center gap-1 border border-error/50 text-error rounded-sm hover:bg-error/10 disabled:opacity-50"
+                        >
+                          <X size={14} /> Từ chối
+                        </button>
+                        <button
+                          onClick={() => handleRespond(inv.invitationId, inv.type, true)}
+                          disabled={isPending}
+                          className="btn-hover px-2 py-1 text-xs flex items-center gap-1 bg-primary text-white rounded-sm hover:bg-primary-dark disabled:opacity-50"
+                        >
+                          <Check size={14} /> Đồng ý
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
