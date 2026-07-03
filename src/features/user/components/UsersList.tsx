@@ -198,7 +198,7 @@ export function UsersList() {
   const [page, setPage] = useState(1);
   const [actionError, setActionError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [editUser, setEditUser] = useState<UserSummary | null>(null);
+  const [viewUser, setViewUser] = useState<UserSummary | null>(null);
   const [preview, setPreview] = useState<{ url: string; name: string } | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -334,33 +334,6 @@ export function UsersList() {
       setActionError(null);
       setShowCreate(false);
       notify.success("Đã tạo tài khoản thành công!");
-      queryClient.invalidateQueries({ queryKey: ["users", "list"] });
-    },
-    onError: (e) => {
-      const msg = errMsg(e);
-      setActionError(msg);
-      notify.error(msg);
-    },
-  });
-
-  // Admin: edit a user's info (name, student code, school, status).
-  const editMutation = useMutation({
-    mutationFn: (vars: { id: string; user: UserSummary; edits: { fullName: string; studentCode: string; schoolId: string; isApproved: boolean } }) =>
-      usersApi.update(vars.id, {
-        schoolId: vars.edits.schoolId || null,
-        studentCode: vars.edits.studentCode.trim() || null,
-        fullName: vars.edits.fullName.trim(),
-        // Role is intentionally NOT editable here — keep the user's existing flags.
-        isStudent: vars.user.isStudent,
-        isAdmin: vars.user.isAdmin,
-        isApproved: vars.edits.isApproved,
-        isFpt: vars.user.isFpt,
-        photoStudentCardUrl: null,
-      }),
-    onSuccess: () => {
-      setActionError(null);
-      setEditUser(null);
-      notify.success("Đã cập nhật tài khoản thành công!");
       queryClient.invalidateQueries({ queryKey: ["users", "list"] });
     },
     onError: (e) => {
@@ -520,8 +493,8 @@ export function UsersList() {
                         deleteMutation.isPending && deleteMutation.variables?.id === u.id;
 
                       // Gom thao tác theo vòng đời tài khoản (chỉ có cờ isApproved):
-                      //  • Chờ duyệt  → Duyệt / Từ chối / Sửa
-                      //  • Đã duyệt   → Sửa / Vô hiệu hóa
+                      //  • Chờ duyệt  → Duyệt / Từ chối / Xem chi tiết
+                      //  • Đã duyệt   → Xem chi tiết / Vô hiệu hóa
                       const menuItems: MenuItem[] = [];
                       if (isAdmin && !u.isApproved) {
                         menuItems.push({
@@ -539,8 +512,8 @@ export function UsersList() {
                       }
                       if (isAdmin) {
                         menuItems.push({
-                          label: "Sửa",
-                          onClick: () => { setActionError(null); setEditUser(u); },
+                          label: "Xem chi tiết",
+                          onClick: () => { setActionError(null); setViewUser(u); },
                         });
                       }
                       if (u.isApproved) {
@@ -725,15 +698,11 @@ export function UsersList() {
         />
       )}
 
-      {isAdmin && editUser && (
-        <EditUserModal
-          user={editUser}
+      {isAdmin && viewUser && (
+        <UserDetailModal
+          user={viewUser}
           schools={schoolsQuery.data?.data ?? []}
-          busy={editMutation.isPending}
-          onClose={() => setEditUser(null)}
-          onSubmit={(edits) =>
-            editMutation.mutate({ id: editUser.id, user: editUser, edits })
-          }
+          onClose={() => setViewUser(null)}
         />
       )}
 
@@ -1004,67 +973,147 @@ function CreateUserModal({
   );
 }
 
-// ─── Edit-user modal ────────────────────────────────────────────────────────────
+// ─── InfoRow: dùng trong modal xem chi tiết ──────────────────────────────────────
 
-function EditUserModal({
+function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        padding: "10px 0",
+        borderBottom: "1px solid var(--color-hairline)",
+        gap: 12,
+      }}
+    >
+      <span
+        style={{
+          fontSize: 12,
+          fontWeight: 700,
+          color: "var(--color-mute)",
+          textTransform: "uppercase",
+          letterSpacing: "0.05em",
+          flexShrink: 0,
+        }}
+      >
+        {label}
+      </span>
+      <span style={{ fontSize: "var(--fs-body-sm)", color: "var(--color-ink)", fontWeight: 600, textAlign: "right" }}>
+        {value || "—"}
+      </span>
+    </div>
+  );
+}
+
+// ─── User detail modal (read-only) ───────────────────────────────────────────────
+
+function UserDetailModal({
   user,
   schools,
-  busy,
   onClose,
-  onSubmit,
 }: {
   user: UserSummary;
   schools: SchoolModel[];
-  busy: boolean;
   onClose: () => void;
-  onSubmit: (edits: { fullName: string; studentCode: string; schoolId: string; isApproved: boolean }) => void;
 }) {
-  const [fullName, setFullName] = useState(user.fullName ?? "");
-  const [studentCode, setStudentCode] = useState(user.studentCode ?? "");
-  const [schoolId, setSchoolId] = useState(user.schoolId ?? "");
-  const [isApproved, setIsApproved] = useState(user.isApproved);
-  const [error, setError] = useState("");
-
-  function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!fullName.trim()) return setError("Vui lòng nhập họ và tên.");
-    setError("");
-    onSubmit({ fullName, studentCode, schoolId, isApproved });
-  }
+  const schoolLabel = user.isFpt
+    ? "FPT University"
+    : schools.find((s) => s.id === user.schoolId)?.schoolName ?? "—";
 
   return (
-    <Modal title={`Sửa thông tin: ${user.fullName || user.email || ""}`} onClose={onClose}>
-      <form onSubmit={handleSubmit} style={FORM_GAP} noValidate>
-        <Field label="Email">
-          <input className="text-input" value={user.email ?? ""} disabled style={{ opacity: 0.6, cursor: "not-allowed" }} />
-        </Field>
-        <Field label="Họ và tên">
-          <input className="text-input" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Nguyễn Văn A" />
-        </Field>
-        <Field label="Mã số sinh viên">
-          <input className="text-input" value={studentCode} onChange={(e) => setStudentCode(e.target.value)} placeholder="VD: SE123456" />
-        </Field>
-        <Field label="Trường">
-          <select className="text-input" value={schoolId} onChange={(e) => setSchoolId(e.target.value)}>
-            <option value="">— Chọn trường —</option>
-            {schools.map((s) => (
-              <option key={s.id} value={s.id}>{s.schoolName}</option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Trạng thái">
-          <select className="text-input" value={isApproved ? "active" : "disabled"} onChange={(e) => setIsApproved(e.target.value === "active")}>
-            <option value="active">Hoạt động</option>
-            <option value="disabled">Vô hiệu hóa</option>
-          </select>
-        </Field>
+    <Modal title="Chi tiết tài khoản" onClose={onClose}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+        {user.photoStudentCardUrl && (
+          <div style={{ marginBottom: 16, textAlign: "center" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={user.photoStudentCardUrl}
+              alt="Ảnh thẻ sinh viên"
+              style={{
+                width: 120,
+                height: 80,
+                objectFit: "cover",
+                borderRadius: "var(--radius-sm)",
+                border: "1px solid var(--color-hairline)",
+                display: "inline-block",
+              }}
+            />
+            <p
+              style={{
+                fontSize: 11,
+                color: "var(--color-mute)",
+                margin: "6px 0 0",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
+              Ảnh thẻ sinh viên
+            </p>
+          </div>
+        )}
 
-        {error && <p className="t-caption-sm" style={{ color: "var(--color-error)", margin: 0 }}>{error}</p>}
+        <InfoRow label="Họ và tên" value={user.fullName} />
+        <InfoRow label="Email" value={user.email} />
+        <InfoRow label="MSSV" value={user.studentCode} />
+        <InfoRow label="Trường" value={schoolLabel} />
+        <InfoRow
+          label="Vai trò"
+          value={
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                padding: "2px 8px",
+                borderRadius: "var(--radius-sm)",
+                background: user.isAdmin ? "rgba(118,185,0,0.1)" : "var(--color-surface-soft)",
+                color: user.isAdmin ? "var(--color-primary)" : "var(--color-mute)",
+                border: `1px solid ${user.isAdmin ? "var(--color-primary)" : "var(--color-hairline)"}`,
+              }}
+            >
+              {user.isAdmin ? "Admin" : "User"}
+            </span>
+          }
+        />
+        <InfoRow
+          label="Trạng thái"
+          value={
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                padding: "2px 8px",
+                borderRadius: "var(--radius-sm)",
+                background: user.isApproved ? "rgba(118,185,0,0.1)" : "var(--color-surface-soft)",
+                color: user.isApproved ? "var(--color-primary)" : "var(--color-stone)",
+                border: `1px solid ${user.isApproved ? "var(--color-primary)" : "var(--color-hairline-strong)"}`,
+              }}
+            >
+              {user.isApproved ? "Đã duyệt" : "Chờ duyệt"}
+            </span>
+          }
+        />
+        <InfoRow label="Loại tài khoản" value={user.isFpt ? "Sinh viên FPT" : "Trường khác"} />
 
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 4 }}>
-          <PrimaryButton disabled={busy}>{busy ? "Đang lưu…" : "Lưu thay đổi"}</PrimaryButton>
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 20 }}>
+          <button
+            type="button"
+            onClick={onClose}
+            className="t-body-sm"
+            style={{
+              fontWeight: 700,
+              background: "none",
+              border: "1px solid var(--color-hairline-strong)",
+              borderRadius: "var(--radius-sm)",
+              padding: "8px 20px",
+              cursor: "pointer",
+              color: "var(--color-ink)",
+            }}
+          >
+            Đóng
+          </button>
         </div>
-      </form>
+      </div>
     </Modal>
   );
 }
