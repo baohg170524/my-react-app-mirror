@@ -25,11 +25,12 @@ export function SubmissionTab({ teamId, eventId }: Props) {
 
   // List ALL of the team's submissions — backend ties a submission to a track
   // (not a round), so a round-filtered query can miss already-submitted work.
+  // eventId bắt buộc: filter phân quyền BE cần EventId (thiếu sẽ bị 400).
   const {
     data: existing = [],
     isLoading: existingLoading,
     error: existingError,
-  } = useTeamSubmissions(teamId);
+  } = useTeamSubmissions(teamId, eventId);
   const create = useCreateSubmission(teamId);
 
   const allTracks = tracks as Array<{ id: string; roundId: string; trackName: string | null }>;
@@ -42,7 +43,7 @@ export function SubmissionTab({ teamId, eventId }: Props) {
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     create.mutate(
-      { teamId, roundId, trackId, submissionUrl, description },
+      { teamId, trackId, submissionUrl, description },
       { onSuccess: () => { setUrl(''); setDesc(''); } },
     );
   };

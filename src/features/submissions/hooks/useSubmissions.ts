@@ -5,14 +5,15 @@ import { submissionsApi } from '../api/submissions';
 import type { CreateSubmissionPayload, UpdateSubmissionPayload } from '../api/submissions';
 
 export const SUB_KEYS = {
-  list: (teamId: string, roundId?: string) => ['submissions', teamId, roundId ?? 'all'] as const,
+  list: (teamId: string, eventId: string) => ['submissions', teamId, eventId] as const,
 };
 
-export const useTeamSubmissions = (teamId: string, roundId?: string) =>
+/** Bài nộp của đội trong một sự kiện. eventId bắt buộc (filter phân quyền BE cần EventId). */
+export const useTeamSubmissions = (teamId: string, eventId: string) =>
   useQuery({
-    queryKey: SUB_KEYS.list(teamId, roundId),
-    queryFn: () => submissionsApi.list({ teamId, roundId }),
-    enabled: !!teamId,
+    queryKey: SUB_KEYS.list(teamId, eventId),
+    queryFn: () => submissionsApi.list({ teamId, eventId }),
+    enabled: !!teamId && !!eventId,
     staleTime: 60_000,
   });
 
