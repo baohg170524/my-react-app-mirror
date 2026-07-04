@@ -140,6 +140,8 @@ interface EventForm {
   year: string;
   startDate: string;
   endDate: string;
+  registrationStartDate: string;
+  registrationEndDate: string;
   description: string;
   status: boolean;
   photoEventUrl: string | null;
@@ -172,6 +174,8 @@ const emptyEvent = (): EventForm => ({
   year: "",
   startDate: "",
   endDate: "",
+  registrationStartDate: "",
+  registrationEndDate: "",
   description: "",
   status: true,
   photoEventUrl: null,
@@ -1166,6 +1170,8 @@ function EditEventLoader({
     year: String(event.year ?? ""),
     startDate: isoToLocalInput(event.startDate),
     endDate: isoToLocalInput(event.endDate),
+    registrationStartDate: isoToLocalInput(event.registrationStartDate ?? ""),
+    registrationEndDate: isoToLocalInput(event.registrationEndDate ?? ""),
     description: event.description ?? "",
     status: event.status ?? false,
     photoEventUrl: event.photoEventUrl ?? null,
@@ -1315,6 +1321,8 @@ function EventFormBody({
         year: Number(form.year) || 0,
         startDate: toIso(form.startDate),
         endDate: toIso(form.endDate),
+        registrationStartDate: toIso(form.registrationStartDate) || null,
+        registrationEndDate: toIso(form.registrationEndDate) || null,
         description: form.description.trim(),
         status: form.status,
         photoEventUrl: form.photoEventUrl || null,
@@ -1378,7 +1386,7 @@ function EventFormBody({
 
   const activeMutation = isEdit ? editMutation : createMutation;
 
-  type EventStringKey = "eventName" | "season" | "year" | "startDate" | "endDate" | "description";
+  type EventStringKey = "eventName" | "season" | "year" | "startDate" | "endDate" | "registrationStartDate" | "registrationEndDate" | "description";
   const setField = (key: EventStringKey, value: string) =>
     setForm((f) => {
       const updated = { ...f, [key]: value };
@@ -1475,6 +1483,8 @@ function EventFormBody({
       year: Number(form.year) || 0,
       startDate: toIso(form.startDate),
       endDate: toIso(form.endDate),
+      registrationStartDate: toIso(form.registrationStartDate) || null,
+      registrationEndDate: toIso(form.registrationEndDate) || null,
       description: form.description.trim(),
       status: form.status,
       photoEventUrl: form.photoEventUrl || null,
@@ -1513,6 +1523,19 @@ function EventFormBody({
 
     if (eventEnd <= eventStart) {
       return "Ngày kết thúc sự kiện phải sau ngày bắt đầu.";
+    }
+
+    if (form.registrationStartDate && form.registrationEndDate) {
+      const regStart = new Date(form.registrationStartDate).getTime();
+      const regEnd = new Date(form.registrationEndDate).getTime();
+      if (regEnd <= regStart) {
+        return "Ngày kết thúc đăng ký phải sau ngày bắt đầu đăng ký.";
+      }
+      if (regEnd > eventStart) {
+        return "Thời gian đăng ký phải diễn ra trước ngày bắt đầu sự kiện.";
+      }
+    } else if (form.registrationStartDate || form.registrationEndDate) {
+      return "Vui lòng nhập đầy đủ cả thời gian bắt đầu và kết thúc đăng ký.";
     }
 
     for (let i = 0; i < form.rounds.length; i++) {
@@ -1595,19 +1618,83 @@ function EventFormBody({
       {/* Event-level fields */}
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-md)" }}>
         <TextField label="Tên sự kiện" value={form.eventName} onChange={(v) => setField("eventName", v)} />
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-md)" }}>
-          <TextField
-            label="Bắt đầu"
-            type="datetime-local"
-            value={form.startDate}
-            onChange={(v) => setField("startDate", v)}
-          />
-          <TextField
-            label="Kết thúc"
-            type="datetime-local"
-            value={form.endDate}
-            onChange={(v) => setField("endDate", v)}
-          />
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <span className="t-caption-xs" style={{ color: "var(--color-primary)", fontWeight: 700, letterSpacing: "0.05em" }}>
+            THỜI GIAN SỰ KIỆN
+          </span>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-md)" }}>
+            <TextField
+              label="Bắt đầu"
+              type="datetime-local"
+              value={form.startDate}
+              onChange={(v) => setField("startDate", v)}
+            />
+            <TextField
+              label="Kết thúc"
+              type="datetime-local"
+              value={form.endDate}
+              onChange={(v) => setField("endDate", v)}
+            />
+          </div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <span className="t-caption-xs" style={{ color: "var(--color-primary)", fontWeight: 700, letterSpacing: "0.05em" }}>
+            THỜI GIAN ĐĂNG KÝ
+          </span>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-md)" }}>
+            <TextField
+              label="Bắt đầu"
+              type="datetime-local"
+              value={form.registrationStartDate}
+              onChange={(v) => setField("registrationStartDate", v)}
+            />
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <TextField
+                label="Kết thúc"
+                type="datetime-local"
+                value={form.registrationEndDate}
+                onChange={(v) => setField("registrationEndDate", v)}
+              />
+              {form.registrationStartDate && (
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <span className="t-caption-xs" style={{ color: "var(--color-mute)" }}>Đặt nhanh:</span>
+                  {[2, 24, 48, 72].map((hours) => (
+                    <button
+                      key={hours}
+                      type="button"
+                      onClick={() => {
+                        const date = new Date(form.registrationStartDate);
+                        date.setHours(date.getHours() + hours);
+                        const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+                        setField("registrationEndDate", local.toISOString().slice(0, 16));
+                      }}
+                      style={{
+                        padding: "3px 8px",
+                        background: "var(--color-canvas)",
+                        border: "1px solid var(--color-hairline)",
+                        borderRadius: 2,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: "var(--color-mute)",
+                        cursor: "pointer",
+                        transition: "all 100ms ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = "var(--color-primary)";
+                        e.currentTarget.style.color = "var(--color-primary)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = "var(--color-hairline)";
+                        e.currentTarget.style.color = "var(--color-mute)";
+                      }}
+                    >
+                      +{hours}h
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Thông tin tự động nhận diện */}
