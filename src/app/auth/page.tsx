@@ -794,14 +794,26 @@ export default function AuthPage() {
             {!isRegister && GOOGLE_CLIENT_ID && (
               <div style={{ marginTop: 16, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 13, color: "var(--color-mute)" }}>hoặc</span>
-                <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-                  <GoogleLogin
-                    onSuccess={(cred) => {
-                      if (cred.credential) googleMutation.mutate(cred.credential);
-                    }}
-                    onError={() => {}}
-                  />
-                </GoogleOAuthProvider>
+                {/* min-height giữ sẵn chỗ: iframe nút Google load chậm nên phải reserve
+                    không gian, tránh layout nhảy (pop-in) khi nút xuất hiện. */}
+                <div
+                  style={{
+                    minHeight: 40,
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+                    <GoogleLogin
+                      onSuccess={(cred) => {
+                        if (cred.credential) googleMutation.mutate(cred.credential);
+                      }}
+                      onError={() => {}}
+                    />
+                  </GoogleOAuthProvider>
+                </div>
               </div>
             )}
 
