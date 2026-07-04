@@ -20,6 +20,7 @@ type Phase =
   | "working"
   | "accepted"
   | "declined"
+  | "wrong-account"
   | "error";
 
 function InvitationInner() {
@@ -36,7 +37,12 @@ function InvitationInner() {
   const respond = useMutation({
     mutationFn: (accept: boolean) => invitationsApi.respondEventRole(id, accept),
     onSuccess: (_data, accept) => setPhase(accept ? "accepted" : "declined"),
-    onError: (e) => {
+    onError: (e: any) => {
+      // 403 = đang đăng nhập bằng tài khoản KHÔNG phải người được mời -> yêu cầu đổi đúng tài khoản.
+      if (e?.response?.status === 403) {
+        setPhase("wrong-account");
+        return;
+      }
       setErrorMsg(
         getErrorMessage(
           e,
@@ -50,6 +56,17 @@ function InvitationInner() {
   const doRespond = (accept: boolean) => {
     setPhase("working");
     respond.mutate(accept);
+  };
+
+  // Đăng xuất tài khoản đang đăng nhập (sai người) rồi quay lại link này để đăng nhập ĐÚNG người được mời.
+  const switchAccount = () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("currentUser");
+      localStorage.setItem("postLoginRedirect", `/invitations/${id}?action=${actionParam ?? "accept"}`);
+    }
+    router.replace("/auth");
   };
 
   // Từ chối qua email: công khai, KHÔNG cần đăng nhập -> hiện lời cảm ơn ngay.
@@ -163,6 +180,12 @@ function InvitationInner() {
       title = "Cảm ơn bạn đã phản hồi";
       message = "Bạn đã từ chối lời mời vai trò này nên sẽ không có vai trò nào được tạo. Cảm ơn bạn đã dành thời gian phản hồi — hẹn gặp lại ở những sự kiện sau!";
       actions = homeLink;
+      break;
+    case "wrong-account":
+      icon = mailBadge;
+      title = "Sai tài khoản đăng nhập";
+      message = "Lời mời này dành cho một tài khoản khác. Bạn đang đăng nhập bằng tài khoản KHÔNG được mời nên không thể chấp nhận. Vui lòng đăng nhập đúng tài khoản đã nhận lời mời (email nhận thư này).";
+      actions = <button onClick={switchAccount} className="inv-btn">Đăng nhập tài khoản khác</button>;
       break;
     case "error":
     default:
