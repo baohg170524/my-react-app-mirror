@@ -52,16 +52,40 @@ function InvitationInner() {
     respond.mutate(accept);
   };
 
+  // Từ chối qua email: công khai, KHÔNG cần đăng nhập -> hiện lời cảm ơn ngay.
+  const declineMut = useMutation({
+    mutationFn: () => invitationsApi.declineEventRolePublic(id),
+    onSuccess: () => setPhase("declined"),
+    onError: (e) => {
+      setErrorMsg(
+        getErrorMessage(
+          e,
+          "Không thể xử lý lời mời. Có thể lời mời đã hết hạn hoặc đã được phản hồi trước đó.",
+        ),
+      );
+      setPhase("error");
+    },
+  });
+  const doDecline = () => {
+    setPhase("working");
+    declineMut.mutate();
+  };
+
   useEffect(() => {
     if (startedRef.current || !id) return;
     startedRef.current = true;
+
+    // TỪ CHỐI qua email: công khai, KHÔNG cần đăng nhập -> hiện lời cảm ơn ngay.
+    if (actionParam === "decline") {
+      doDecline();
+      return;
+    }
 
     const hasToken =
       typeof window !== "undefined" && !!localStorage.getItem("accessToken");
 
     if (!hasToken) {
-      // Có action (Đồng ý/Từ chối trong email) -> quay lại chính link này để hoàn tất sau khi đăng nhập.
-      // Không có action (bấm link "đăng nhập hệ thống") -> về trang chủ để phản hồi trong chuông thông báo.
+      // Chấp nhận (phải tạo vai trò đúng người) hoặc link trung tính -> yêu cầu đăng nhập.
       const returnUrl = actionParam ? `/invitations/${id}?action=${actionParam}` : "/";
       localStorage.setItem("postLoginRedirect", returnUrl);
       setPhase("need-login");
@@ -69,8 +93,7 @@ function InvitationInner() {
     }
 
     if (actionParam === "accept") doRespond(true);
-    else if (actionParam === "decline") doRespond(false);
-    // Đã đăng nhập nhưng không có action (vào từ link) -> mở chuông thông báo ở trang chủ để tự Đồng ý/Từ chối.
+    // Đã đăng nhập nhưng không có action (vào từ link) -> mở chuông thông báo ở trang chủ.
     else router.replace("/");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, actionParam]);
