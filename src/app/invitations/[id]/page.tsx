@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { Check, X, Loader2, Mail } from "lucide-react";
 import { invitationsApi } from "@/features/invitations/api/invitationsApi";
@@ -25,6 +25,7 @@ type Phase =
 function InvitationInner() {
   const params = useParams();
   const search = useSearchParams();
+  const router = useRouter();
   const id = String(params?.id ?? "");
   const actionParam = search?.get("action"); // "accept" | "decline" | null
 
@@ -59,8 +60,9 @@ function InvitationInner() {
       typeof window !== "undefined" && !!localStorage.getItem("accessToken");
 
     if (!hasToken) {
-      // Lưu đường dẫn để useLogin đưa người dùng quay lại đây sau khi đăng nhập.
-      const returnUrl = `/invitations/${id}${actionParam ? `?action=${actionParam}` : ""}`;
+      // Có action (Đồng ý/Từ chối trong email) -> quay lại chính link này để hoàn tất sau khi đăng nhập.
+      // Không có action (bấm link "đăng nhập hệ thống") -> về trang chủ để phản hồi trong chuông thông báo.
+      const returnUrl = actionParam ? `/invitations/${id}?action=${actionParam}` : "/";
       localStorage.setItem("postLoginRedirect", returnUrl);
       setPhase("need-login");
       return;
@@ -68,7 +70,8 @@ function InvitationInner() {
 
     if (actionParam === "accept") doRespond(true);
     else if (actionParam === "decline") doRespond(false);
-    else setPhase("choose");
+    // Đã đăng nhập nhưng không có action (vào từ link) -> mở chuông thông báo ở trang chủ để tự Đồng ý/Từ chối.
+    else router.replace("/");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, actionParam]);
 
@@ -134,8 +137,8 @@ function InvitationInner() {
       break;
     case "declined":
       icon = badBadge;
-      title = "Đã từ chối lời mời";
-      message = "Bạn đã từ chối lời mời này. Không có vai trò nào được tạo.";
+      title = "Cảm ơn bạn đã phản hồi";
+      message = "Bạn đã từ chối lời mời vai trò này nên sẽ không có vai trò nào được tạo. Cảm ơn bạn đã dành thời gian phản hồi — hẹn gặp lại ở những sự kiện sau!";
       actions = homeLink;
       break;
     case "error":
