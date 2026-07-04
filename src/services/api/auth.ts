@@ -14,6 +14,12 @@ export const authApi = {
     return data;
   },
 
+  /** POST /api/Auth/google-login — đăng nhập bằng Google (gửi idToken từ nút Google). */
+  googleLogin: async (idToken: string): Promise<LoginResponse> => {
+    const { data } = await apiClient.post<LoginResponse>("/Auth/google-login", { idToken });
+    return data;
+  },
+
   /** Backend register returns the created user — NOT auth tokens. */
   register: async (payload: RegisterRequest): Promise<BackendUserModel> => {
     const { data } = await apiClient.post<BackendUserModel>(

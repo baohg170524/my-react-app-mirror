@@ -111,6 +111,26 @@ export function useLogin() {
   });
 }
 
+/** Đăng nhập bằng Google — gửi idToken lên BE, lưu token + user, chuyển về trang chủ. */
+export function useGoogleLogin() {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  const notify = useNotify();
+
+  return useMutation({
+    mutationFn: (idToken: string) => authApi.googleLogin(idToken),
+    onSuccess: (data) => {
+      persistTokens(data.accessToken, data.refreshToken);
+      const profile = loginResponseToProfile(data);
+      persistUser(profile);
+      queryClient.setQueryData(AUTH_KEYS.me, profile);
+      notify.success(`Đăng nhập Google thành công. Chào mừng ${profile.fullName}!`);
+      router.replace("/");
+    },
+    onError: (e) => notify.error(getErrorMessage(e, "Đăng nhập Google thất bại. Vui lòng thử lại.")),
+  });
+}
+
 /**
  * Register mutation — backend does NOT return tokens, so we do not log the
  * user in here. Caller should switch the UI to login mode on success.

@@ -7,10 +7,13 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from "react";
-import { useLogin, useRegister } from "@/hooks/useAuth";
+import { useLogin, useRegister, useGoogleLogin } from "@/hooks/useAuth";
 import { getErrorMessage } from "@/lib/apiError";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
+
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -101,6 +104,7 @@ export default function AuthPage() {
   const switchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loginMutation = useLogin();
+  const googleMutation = useGoogleLogin();
   const registerMutation = useRegister();
 
   const isPending = loginMutation.isPending || registerMutation.isPending;
@@ -782,6 +786,21 @@ export default function AuthPage() {
                   {loginMutation.isPending ? "Đang đăng nhập…" : "Đăng nhập"}
                 </button>
               </form>
+            )}
+
+            {/* ── Đăng nhập bằng Google ──────────────────────────────────── */}
+            {!isRegister && GOOGLE_CLIENT_ID && (
+              <div style={{ marginTop: 16, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 13, color: "var(--color-mute)" }}>hoặc</span>
+                <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+                  <GoogleLogin
+                    onSuccess={(cred) => {
+                      if (cred.credential) googleMutation.mutate(cred.credential);
+                    }}
+                    onError={() => {}}
+                  />
+                </GoogleOAuthProvider>
+              </div>
             )}
 
             {/* ── Register form ──────────────────────────────────────────── */}
