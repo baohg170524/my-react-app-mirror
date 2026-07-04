@@ -127,7 +127,7 @@ export default function AuthPage() {
   const formTransform = isRegister
     ? `translateX(calc(-100% - ${SPINE}px))`
     : "translateX(0)";
-  const EASE = "transform 0.68s cubic-bezier(0.76, 0, 0.24, 1)";
+  const EASE = "transform 0.55s cubic-bezier(0.76, 0, 0.24, 1)";
 
   // ── handlers ──────────────────────────────────────────────────────────────
 
@@ -146,8 +146,8 @@ export default function AuthPage() {
       setMode((m) => (m === "login" ? "register" : "login"));
     }, 100);
 
-    // hide spinner after slide animation completes (680ms) + fade buffer
-    setTimeout(() => setIsSwitching(false), 720);
+    // hide spinner after slide animation completes (550ms) + fade buffer
+    setTimeout(() => setIsSwitching(false), 600);
   }
 
   async function handleLogin(e: FormEvent) {
@@ -238,6 +238,7 @@ export default function AuthPage() {
           padding: 64px 56px;
           z-index: 15;
           transition: ${EASE};
+          will-change: transform;
           overflow: hidden;
         }
 
@@ -348,6 +349,7 @@ export default function AuthPage() {
           justify-content: center;
           z-index: 10;
           transition: ${EASE};
+          will-change: transform;
           /* allow scrolling when the (taller) register form overflows … */
           overflow-y: auto;
           /* … but hide the scrollbar */
