@@ -10,7 +10,7 @@ import {
   type SchoolModel,
   type CreateUserPayload,
 } from "@/services/api";
-import { useIsAuthenticated } from "@/hooks/useAuth";
+import { useIsAuthenticated, useCurrentUser } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useAllEvents } from "@/features/events/hooks/useEvents";
 import { useNotify } from "@/components/NotificationProvider";
@@ -191,6 +191,7 @@ function ActionMenu({ items }: { items: MenuItem[] }) {
 export function UsersList() {
   const isAuthenticated = useIsAuthenticated();
   const isAdmin = useUserRole() === "admin";
+  const { data: currentUser } = useCurrentUser();
   const queryClient = useQueryClient();
   const notify = useNotify();
   const [query, setQuery] = useState("");
@@ -506,7 +507,7 @@ export function UsersList() {
                       <th style={th}>MSSV</th>
                       <th style={th}>Trường</th>
                       <th style={th}>Vai trò</th>
-                      <th style={th}>Trạng thái</th>
+                      {filter === "pending" && <th style={th}>Trạng thái</th>}
                       <th style={{ ...th, textAlign: "right" }}>Thao tác</th>
                     </tr>
                   </thead>
@@ -521,11 +522,17 @@ export function UsersList() {
                       const deleteBusy =
                         deleteMutation.isPending && deleteMutation.variables?.id === u.id;
 
+                      // Không cho admin tự thu hồi duyệt / tự xoá chính mình (BE cũng chặn 400).
+                      const isSelf = !!currentUser?.id && u.id === currentUser.id;
+                      // Tài khoản judge/mentor ĐƯỢC MỜI (chưa kích hoạt) — không nộp hồ sơ để duyệt.
+                      const isInvited = u.isTemporary === true;
+
                       // Gom thao tác theo vòng đời tài khoản (chỉ có cờ isApproved):
                       //  • Chờ duyệt  → Duyệt / Từ chối / Sửa
                       //  • Đã duyệt   → Sửa / Vô hiệu hóa
+                      //  • Được mời   → không có Duyệt/Từ chối (họ được mời, không cần duyệt)
                       const menuItems: MenuItem[] = [];
-                      if (isAdmin && !u.isApproved) {
+                      if (isAdmin && !u.isApproved && !isInvited) {
                         menuItems.push({
                           label: approveBusy ? "Đang lưu…" : "Duyệt",
                           tone: "primary",
@@ -545,7 +552,7 @@ export function UsersList() {
                           onClick: () => { setActionError(null); setEditUser(u); },
                         });
                       }
-                      if (u.isApproved) {
+                      if (u.isApproved && !isSelf) {
                         menuItems.push({
                           label: pending ? "Đang lưu…" : "Thu hồi duyệt",
                           tone: "danger",
@@ -560,7 +567,7 @@ export function UsersList() {
                           onClick: () => handleToggle(u),
                         });
                       }
-                      if (isAdmin) {
+                      if (isAdmin && !isSelf) {
                         menuItems.push({
                           label: deleteBusy ? "Đang xoá…" : "Xoá tài khoản",
                           tone: "danger",
@@ -597,17 +604,27 @@ export function UsersList() {
                             {u.isFpt ? "FPT University" : schoolName(u.schoolId)}
                           </td>
                           <td style={td}>
-                            <Badge tone={u.isAdmin ? "primary" : "neutral"}>
-                              {u.isAdmin ? "Admin" : "User"}
-                            </Badge>
+                            {isInvited ? (
+                              <Badge tone="neutral">Được mời (Giám khảo/Mentor)</Badge>
+                            ) : (
+                              <Badge tone={u.isAdmin ? "primary" : "neutral"}>
+                                {u.isAdmin ? "Admin" : "User"}
+                              </Badge>
+                            )}
                           </td>
-                          <td style={td}>
-                            <Badge tone={u.isApproved ? "success" : u.isRejected ? "danger" : "pending"}>
-                              {u.isApproved ? "Đã duyệt" : u.isRejected ? "Bị từ chối" : "Chờ duyệt"}
-                            </Badge>
-                          </td>
+                          {filter === "pending" && (
+                            <td style={td}>
+                              {isInvited ? (
+                                <Badge tone="neutral">Được mời</Badge>
+                              ) : (
+                                <Badge tone={u.isApproved ? "success" : u.isRejected ? "danger" : "pending"}>
+                                  {u.isApproved ? "Đã duyệt" : u.isRejected ? "Bị từ chối" : "Chờ duyệt"}
+                                </Badge>
+                              )}
+                            </td>
+                          )}
                           <td style={{ ...td, textAlign: "right" }}>
-                            {filter === "pending" && isAdmin ? (
+                            {filter === "pending" && isAdmin && !isInvited ? (
                               <div style={{ display: "inline-flex", gap: "var(--space-sm)", justifyContent: "flex-end" }}>
                                 <button
                                   type="button"
