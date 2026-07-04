@@ -9,6 +9,7 @@ export interface GlobalInvitation {
   targetName: string;     // Tên đội hoặc Tên sự kiện
   inviterName?: string;
   role: string;           // MEMBER, JUDGE, MENTOR, EC...
+  trackName?: string | null; // Tên hạng mục (chỉ có với Judge/Mentor theo hạng mục)
   status?: InvitationStatus; // PendingAccept => còn nút; Accepted/Declined => lịch sử
   respondedAt?: string | null;
   expiresAt: string;

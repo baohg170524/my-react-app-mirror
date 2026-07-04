@@ -65,6 +65,14 @@ export function NotificationBell() {
     }
   };
 
+  // Chip hạng mục (Track) — chỉ hiện với lời mời Judge/Mentor theo hạng mục, giúp phân biệt các lời mời cùng vai trò.
+  const trackChip = (name?: string | null) =>
+    name ? (
+      <span className="inline-flex items-center px-2 py-0.5 text-[11px] font-semibold rounded-sm bg-primary/15 text-primary border border-primary/30">
+        Hạng mục: {name}
+      </span>
+    ) : null;
+
   const totalPending = inviteData?.totalPending || 0;
   const invitations = inviteData?.invitations ?? [];
   const isPending = respondTeamMut.isPending || respondRoleMut.isPending;
@@ -114,12 +122,14 @@ export function NotificationBell() {
                         <p className="text-sm text-on-dark-mute leading-snug">
                           {accepted ? (
                             <>Bạn đã <span className="font-bold text-primary">nhận</span> vai trò{' '}
-                              <span className="font-bold text-on-dark">{roleLabel(inv.role)}</span> cho sự kiện{' '}
-                              <span className="font-bold text-on-dark">{inv.targetName}</span>.</>
+                              <span className="font-bold text-on-dark">{roleLabel(inv.role)}</span>
+                              {inv.trackName && <> — hạng mục <span className="font-bold text-on-dark">{inv.trackName}</span></>}{' '}
+                              cho sự kiện <span className="font-bold text-on-dark">{inv.targetName}</span>.</>
                           ) : (
                             <>Bạn đã <span className="font-bold text-error">từ chối</span> lời mời{' '}
-                              <span className="font-bold text-on-dark">{roleLabel(inv.role)}</span> của sự kiện{' '}
-                              <span className="font-bold text-on-dark">{inv.targetName}</span>.</>
+                              <span className="font-bold text-on-dark">{roleLabel(inv.role)}</span>
+                              {inv.trackName && <> — hạng mục <span className="font-bold text-on-dark">{inv.trackName}</span></>}{' '}
+                              của sự kiện <span className="font-bold text-on-dark">{inv.targetName}</span>.</>
                           )}
                         </p>
                       </div>
@@ -129,11 +139,12 @@ export function NotificationBell() {
                   // Lời mời còn chờ: hiển thị nút Đồng ý / Từ chối
                   return (
                     <div key={inv.invitationId} className="p-3 border-b border-hairline-strong hover:bg-surface-elevated transition-colors">
-                      <p className="text-sm text-on-dark leading-snug mb-2">
+                      <p className="text-sm text-on-dark leading-snug mb-1">
                         <span className="font-bold text-primary">{inv.inviterName || 'Hệ thống'}</span> mời bạn tham gia
                         <span className="font-bold"> {inv.targetName}</span> với vai trò
                         <span className="font-bold text-primary"> {roleLabel(inv.role)}</span>.
                       </p>
+                      {inv.trackName && <div className="mb-2">{trackChip(inv.trackName)}</div>}
                       <div className="flex justify-end gap-2 mt-2">
                         <button
                           onClick={() => handleRespond(inv.invitationId, inv.type, false)}
