@@ -5,6 +5,8 @@ export interface Event {
   title: string;
   startDate: string; // ISO 8601
   endDate: string;
+  registrationStartDate?: string | null;
+  registrationEndDate?: string | null;
   status: EventStatus;
   description: string;
   photoEventUrl?: string | null;
