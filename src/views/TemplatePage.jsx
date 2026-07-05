@@ -127,17 +127,18 @@ export default function TemplatePage({ sn }) {
     setSaving(true);
     try {
       const { templateId, mode, criteriaId: editId } = critModal;
+      // hệ 10: giám khảo luôn chấm 0-10 mỗi tiêu chí; maxScore lưu lại đóng góp tối đa
+      // vào tổng 10 điểm (weight/10) để hiển thị, không dùng để giới hạn điểm nhập.
+      const maxScore = Number(critF.weight) / 10;
       if (mode === 'add') {
         await addCriteriaToTemplate(templateId, {
           criteriaId: critF.criteriaId,
           weight:     Number(critF.weight),
-          // maxScore:   Number(critF.maxScore), // hệ 10 cũ
-          maxScore:   Number(critF.weight), // hệ 100: maxScore = weight
+          maxScore,
         });
         sn('Đã thêm tiêu chí vào bộ!');
       } else {
-        // await updateTemplateCriteria(templateId, editId, { weight: critF.weight, maxScore: critF.maxScore }); // hệ 10 cũ
-        await updateTemplateCriteria(templateId, editId, { weight: critF.weight, maxScore: critF.weight }); // hệ 100
+        await updateTemplateCriteria(templateId, editId, { weight: critF.weight, maxScore });
         sn('Đã cập nhật cấu hình tiêu chí!');
       }
       const detail = await getTemplateDetail(templateId);
@@ -350,26 +351,8 @@ export default function TemplatePage({ sn }) {
                   className="input-field"
                 />
               </div>
-              {/* Điểm tối đa tự động = trọng số (hệ 100) */}
-              {/* <div className="flex-1">
-                <label className="block text-xs font-bold mb-1.5 uppercase tracking-wider" style={{ color: '#757575' }}>
-                  Điểm tối đa
-                </label>
-                <input
-                  type="number" min="1"
-                  value={critF.maxScore}
-                  onChange={e => setCritF({ ...critF, maxScore: Number(e.target.value) })}
-                  className="input-field"
-                />
-              </div> */}
+              {/* Điểm tối đa cố định = 10 (hệ 10), không cho chỉnh riêng từng tiêu chí */}
             </div>
-
-            {critF.weight > 0 && critF.maxScore > 0 && critF.weight !== critF.maxScore && (
-              <div className="mb-6 p-3 text-xs" style={{ background: 'rgba(223,101,0,0.1)', color: '#df6500', borderRadius: 2, border: '1px solid rgba(223,101,0,0.3)' }}>
-                <strong>Lưu ý:</strong> Trọng số là <strong>{critF.weight}%</strong> nhưng điểm tối đa là <strong>{critF.maxScore}</strong>.
-                Hệ thống sẽ tự động quy đổi: 1 điểm chấm tương đương <strong>{((critF.weight / critF.maxScore) || 0).toFixed(2)}%</strong> tổng điểm. Hãy chắc chắn đây là ý đồ của bạn.
-              </div>
-            )}
 
             <div className="flex justify-end gap-3">
               <button className="btn btn-outline" onClick={closeCrit}>Hủy</button>
@@ -547,7 +530,7 @@ export default function TemplatePage({ sn }) {
                           </span>
                         </div>
                         <div style={{ width: 110, textAlign: 'center' }}>
-                          <span className="text-sm" style={{ color: '#000' }}>{tc.maxScore}</span>
+                          <span className="text-sm" style={{ color: '#000' }}>{Number((tc.weight / 10).toFixed(1))}</span>
                         </div>
                         <div className="flex gap-2 justify-end" style={{ width: 110 }}>
                           <button className="btn-hover px-2.5 py-1 text-xs font-bold"

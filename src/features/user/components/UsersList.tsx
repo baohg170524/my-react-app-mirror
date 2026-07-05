@@ -10,6 +10,7 @@ import {
   type SchoolModel,
   type CreateUserPayload,
 } from "@/services/api";
+import { eventRolesApi } from "@/features/events/api/eventRoles";
 import { useIsAuthenticated } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useAllEvents } from "@/features/events/hooks/useEvents";
@@ -19,6 +20,54 @@ import { getErrorMessage } from "@/lib/apiError";
 const PAGE_SIZE = 20;
 
 const errMsg = getErrorMessage;
+
+// ─── RoleBadge: hiển thị vai trò trong sự kiện ───────────────────────────────────
+
+const ROLE_STYLE: Record<string, { label: string; bg: string; fg: string; bd: string }> = {
+  Judge: {
+    label: "Judge",
+    bg: "rgba(0,70,164,0.08)", fg: "#0046a4", bd: "rgba(0,70,164,0.3)",
+  },
+  EventCoordinator: {
+    label: "Coordinator",
+    bg: "rgba(149,47,198,0.08)", fg: "#952fc6", bd: "rgba(149,47,198,0.3)",
+  },
+  TeamLeader: {
+    label: "Team Leader",
+    bg: "rgba(118,185,0,0.1)", fg: "var(--color-primary)", bd: "var(--color-primary)",
+  },
+  Member: {
+    label: "Member",
+    bg: "var(--color-surface-soft)", fg: "var(--color-mute)", bd: "var(--color-hairline)",
+  },
+  Mentor: {
+    label: "Mentor",
+    bg: "rgba(13,148,136,0.08)", fg: "#0D9488", bd: "rgba(13,148,136,0.3)",
+  },
+};
+
+function RoleBadge({ roleName }: { roleName: string }) {
+  const style = ROLE_STYLE[roleName] ?? {
+    label: roleName,
+    bg: "var(--color-surface-soft)",
+    fg: "var(--color-mute)",
+    bd: "var(--color-hairline)",
+  };
+  return (
+    <span
+      className="badge-tag"
+      style={{
+        background: style.bg,
+        color: style.fg,
+        border: `1px solid ${style.bd}`,
+        fontSize: "var(--fs-utility-xs)",
+        fontWeight: 700,
+      }}
+    >
+      {style.label}
+    </span>
+  );
+}
 
 function Badge({
   children,
@@ -327,6 +376,22 @@ export function UsersList() {
     staleTime: 5 * 60_000,
   });
 
+  // Khi chọn 1 sự kiện → load roles của event đó để hiển thị vai trò event.
+  const eventRolesQuery = useQuery({
+    queryKey: ["eventRoles", "byEvent", eventId],
+    queryFn: () => eventRolesApi.listByEvent(eventId),
+    enabled: isAuthenticated && !!eventId,
+    staleTime: 60_000,
+  });
+
+  // Map userId → roleName trong event đang chọn.
+  const userEventRoleMap: Record<string, string> = {};
+  if (eventId && eventRolesQuery.data) {
+    for (const r of eventRolesQuery.data) {
+      userEventRoleMap[r.userId] = r.roleName;
+    }
+  }
+
   // Admin: create a new account.
   const createMutation = useMutation({
     mutationFn: usersApi.create,
@@ -568,9 +633,13 @@ export function UsersList() {
                             {u.isFpt ? "FPT University" : schoolName(u.schoolId)}
                           </td>
                           <td style={td}>
-                            <Badge tone={u.isAdmin ? "primary" : "neutral"}>
-                              {u.isAdmin ? "Admin" : "User"}
-                            </Badge>
+                            {eventId && userEventRoleMap[u.id] ? (
+                              <RoleBadge roleName={userEventRoleMap[u.id]} />
+                            ) : (
+                              <Badge tone={u.isAdmin ? "primary" : "neutral"}>
+                                {u.isAdmin ? "Admin" : "User"}
+                              </Badge>
+                            )}
                           </td>
                           <td style={td}>
                             <Badge tone={u.isApproved ? "success" : "warning"}>

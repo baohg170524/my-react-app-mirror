@@ -1,14 +1,8 @@
-// OLD hệ 10: nhân với weight/100
-// export const calcScore = (scores, criteria) => {
-//   if (!scores || !criteria || scores.length === 0) return 0;
-//   const total = criteria.reduce((sum, c, i) => sum + (scores[i] || 0) * (c.weight / 100), 0);
-//   return Math.round(total * 100) / 100;
-// };
-
-// NEW hệ 100: điểm chấm trực tiếp = điểm đóng góp (maxScore = weight)
+// Hệ 10: mỗi tiêu chí chấm 0-10, quy đổi theo trọng số (%) rồi cộng lại.
 export const calcScore = (scores, criteria) => {
   if (!scores || !criteria || scores.length === 0) return 0;
-  return Math.round(scores.reduce((sum, s) => sum + (s || 0), 0) * 100) / 100;
+  const total = criteria.reduce((sum, c, i) => sum + (scores[i] || 0) * (c.weight / 100), 0);
+  return Math.round(total * 100) / 100;
 };
 
 export const totalWeight = (criteria) => criteria.reduce((s, c) => s + Number(c.weight), 0);
