@@ -1315,7 +1315,19 @@ function EventFormBody({
   const editMutation = useMutation({
     mutationFn: async () => {
       const id = eventId as string;
-      await eventsApi.update(id, {
+      const oldStart = new Date(initialForm.startDate).getTime();
+      const oldEnd = new Date(initialForm.endDate).getTime();
+      const newStart = new Date(form.startDate).getTime();
+      const newEnd = new Date(form.endDate).getTime();
+
+      // Create a temporary bounding box that encloses BOTH the old and new timelines.
+      // This prevents the backend from rejecting the Event update if the new bounds
+      // shrink to exclude old rounds, or rejecting Round updates if they expand outside old bounds.
+      const tempStart = newStart < oldStart ? toIso(form.startDate) : toIso(initialForm.startDate);
+      const tempEnd = newEnd > oldEnd ? toIso(form.endDate) : toIso(initialForm.endDate);
+      const requiresTempWidening = tempStart !== toIso(form.startDate) || tempEnd !== toIso(form.endDate);
+
+      const finalPayload = {
         eventName: form.eventName.trim(),
         season: form.season.trim(),
         year: Number(form.year) || 0,
@@ -1326,8 +1338,16 @@ function EventFormBody({
         description: form.description.trim(),
         status: form.status,
         photoEventUrl: form.photoEventUrl || null,
-      });
+      };
 
+      // 1. Update Event to the widest bounds temporarily (if needed)
+      if (requiresTempWidening) {
+        await eventsApi.update(id, { ...finalPayload, startDate: tempStart, endDate: tempEnd });
+      } else {
+        await eventsApi.update(id, finalPayload);
+      }
+
+      // 2. Update Rounds and Tracks to their new times
       for (let ri = 0; ri < form.rounds.length; ri++) {
         const r = form.rounds[ri];
         const roundPayload = {
@@ -1368,6 +1388,11 @@ function EventFormBody({
       const keptRoundIds = new Set(form.rounds.map((r) => r.id).filter(Boolean));
       for (const rid of originalRoundIds.current) {
         if (!keptRoundIds.has(rid)) await roundsApi.remove(rid);
+      }
+
+      // 3. Finalize Event to its actual bounds
+      if (requiresTempWidening) {
+        await eventsApi.update(id, finalPayload);
       }
     },
     onSuccess: () => {
