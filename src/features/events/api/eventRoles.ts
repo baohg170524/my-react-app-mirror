@@ -54,4 +54,16 @@ export const eventRolesApi = {
     });
     return data;
   },
+
+  /**
+   * GET /api/EventRoles/event?EventId=
+   * Lấy toàn bộ vai trò trong 1 event — dùng để hiển thị role theo event trong bảng user.
+   */
+  listByEvent: async (eventId: string): Promise<EventRoleModel[]> => {
+    const { data } = await apiClient.get<PagedResult<EventRoleModel>>(
+      "/EventRoles/event",
+      { params: { EventId: eventId, PageNumber: 1, PageSize: 500 } },
+    );
+    return data.data ?? [];
+  },
 };

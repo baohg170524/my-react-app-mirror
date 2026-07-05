@@ -46,10 +46,10 @@ export default function ScoringPanel({ eventId, trackId = null }) {
 
         // ── MOCK DATA ── xóa khi có API thật ──────────────────────
         const mockCriteria = [
-          { id: 'c1', label: 'Tính sáng tạo',    weight: 30, desc: '' },
-          { id: 'c2', label: 'Kỹ năng trình bày', weight: 30, desc: '' },
-          { id: 'c3', label: 'Tính khả thi',       weight: 20, desc: '' },
-          { id: 'c4', label: 'Tác động thực tế',   weight: 20, desc: '' },
+          { id: 'c1', label: 'Tính sáng tạo',    weight: 30, maxScore: 3, desc: '' },
+          { id: 'c2', label: 'Kỹ năng trình bày', weight: 30, maxScore: 3, desc: '' },
+          { id: 'c3', label: 'Tính khả thi',       weight: 20, maxScore: 2, desc: '' },
+          { id: 'c4', label: 'Tác động thực tế',   weight: 20, maxScore: 2, desc: '' },
         ];
         const mockTeams = [
           { id: 's1', name: 'Team Alpha', scores: [0, 0, 0, 0], comments: ['', '', '', ''] },
