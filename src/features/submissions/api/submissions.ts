@@ -4,7 +4,6 @@ import type { PagedResult } from '@/services/api';
 export interface SubmissionModel {
   id: string;
   teamId: string;
-  roundId: string;
   trackId: string;
   submissionUrl: string;
   description: string;
@@ -16,8 +15,7 @@ export interface SubmissionModel {
 
 export interface CreateSubmissionPayload {
   teamId: string;
-  roundId: string;
-  trackId: string;
+  trackId: string; // Vòng (round) do BE tự suy ra từ track — không gửi roundId
   submissionUrl: string;
   description: string;
 }
@@ -26,14 +24,17 @@ export interface UpdateSubmissionPayload {
   id: string;
   submissionUrl: string;
   description: string;
+  /** BẮT BUỘC gửi đúng giá trị hiện tại: chỉ Event Coordinator được đổi IsActive (BE chặn nếu đổi). */
   isActive: boolean;
 }
 
 export const submissionsApi = {
-  list: async (params: { teamId: string; roundId?: string }): Promise<SubmissionModel[]> => {
+  /** eventId BẮT BUỘC — filter phân quyền BE cần EventId để xác định sự kiện của truy vấn. */
+  list: async (params: { teamId: string; eventId: string; roundId?: string }): Promise<SubmissionModel[]> => {
     const { data } = await apiClient.get<PagedResult<SubmissionModel>>('/SubmitResults', {
       params: {
         TeamId: params.teamId,
+        EventId: params.eventId,
         RoundId: params.roundId,
         PageNumber: 1,
         PageSize: 100,
