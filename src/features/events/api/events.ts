@@ -17,6 +17,8 @@ export interface EventModel {
   lastUpdatedTime: string;
   status?: boolean;
   photoEventUrl?: string | null;
+  registrationStartDate?: string | null;
+  registrationEndDate?: string | null;
 }
 
 /** Map a backend EventModel to the card UI `Event` shape. */
@@ -28,6 +30,8 @@ function toUiEvent(e: EventModel): Event {
     title: e.eventName?.trim() || "(Chưa đặt tên)",
     startDate: e.startDate,
     endDate: e.endDate,
+    registrationStartDate: e.registrationStartDate ?? null,
+    registrationEndDate: e.registrationEndDate ?? null,
     status: open ? "open" : "closed",
     description: e.description ?? "",
     photoEventUrl: e.photoEventUrl ?? null,
@@ -67,6 +71,8 @@ export interface CreateEventPayload {
   description: string;
   status: boolean;
   photoEventUrl?: string | null;
+  registrationStartDate?: string | null;
+  registrationEndDate?: string | null;
   rounds: CreateRoundPayload[];
 }
 
@@ -80,6 +86,8 @@ export interface UpdateEventPayload {
   description: string;
   status: boolean;
   photoEventUrl?: string | null;
+  registrationStartDate?: string | null;
+  registrationEndDate?: string | null;
 }
 
 /** Subset of CreateEventResponseModel we care about. */

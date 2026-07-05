@@ -103,8 +103,18 @@ export function useLogin() {
       persistUser(profile);
       queryClient.setQueryData(AUTH_KEYS.me, profile);
       notify.success(`Đăng nhập thành công. Chào mừng ${profile.fullName}!`);
+      // Nếu người dùng đến từ một liên kết cần đăng nhập (vd: link phản hồi lời
+      // mời trong email), quay lại đúng trang đó; nếu không thì về trang chủ.
+      let redirectTo = "/";
+      if (typeof window !== "undefined") {
+        const saved = localStorage.getItem("postLoginRedirect");
+        if (saved) {
+          localStorage.removeItem("postLoginRedirect");
+          redirectTo = saved;
+        }
+      }
       // replace (not push) so Back doesn't return to the login screen
-      router.replace("/");
+      router.replace(redirectTo);
     },
     onError: (e) =>
       notify.error(getErrorMessage(e, "Đăng nhập thất bại. Vui lòng kiểm tra email và mật khẩu.")),

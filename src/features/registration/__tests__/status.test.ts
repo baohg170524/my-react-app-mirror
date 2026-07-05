@@ -37,8 +37,14 @@ describe('resolveRegistrationStatus', () => {
       .toEqual({ status: 'pending', reason: null });
   });
 
-  test('pending when profile is null and no rejections', () => {
+  test('unregistered when profile is null and no rejections', () => {
     expect(resolveRegistrationStatus(null, []))
-      .toEqual({ status: 'pending', reason: null });
+      .toEqual({ status: 'unregistered', reason: null });
+  });
+
+  test('unregistered when account created but no student profile submitted yet', () => {
+    const notSubmitted = profile({ isStudent: false, studentCode: '', photoStudentCardUrl: null, isApproved: false });
+    expect(resolveRegistrationStatus(notSubmitted, []))
+      .toEqual({ status: 'unregistered', reason: null });
   });
 });

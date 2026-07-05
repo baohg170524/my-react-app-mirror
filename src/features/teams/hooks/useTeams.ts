@@ -8,6 +8,7 @@ export const TEAM_KEYS = {
   myTeam:  (eventId: string, userId: string) => ['team', 'mine', eventId, userId] as const,
   judge:   (eventId: string, userId: string) => ['team', 'judge', eventId, userId] as const,
   detail:  (teamId: string) => ['team', teamId] as const,
+  invitations: (teamId: string) => ['team', 'invitations', teamId] as const,
 } as const;
 
 export const useMyTeamForEvent = (eventId: string, userId: string) =>
@@ -34,6 +35,15 @@ export const useTeam = (teamId: string | undefined) =>
     staleTime: 60_000,
   });
 
+/** Danh sách lời mời đã gửi của đội (chỉ bật khi người xem là leader — BE 403 với member thường). */
+export const useTeamInvitations = (teamId: string, enabled = true) =>
+  useQuery({
+    queryKey: TEAM_KEYS.invitations(teamId),
+    queryFn: () => teamsApi.getTeamInvitations(teamId),
+    enabled: !!teamId && enabled,
+    staleTime: 30_000,
+  });
+
 export const useCreateTeam = (_eventId: string, _userId: string) => {
   // The caller seeds the freshly-created team into the myTeam cache so the team
   // view shows immediately; invalidating here would race a refetch that could
@@ -48,6 +58,19 @@ export const useInviteToTeam = (teamId: string) => {
   return useMutation({
     mutationFn: ({ email }: { email: string }) => teamsApi.invite(teamId, email),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: TEAM_KEYS.detail(teamId) });
+      qc.invalidateQueries({ queryKey: TEAM_KEYS.invitations(teamId) });
+    },
+  });
+};
+
+export const useTransferLeader = (teamId: string, eventId: string, userId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (newLeaderUserId: string) => teamsApi.transferLeader(teamId, newLeaderUserId),
+    onSuccess: () => {
+      // Vai trò trong đội đổi -> làm mới đội của tôi + chi tiết đội.
+      qc.invalidateQueries({ queryKey: TEAM_KEYS.myTeam(eventId, userId) });
       qc.invalidateQueries({ queryKey: TEAM_KEYS.detail(teamId) });
     },
   });

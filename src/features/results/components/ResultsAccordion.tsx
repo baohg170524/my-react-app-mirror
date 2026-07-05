@@ -29,11 +29,18 @@ function RoundRow({ teamId, roundId, roundName, finalScore, rank, isAdvanced }: 
       {open ? (
         <div className="p-3 space-y-3">
           {isLoading ? <p className="t-body-sm text-mute">Đang tải chi tiết…</p> : null}
+          {(breakdown ?? []).length === 0 && !isLoading ? (
+            <p className="t-body-sm text-mute">Chưa có phiếu chấm cho vòng này.</p>
+          ) : null}
           {(breakdown ?? []).map(({ score, details }) => {
-            const weightedSum = details.reduce((acc, d) => acc + d.value * (d.weight ?? 1), 0);
+            // Điểm có trọng số theo hệ 10: value/maxScore × weight/100 × 10 (tổng các tiêu chí = tổng của giám khảo).
+            const weighted = (d: { value: number; maxScore?: number; weight?: number }) =>
+              d.maxScore && d.maxScore > 0 ? (d.value / d.maxScore) * ((d.weight ?? 0) / 100) * 10 : 0;
             return (
               <div key={score.id} className="space-y-1">
-                <p className="t-body-sm text-mute">Tổng từ giám khảo: <b>{score.totalScore.toFixed(2)}</b></p>
+                <p className="t-body-sm">
+                  Giám khảo <b>{score.judgeName}</b> — tổng <b>{score.totalScore.toFixed(2)}</b>/10
+                </p>
                 <table className="w-full text-sm">
                   <thead className="text-left">
                     <tr><th>Tiêu chí</th><th>Điểm</th><th>Tối đa</th><th>Trọng số</th><th>Điểm có trọng số</th></tr>
@@ -41,16 +48,18 @@ function RoundRow({ teamId, roundId, roundName, finalScore, rank, isAdvanced }: 
                   <tbody>
                     {details.map((d) => (
                       <tr key={d.id} className="border-t border-hairline">
-                        <td>{d.criteriaName ?? d.criteriaId}</td>
+                        <td>{d.criteriaName}</td>
                         <td>{d.value.toFixed(2)}</td>
                         <td>{d.maxScore ?? '—'}</td>
-                        <td>{d.weight ?? '—'}</td>
-                        <td>{(d.value * (d.weight ?? 1)).toFixed(2)}</td>
+                        <td>{d.weight != null ? `${d.weight}%` : '—'}</td>
+                        <td>{weighted(d).toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-                <p className="t-body-sm text-mute">Tổng có trọng số: <b>{weightedSum.toFixed(2)}</b></p>
+                {score.comment ? (
+                  <p className="t-body-sm text-mute">Nhận xét: {score.comment}</p>
+                ) : null}
               </div>
             );
           })}

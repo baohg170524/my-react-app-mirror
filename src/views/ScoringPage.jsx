@@ -23,7 +23,8 @@ export default function ScoringPage({ teams, criteria, onEdit }) {
                   <div className="text-xs" style={{ color: '#757575' }}>/10 · {criteria.length} Bộ tiêu chí</div>
                 </div>
               </div>
-              <div className="text-sm font-bold mt-1" style={{ color: '#000' }}>{t.name}</div>
+              {/* Ẩn danh phía chấm: giám khảo chấm theo mã bài, không thấy tên đội. */}
+              <div className="text-sm font-bold mt-1" style={{ color: '#000' }}>Bài nộp #{i + 1}</div>
 
               <div className="mt-4 flex flex-col gap-2">
                 {criteria.slice(0, 3).map((c, ci) => (

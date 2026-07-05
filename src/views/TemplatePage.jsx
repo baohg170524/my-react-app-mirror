@@ -131,13 +131,11 @@ export default function TemplatePage({ sn }) {
         await addCriteriaToTemplate(templateId, {
           criteriaId: critF.criteriaId,
           weight:     Number(critF.weight),
-          // maxScore:   Number(critF.maxScore), // hệ 10 cũ
-          maxScore:   Number(critF.weight), // hệ 100: maxScore = weight
+          maxScore:   10, // hệ 10: mỗi tiêu chí chấm trên thang điểm 10; trọng số nằm ở weight
         });
         sn('Đã thêm tiêu chí vào bộ!');
       } else {
-        // await updateTemplateCriteria(templateId, editId, { weight: critF.weight, maxScore: critF.maxScore }); // hệ 10 cũ
-        await updateTemplateCriteria(templateId, editId, { weight: critF.weight, maxScore: critF.weight }); // hệ 100
+        await updateTemplateCriteria(templateId, editId, { weight: critF.weight, maxScore: 10 }); // hệ 10
         sn('Đã cập nhật cấu hình tiêu chí!');
       }
       const detail = await getTemplateDetail(templateId);
@@ -350,7 +348,7 @@ export default function TemplatePage({ sn }) {
                   className="input-field"
                 />
               </div>
-              {/* Điểm tối đa tự động = trọng số (hệ 100) */}
+              {/* Điểm tối đa cố định = 10 (hệ 10), không cho nhập tay */}
               {/* <div className="flex-1">
                 <label className="block text-xs font-bold mb-1.5 uppercase tracking-wider" style={{ color: '#757575' }}>
                   Điểm tối đa
@@ -364,10 +362,9 @@ export default function TemplatePage({ sn }) {
               </div> */}
             </div>
 
-            {critF.weight > 0 && critF.maxScore > 0 && critF.weight !== critF.maxScore && (
-              <div className="mb-6 p-3 text-xs" style={{ background: 'rgba(223,101,0,0.1)', color: '#df6500', borderRadius: 2, border: '1px solid rgba(223,101,0,0.3)' }}>
-                <strong>Lưu ý:</strong> Trọng số là <strong>{critF.weight}%</strong> nhưng điểm tối đa là <strong>{critF.maxScore}</strong>.
-                Hệ thống sẽ tự động quy đổi: 1 điểm chấm tương đương <strong>{((critF.weight / critF.maxScore) || 0).toFixed(2)}%</strong> tổng điểm. Hãy chắc chắn đây là ý đồ của bạn.
+            {critF.weight > 0 && (
+              <div className="mb-6 p-3 text-xs" style={{ background: 'rgba(118,185,0,0.08)', color: '#5a8d00', borderRadius: 2, border: '1px solid rgba(118,185,0,0.3)' }}>
+                Tiêu chí được chấm trên <strong>thang điểm 10</strong>; trọng số <strong>{critF.weight}%</strong> quyết định mức đóng góp vào điểm tổng (cũng hệ 10).
               </div>
             )}
 

@@ -32,8 +32,8 @@ export default function SubmissionPage({ submissions, teams }) {
         <div key={s.id} className="card-hover p-5 mb-2.5"
           style={{ background: '#fff', border: '1px solid #cccccc', borderRadius: 2, animationDelay: `${i * 0.06}s` }}>
           <div className="flex items-center gap-2.5 mb-3">
-            <span className="text-xs font-bold" style={{ color: '#76b900' }}>{s.teamId}</span>
-            <span className="text-sm font-bold" style={{ color: '#000' }}>{s.teamName}</span>
+            {/* Ẩn danh phía chấm: giám khảo chỉ thấy mã bài, không thấy đội/thí sinh nào. */}
+            <span className="text-sm font-bold" style={{ color: '#000' }}>Bài nộp #{i + 1}</span>
             <span className="badge-accent">{s.status}</span>
           </div>
           <div className="grid gap-2.5 mb-2.5" style={{ gridTemplateColumns: '1fr 1fr' }}>
