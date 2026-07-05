@@ -11,11 +11,20 @@ export function NotificationBell() {
   const queryClient = useQueryClient();
   const notify = useNotify();
 
-  const { data: inviteData, isLoading } = useQuery({
+  const { data: inviteData, isLoading, refetch } = useQuery({
     queryKey: ['my-invitations'],
     queryFn: invitationsApi.getMyInvitations,
     refetchInterval: 30000, // Polling mỗi 30s
+    // Chuyển quyền lần 2 làm lời mời cũ Expired + tạo lời mời mới → luôn lấy bản mới
+    // nhất khi cửa sổ focus lại, tránh bấm nhầm lời mời đã chết (BE trả 400).
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
+
+  // Mở chuông = lấy lại danh sách mới nhất (lời mời chết tự biến mất).
+  useEffect(() => {
+    if (isOpen) refetch();
+  }, [isOpen, refetch]);
 
   // Đóng dropdown khi click ra ngoài
   useEffect(() => {
@@ -36,7 +45,11 @@ export function NotificationBell() {
       queryClient.invalidateQueries({ queryKey: ['my-invitations'] });
       notify.success('Đã xử lý lời mời thành công!');
     },
-    onError: (err: any) => notify.error(err?.response?.data?.message || err?.message || 'Đã xảy ra lỗi khi xử lý lời mời!'),
+    onError: (err: any) => {
+      notify.error(err?.response?.data?.message || err?.message || 'Đã xảy ra lỗi khi xử lý lời mời!');
+      // Lời mời có thể đã hết hạn/không tồn tại → refetch để item chết biến mất.
+      queryClient.invalidateQueries({ queryKey: ['my-invitations'] });
+    },
   });
 
   const respondRoleMut = useMutation({
@@ -45,14 +58,18 @@ export function NotificationBell() {
       queryClient.invalidateQueries({ queryKey: ['my-invitations'] });
       notify.success('Đã xử lý lời mời thành công!');
     },
-    onError: (err: any) => notify.error(err?.response?.data?.message || err?.message || 'Đã xảy ra lỗi khi xử lý lời mời!'),
+    onError: (err: any) => {
+      notify.error(err?.response?.data?.message || err?.message || 'Đã xảy ra lỗi khi xử lý lời mời!');
+      queryClient.invalidateQueries({ queryKey: ['my-invitations'] });
+    },
   });
 
   const handleRespond = (invitationId: string, type: string, accept: boolean) => {
-    if (type === 'TEAM') {
-      respondTeamMut.mutate({ id: invitationId, accept });
-    } else {
+    // TEAM và TEAM_LEADER_TRANSFER dùng chung endpoint respond của Teams.
+    if (type === 'EVENT_ROLE') {
       respondRoleMut.mutate({ id: invitationId, accept });
+    } else {
+      respondTeamMut.mutate({ id: invitationId, accept });
     }
   };
 
@@ -140,9 +157,19 @@ export function NotificationBell() {
                   return (
                     <div key={inv.invitationId} className="p-3 border-b border-hairline-strong hover:bg-surface-elevated transition-colors">
                       <p className="text-sm text-on-dark leading-snug mb-1">
-                        <span className="font-bold text-primary">{inv.inviterName || 'Hệ thống'}</span> mời bạn tham gia
-                        <span className="font-bold"> {inv.targetName}</span> với vai trò
-                        <span className="font-bold text-primary"> {roleLabel(inv.role)}</span>.
+                        {inv.type === 'TEAM_LEADER_TRANSFER' ? (
+                          <>
+                            <span className="font-bold text-primary">{inv.inviterName || 'Hệ thống'}</span> muốn chuyển quyền
+                            <span className="font-bold"> Trưởng nhóm</span> đội
+                            <span className="font-bold"> {inv.targetName}</span> cho bạn.
+                          </>
+                        ) : (
+                          <>
+                            <span className="font-bold text-primary">{inv.inviterName || 'Hệ thống'}</span> mời bạn tham gia
+                            <span className="font-bold"> {inv.targetName}</span> với vai trò
+                            <span className="font-bold text-primary"> {roleLabel(inv.role)}</span>.
+                          </>
+                        )}
                       </p>
                       {inv.trackName && <div className="mb-2">{trackChip(inv.trackName)}</div>}
                       <div className="flex justify-end gap-2 mt-2">

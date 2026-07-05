@@ -182,6 +182,9 @@ export default function AuthPage() {
         email,
         password: registerForm.password,
         fullName,
+        // Đăng ký công khai luôn là tài khoản thí sinh (student). Gửi rõ cờ này để BE
+        // không suy ra nhầm vai trò khi payload thiếu isStudent (tránh vô tình thành admin).
+        isStudent: true,
       },
       {
         onSuccess: () => {

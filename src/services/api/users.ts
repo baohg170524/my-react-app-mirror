@@ -16,6 +16,9 @@ export interface UserSummary {
   isRejected?: boolean;
   isFpt: boolean;
   photoStudentCardUrl?: string | null;
+  /** True nếu là tài khoản được MỜI (judge/mentor) chưa kích hoạt — không phải thí sinh
+   *  nộp hồ sơ để duyệt. BE: UserModel.IsTemporary. Optional để tránh vỡ kiểu ở mock cũ. */
+  isTemporary?: boolean;
 }
 
 export interface UserListParams {
