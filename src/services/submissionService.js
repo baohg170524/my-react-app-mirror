@@ -11,7 +11,6 @@ const ENDPOINTS = {
   CREATE: '/SubmitResults',
   UPDATE: (id) => `/SubmitResults/${id}`,
   DELETE: (id) => `/SubmitResults/${id}`,
-  MY:     '/Teams/my-submissions',
 };
 
 // SubmitResultListItemModel → shape SubmissionPage.jsx mong đợi
@@ -46,18 +45,6 @@ export const getAllSubmissions = async (params = {}) => {
     currentPage: paged?.currentPage ?? 1,
     totalPages:  paged?.totalPages  ?? 1,
     hasNextPage: paged?.hasNextPage  ?? false,
-  };
-};
-
-// GET /Teams/my-submissions  (Student / TeamLeader — bài nộp của đội mình)
-export const getMySubmissions = async (params = {}) => {
-  const response = await apiClient.get(ENDPOINTS.MY, { params });
-  const paged = response.data;
-  return {
-    items:       (paged?.data ?? []).map(adaptSubmission),
-    totalItems:  paged?.totalItems  ?? 0,
-    currentPage: paged?.currentPage ?? 1,
-    totalPages:  paged?.totalPages  ?? 1,
   };
 };
 
