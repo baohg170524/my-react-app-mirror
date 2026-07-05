@@ -46,10 +46,10 @@ export function CreateTeamTab({ eventId, userId }: Props) {
       <div className="p-6 max-w-[36rem] mx-auto border border-hairline rounded-sm bg-canvas flex flex-col gap-3">
         <h2 className="t-heading-md m-0">Tạo đội</h2>
         <p className="t-body-sm text-mute m-0">
-          Bạn cần được duyệt đăng ký thi đấu trước khi tạo đội.
+          Bạn cần được duyệt hồ sơ thí sinh trước khi tạo đội.
         </p>
         <button type="button" className="btn btn-primary w-fit" onClick={() => setActiveTab('register')}>
-          Tới đăng ký thi đấu
+          Tới hồ sơ thí sinh
         </button>
       </div>
     );

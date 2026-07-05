@@ -3,11 +3,13 @@ import { Bell, Check, X, Loader2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invitationsApi } from '@/features/invitations/api/invitationsApi';
 import { teamsApi } from '@/features/teams/api/teams';
+import { useNotify } from '@/components/NotificationProvider';
 
 export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const bellRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
+  const notify = useNotify();
 
   const { data: inviteData, isLoading } = useQuery({
     queryKey: ['my-invitations'],
@@ -30,12 +32,20 @@ export function NotificationBell() {
 
   const respondTeamMut = useMutation({
     mutationFn: ({ id, accept }: { id: string; accept: boolean }) => teamsApi.respondInvitation(id, accept),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['my-invitations'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-invitations'] });
+      notify.success('Đã xử lý lời mời thành công!');
+    },
+    onError: (err: any) => notify.error(err?.response?.data?.message || err?.message || 'Đã xảy ra lỗi khi xử lý lời mời!'),
   });
 
   const respondRoleMut = useMutation({
     mutationFn: ({ id, accept }: { id: string; accept: boolean }) => invitationsApi.respondEventRole(id, accept),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['my-invitations'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-invitations'] });
+      notify.success('Đã xử lý lời mời thành công!');
+    },
+    onError: (err: any) => notify.error(err?.response?.data?.message || err?.message || 'Đã xảy ra lỗi khi xử lý lời mời!'),
   });
 
   const handleRespond = (invitationId: string, type: string, accept: boolean) => {

@@ -134,11 +134,11 @@ export default function TemplatePage({ sn }) {
         await addCriteriaToTemplate(templateId, {
           criteriaId: critF.criteriaId,
           weight:     Number(critF.weight),
-          maxScore,
+          maxScore:   10, // hệ 10: mỗi tiêu chí chấm trên thang điểm 10; trọng số nằm ở weight
         });
         sn('Đã thêm tiêu chí vào bộ!');
       } else {
-        await updateTemplateCriteria(templateId, editId, { weight: critF.weight, maxScore });
+        await updateTemplateCriteria(templateId, editId, { weight: critF.weight, maxScore: 10 }); // hệ 10
         sn('Đã cập nhật cấu hình tiêu chí!');
       }
       const detail = await getTemplateDetail(templateId);
@@ -351,8 +351,25 @@ export default function TemplatePage({ sn }) {
                   className="input-field"
                 />
               </div>
-              {/* Điểm tối đa cố định = 10 (hệ 10), không cho chỉnh riêng từng tiêu chí */}
+              {/* Điểm tối đa cố định = 10 (hệ 10), không cho nhập tay */}
+              {/* <div className="flex-1">
+                <label className="block text-xs font-bold mb-1.5 uppercase tracking-wider" style={{ color: '#757575' }}>
+                  Điểm tối đa
+                </label>
+                <input
+                  type="number" min="1"
+                  value={critF.maxScore}
+                  onChange={e => setCritF({ ...critF, maxScore: Number(e.target.value) })}
+                  className="input-field"
+                />
+              </div> */}
             </div>
+
+            {critF.weight > 0 && (
+              <div className="mb-6 p-3 text-xs" style={{ background: 'rgba(118,185,0,0.08)', color: '#5a8d00', borderRadius: 2, border: '1px solid rgba(118,185,0,0.3)' }}>
+                Tiêu chí được chấm trên <strong>thang điểm 10</strong>; trọng số <strong>{critF.weight}%</strong> quyết định mức đóng góp vào điểm tổng (cũng hệ 10).
+              </div>
+            )}
 
             <div className="flex justify-end gap-3">
               <button className="btn btn-outline" onClick={closeCrit}>Hủy</button>

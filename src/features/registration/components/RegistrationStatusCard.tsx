@@ -1,10 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { schoolsApi, type UserSummary } from '@/services/api';
+import { schoolsApi, authApi, type UserSummary } from '@/services/api';
 
 interface Props {
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'unregistered' | 'pending' | 'approved' | 'rejected';
   reason: string | null;
   profile: UserSummary | null;
   onRegisterTeam: () => void;
@@ -14,6 +15,7 @@ interface Props {
 }
 
 const BADGE: Record<Props['status'], { label: string; bg: string; fg: string; bd: string }> = {
+  unregistered: { label: 'Chưa đăng ký hồ sơ', bg: 'var(--color-surface-soft)', fg: 'var(--color-mute)',    bd: 'var(--color-hairline-strong)' },
   pending:  { label: 'Chờ xét duyệt',        bg: 'var(--color-surface-soft)', fg: 'var(--color-stone)',   bd: 'var(--color-hairline-strong)' },
   approved: { label: 'Đã được duyệt',         bg: 'rgba(118,185,0,0.1)',       fg: 'var(--color-primary)', bd: 'var(--color-primary)' },
   rejected: { label: 'Tài khoản bị từ chối',  bg: 'rgba(229,32,32,0.08)',      fg: 'var(--color-error)',   bd: 'var(--color-error)' },
@@ -52,10 +54,23 @@ export function RegistrationStatusCard({
       : (schools.find((s) => s.id === profile.schoolId)?.schoolName ?? '—')
     : '—';
 
+  // Bị khóa cập nhật hồ sơ khi bị từ chối >= 2 lần (đồng bộ với chặn ở BE).
+  const isBlocked = (rejectionCount ?? 0) >= 2;
+  const [unblock, setUnblock] = useState<'idle' | 'sending' | 'sent'>('idle');
+  const handleUnblock = async () => {
+    if (!profile?.email) return;
+    setUnblock('sending');
+    try {
+      await authApi.requestUnblock(profile.email);
+    } finally {
+      setUnblock('sent'); // endpoint luôn trả thông báo chung (chống dò email) nên coi như đã gửi
+    }
+  };
+
   return (
     <div className="card flex flex-col gap-4" style={{ padding: 'var(--space-xl)', maxWidth: '40rem' }}>
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h2 className="t-heading-md m-0">Đăng ký thi đấu</h2>
+        <h2 className="t-heading-md m-0">Hồ sơ thí sinh</h2>
         <div className="flex items-center gap-2">
           {rejectionCount !== undefined && rejectionCount > 0 && (
             <span
@@ -103,6 +118,16 @@ export function RegistrationStatusCard({
         </div>
       )}
 
+      {status === 'unregistered' && (
+        <>
+          <p className="t-body-sm m-0 text-mute">
+            Bạn chưa đăng ký hồ sơ thí sinh. Hãy đăng ký để có thể tham gia sự kiện.
+          </p>
+          <button type="button" className="btn btn-primary w-fit" onClick={onEdit}>
+            Đăng ký hồ sơ
+          </button>
+        </>
+      )}
       {status === 'pending' && (
         <button type="button" className="btn btn-secondary w-fit" onClick={onEdit}>
           Cập nhật hồ sơ
@@ -118,10 +143,31 @@ export function RegistrationStatusCard({
           </button>
         </div>
       )}
-      {status === 'rejected' && (
+      {status === 'rejected' && !isBlocked && (
         <button type="button" className="btn btn-secondary w-fit" onClick={onResubmit}>
           Gửi lại
         </button>
+      )}
+      {status === 'rejected' && isBlocked && (
+        <div className="flex flex-col gap-2">
+          <p className="t-body-sm m-0" style={{ color: 'var(--color-error)' }}>
+            Hồ sơ đã bị từ chối {rejectionCount} lần nên không thể tự cập nhật. Hãy gửi yêu cầu để ban tổ chức hỗ trợ gỡ khóa.
+          </p>
+          {unblock === 'sent' ? (
+            <p className="t-body-sm m-0 text-mute">
+              ✓ Đã gửi yêu cầu gỡ khóa. Vui lòng theo dõi email để nhận phản hồi từ ban tổ chức.
+            </p>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-primary w-fit"
+              onClick={handleUnblock}
+              disabled={unblock === 'sending'}
+            >
+              {unblock === 'sending' ? 'Đang gửi…' : 'Yêu cầu gỡ khóa'}
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

@@ -74,13 +74,15 @@ function Badge({
   tone = "neutral",
 }: {
   children: React.ReactNode;
-  tone?: "neutral" | "primary" | "success" | "warning";
+  tone?: "neutral" | "primary" | "success" | "warning" | "danger" | "pending";
 }) {
   const map = {
     neutral: { bg: "var(--color-surface-soft)", fg: "var(--color-mute)", bd: "var(--color-hairline)" },
     primary: { bg: "rgba(118,185,0,0.1)", fg: "var(--color-primary)", bd: "var(--color-primary)" },
     success: { bg: "rgba(118,185,0,0.1)", fg: "var(--color-primary)", bd: "var(--color-primary)" },
     warning: { bg: "var(--color-surface-soft)", fg: "var(--color-stone)", bd: "var(--color-hairline-strong)" },
+    danger: { bg: "rgba(220,38,38,0.1)", fg: "var(--color-error)", bd: "var(--color-error)" },
+    pending: { bg: "rgba(245,158,11,0.14)", fg: "#b45309", bd: "rgba(245,158,11,0.55)" },
   }[tone];
   return (
     <span
@@ -408,6 +410,35 @@ export function UsersList() {
     },
   });
 
+  // Admin: sửa thông tin user (Họ tên, MSSV, Trường) — role/trạng thái giữ nguyên.
+  const editMutation = useMutation({
+    mutationFn: (vars: {
+      id: string;
+      user: UserSummary;
+      edits: { fullName: string; studentCode: string; schoolId: string };
+    }) =>
+      usersApi.update(vars.id, {
+        schoolId: vars.edits.schoolId || null,
+        studentCode: vars.edits.studentCode.trim() || null,
+        fullName: vars.edits.fullName.trim(),
+        isStudent: vars.user.isStudent,
+        isAdmin: vars.user.isAdmin,
+        isApproved: vars.user.isApproved,
+        isFpt: vars.user.isFpt,
+        photoStudentCardUrl: null,
+      }),
+    onSuccess: () => {
+      setActionError(null);
+      notify.success("Đã cập nhật tài khoản thành công!");
+      queryClient.invalidateQueries({ queryKey: ["users", "list"] });
+    },
+    onError: (e) => {
+      const msg = errMsg(e);
+      setActionError(msg);
+      notify.error(msg);
+    },
+  });
+
   const users = usersQuery.data?.data ?? [];
   const total = usersQuery.data?.totalItems ?? users.length;
   const totalPages = Math.max(1, usersQuery.data?.totalPages ?? 1);
@@ -642,8 +673,8 @@ export function UsersList() {
                             )}
                           </td>
                           <td style={td}>
-                            <Badge tone={u.isApproved ? "success" : "warning"}>
-                              {u.isApproved ? "Đã duyệt" : "Chờ duyệt"}
+                            <Badge tone={u.isApproved ? "success" : u.isRejected ? "danger" : "pending"}>
+                              {u.isApproved ? "Đã duyệt" : u.isRejected ? "Bị từ chối" : "Chờ duyệt"}
                             </Badge>
                           </td>
                           <td style={{ ...td, textAlign: "right" }}>
@@ -771,7 +802,11 @@ export function UsersList() {
         <UserDetailModal
           user={viewUser}
           schools={schoolsQuery.data?.data ?? []}
+          busy={editMutation.isPending}
           onClose={() => setViewUser(null)}
+          onSubmit={(edits) =>
+            editMutation.mutate({ id: viewUser.id, user: viewUser, edits })
+          }
         />
       )}
 
@@ -1075,114 +1110,244 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-// ─── User detail modal (read-only) ───────────────────────────────────────────────
+// ─── User detail modal — xem + sửa trong cùng 1 popup ────────────────────────────
 
 function UserDetailModal({
   user,
   schools,
+  busy,
   onClose,
+  onSubmit,
 }: {
   user: UserSummary;
   schools: SchoolModel[];
+  busy: boolean;
   onClose: () => void;
+  onSubmit: (edits: { fullName: string; studentCode: string; schoolId: string }) => void;
 }) {
+  const [mode, setMode] = useState<"view" | "edit">("view");
+  const [fullName, setFullName] = useState(user.fullName ?? "");
+  const [studentCode, setStudentCode] = useState(user.studentCode ?? "");
+  const [schoolId, setSchoolId] = useState(user.schoolId ?? "");
+  const [formError, setFormError] = useState("");
+
   const schoolLabel = user.isFpt
     ? "FPT University"
     : schools.find((s) => s.id === user.schoolId)?.schoolName ?? "—";
 
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!fullName.trim()) { setFormError("Vui lòng nhập họ và tên."); return; }
+    setFormError("");
+    onSubmit({ fullName, studentCode, schoolId });
+    setMode("view");
+  }
+
+  function handleCancel() {
+    setFullName(user.fullName ?? "");
+    setStudentCode(user.studentCode ?? "");
+    setSchoolId(user.schoolId ?? "");
+    setFormError("");
+    setMode("view");
+  }
+
   return (
     <Modal title="Chi tiết tài khoản" onClose={onClose}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-        {user.photoStudentCardUrl && (
-          <div style={{ marginBottom: 16, textAlign: "center" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={user.photoStudentCardUrl}
-              alt="Ảnh thẻ sinh viên"
+      {mode === "view" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+          {user.photoStudentCardUrl && (
+            <div style={{ marginBottom: 16, textAlign: "center" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={user.photoStudentCardUrl}
+                alt="Ảnh thẻ sinh viên"
+                style={{
+                  width: 120,
+                  height: 80,
+                  objectFit: "cover",
+                  borderRadius: "var(--radius-sm)",
+                  border: "1px solid var(--color-hairline)",
+                  display: "inline-block",
+                }}
+              />
+              <p
+                style={{
+                  fontSize: 11,
+                  color: "var(--color-mute)",
+                  margin: "6px 0 0",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                Ảnh thẻ sinh viên
+              </p>
+            </div>
+          )}
+
+          <InfoRow label="Họ và tên" value={user.fullName} />
+          <InfoRow label="Email" value={user.email} />
+          <InfoRow label="MSSV" value={user.studentCode} />
+          <InfoRow label="Trường" value={schoolLabel} />
+          <InfoRow
+            label="Vai trò"
+            value={
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  padding: "2px 8px",
+                  borderRadius: "var(--radius-sm)",
+                  background: user.isAdmin ? "rgba(118,185,0,0.1)" : "var(--color-surface-soft)",
+                  color: user.isAdmin ? "var(--color-primary)" : "var(--color-mute)",
+                  border: `1px solid ${user.isAdmin ? "var(--color-primary)" : "var(--color-hairline)"}`,
+                }}
+              >
+                {user.isAdmin ? "Admin" : "User"}
+              </span>
+            }
+          />
+          <InfoRow
+            label="Trạng thái"
+            value={
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  padding: "2px 8px",
+                  borderRadius: "var(--radius-sm)",
+                  background: user.isApproved ? "rgba(118,185,0,0.1)" : "var(--color-surface-soft)",
+                  color: user.isApproved ? "var(--color-primary)" : "var(--color-stone)",
+                  border: `1px solid ${user.isApproved ? "var(--color-primary)" : "var(--color-hairline-strong)"}`,
+                }}
+              >
+                {user.isApproved ? "Đã duyệt" : "Chờ duyệt"}
+              </span>
+            }
+          />
+          <InfoRow label="Loại tài khoản" value={user.isFpt ? "Sinh viên FPT" : "Trường khác"} />
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
+            <button
+              type="button"
+              onClick={() => setMode("edit")}
+              className="t-body-sm"
               style={{
-                width: 120,
-                height: 80,
-                objectFit: "cover",
+                fontWeight: 700,
+                background: "var(--color-primary)",
+                color: "#fff",
+                border: "none",
                 borderRadius: "var(--radius-sm)",
-                border: "1px solid var(--color-hairline)",
-                display: "inline-block",
-              }}
-            />
-            <p
-              style={{
-                fontSize: 11,
-                color: "var(--color-mute)",
-                margin: "6px 0 0",
-                textTransform: "uppercase",
-                letterSpacing: "0.05em",
+                padding: "8px 20px",
+                cursor: "pointer",
               }}
             >
-              Ảnh thẻ sinh viên
-            </p>
+              Sửa
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="t-body-sm"
+              style={{
+                fontWeight: 700,
+                background: "none",
+                border: "1px solid var(--color-hairline-strong)",
+                borderRadius: "var(--radius-sm)",
+                padding: "8px 20px",
+                cursor: "pointer",
+                color: "var(--color-ink)",
+              }}
+            >
+              Đóng
+            </button>
           </div>
-        )}
-
-        <InfoRow label="Họ và tên" value={user.fullName} />
-        <InfoRow label="Email" value={user.email} />
-        <InfoRow label="MSSV" value={user.studentCode} />
-        <InfoRow label="Trường" value={schoolLabel} />
-        <InfoRow
-          label="Vai trò"
-          value={
-            <span
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                padding: "2px 8px",
-                borderRadius: "var(--radius-sm)",
-                background: user.isAdmin ? "rgba(118,185,0,0.1)" : "var(--color-surface-soft)",
-                color: user.isAdmin ? "var(--color-primary)" : "var(--color-mute)",
-                border: `1px solid ${user.isAdmin ? "var(--color-primary)" : "var(--color-hairline)"}`,
-              }}
-            >
-              {user.isAdmin ? "Admin" : "User"}
-            </span>
-          }
-        />
-        <InfoRow
-          label="Trạng thái"
-          value={
-            <span
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                padding: "2px 8px",
-                borderRadius: "var(--radius-sm)",
-                background: user.isApproved ? "rgba(118,185,0,0.1)" : "var(--color-surface-soft)",
-                color: user.isApproved ? "var(--color-primary)" : "var(--color-stone)",
-                border: `1px solid ${user.isApproved ? "var(--color-primary)" : "var(--color-hairline-strong)"}`,
-              }}
-            >
-              {user.isApproved ? "Đã duyệt" : "Chờ duyệt"}
-            </span>
-          }
-        />
-        <InfoRow label="Loại tài khoản" value={user.isFpt ? "Sinh viên FPT" : "Trường khác"} />
-
-        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 20 }}>
-          <button
-            type="button"
-            onClick={onClose}
-            className="t-body-sm"
-            style={{
-              fontWeight: 700,
-              background: "none",
-              border: "1px solid var(--color-hairline-strong)",
-              borderRadius: "var(--radius-sm)",
-              padding: "8px 20px",
-              cursor: "pointer",
-              color: "var(--color-ink)",
-            }}
-          >
-            Đóng
-          </button>
         </div>
-      </div>
+      )}
+
+      {mode === "edit" && (
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }} noValidate>
+          <Field label="Email">
+            <input
+              className="text-input"
+              value={user.email ?? ""}
+              disabled
+              style={{ opacity: 0.6, cursor: "not-allowed" }}
+            />
+          </Field>
+
+          <Field label="Họ và tên *">
+            <input
+              className="text-input"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Nguyễn Văn A"
+            />
+          </Field>
+
+          <Field label="Mã số sinh viên">
+            <input
+              className="text-input"
+              value={studentCode}
+              onChange={(e) => setStudentCode(e.target.value)}
+              placeholder="VD: SE123456"
+            />
+          </Field>
+
+          <Field label="Trường">
+            <select
+              className="text-input"
+              value={schoolId}
+              onChange={(e) => setSchoolId(e.target.value)}
+            >
+              <option value="">— Chọn trường —</option>
+              {schools.map((s) => (
+                <option key={s.id} value={s.id}>{s.schoolName}</option>
+              ))}
+            </select>
+          </Field>
+
+          {formError && (
+            <p className="t-caption-sm" style={{ color: "var(--color-error)", margin: 0 }}>
+              {formError}
+            </p>
+          )}
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 4 }}>
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="t-body-sm"
+              style={{
+                fontWeight: 700,
+                background: "none",
+                border: "1px solid var(--color-hairline-strong)",
+                borderRadius: "var(--radius-sm)",
+                padding: "8px 20px",
+                cursor: "pointer",
+                color: "var(--color-ink)",
+              }}
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              disabled={busy}
+              className="t-body-sm"
+              style={{
+                fontWeight: 700,
+                background: "var(--color-primary)",
+                color: "#fff",
+                border: "none",
+                borderRadius: "var(--radius-sm)",
+                padding: "8px 20px",
+                cursor: busy ? "not-allowed" : "pointer",
+                opacity: busy ? 0.6 : 1,
+              }}
+            >
+              {busy ? "Đang lưu…" : "Lưu thay đổi"}
+            </button>
+          </div>
+        </form>
+      )}
     </Modal>
   );
 }

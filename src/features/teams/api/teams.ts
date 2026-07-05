@@ -21,6 +21,23 @@ interface TeamDetail {
   members?: any[];
 }
 
+/** Backend TeamInvitationListItemModel — 1 lời mời của đội (phía người gửi). */
+export interface TeamInvitationListItem {
+  invitationId: string;
+  teamId: string;
+  invitedUserId: string;
+  invitedUserFullName: string;
+  invitedUserEmail: string;
+  invitedUserStudentCode: string | null;
+  invitedByUserId: string;
+  /** PendingAccept | Accepted | Declined | Expired */
+  status: string;
+  expiresAt: string;
+  respondedAt: string | null;
+  notes: string | null;
+  createdTime: string;
+}
+
 const norm = (s: string | null | undefined) => (s ?? '').trim().toLowerCase();
 const isJudge = (r: EventRoleRow) => norm(r.roleName) === 'judge';
 const isStaff = (r: EventRoleRow) =>
@@ -95,12 +112,27 @@ export const teamsApi = {
     await apiClient.post(`/Teams/${encodeURIComponent(teamId)}/leave`);
   },
 
-  invite: async (teamId: string, email: string): Promise<void> => {
-    await apiClient.post(`/Teams/${encodeURIComponent(teamId)}/invitations`, { email });
+  invite: async (teamId: string, email: string): Promise<any> => {
+    const { data } = await apiClient.post(`/Teams/${encodeURIComponent(teamId)}/invitations`, { email });
+    return data;
+  },
+
+  /** GET /api/Teams/{teamId}/invitations — lời mời đã gửi của đội (chỉ leader/coordinator).
+   *  BE trả BaseResponse<List> (mảng phẳng); interceptor đã bóc .data nên `data` chính là mảng. */
+  getTeamInvitations: async (teamId: string): Promise<TeamInvitationListItem[]> => {
+    const { data } = await apiClient.get<TeamInvitationListItem[]>(
+      `/Teams/${encodeURIComponent(teamId)}/invitations`,
+    );
+    return data ?? [];
   },
 
   respondInvitation: async (invitationId: string, accept: boolean): Promise<void> => {
     await apiClient.post(`/Teams/invitations/${encodeURIComponent(invitationId)}/respond?isAccepted=${accept}`);
+  },
+
+  /** POST /api/Teams/{teamId}/transfer-leader — chuyển quyền trưởng nhóm cho 1 thành viên khác. */
+  transferLeader: async (teamId: string, newLeaderUserId: string): Promise<void> => {
+    await apiClient.post(`/Teams/${encodeURIComponent(teamId)}/transfer-leader`, { newLeaderUserId });
   },
 
   /**

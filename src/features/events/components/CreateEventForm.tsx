@@ -26,18 +26,101 @@ interface InvitedUser {
   fullName: string;
 }
 
+/**
+ * Submission requirements captured as discrete checkboxes (multi-select).
+ * Serialized into the backend's single `submissionRuleDescription` string at
+ * submit time — see `serializeSubmissionRequirements`.
+ */
+interface SubmissionRequirements {
+  /** Đường dẫn repository dự án */
+  repo: boolean;
+  /** Đường dẫn demo */
+  demo: boolean;
+  /** Đường dẫn báo cáo/slide */
+  reportSlide: boolean;
+  /** "Khác" — admin tự điền thêm một yêu cầu */
+  otherEnabled: boolean;
+  /** Nội dung yêu cầu tùy chỉnh khi "Khác" được tích */
+  otherText: string;
+}
+
 interface TrackForm {
   /** Backend id when editing an existing track; undefined for a new one. */
   id?: string;
   trackName: string;
   description: string;
   templateId: string;
-  /** Free-text submission requirement (sent as submissionRuleDescription). */
-  submissionRuleDescription: string;
+  /** Submission requirement checkboxes (serialized to submissionRuleDescription). */
+  submissionRequirements: SubmissionRequirements;
+  /**
+   * Raw saved requirement string loaded in edit mode, shown read-only as a
+   * "đã lưu trước đó" reference. `undefined` in create mode (no reference shown).
+   */
+  savedSubmissionRule?: string;
   /** Optional — judge accounts to invite to this track. */
   judgeUserIds: InvitedUser[];
   /** Optional — mentor accounts to invite to this track. */
   mentorUserIds: InvitedUser[];
+}
+
+/** Fixed URL-based submission options shown as checkboxes, in display order. */
+const SUBMISSION_URL_OPTIONS = [
+  { key: "repo", label: "Link github repository dự án" },
+  { key: "demo", label: "Link demo" },
+  { key: "reportSlide", label: "Link báo cáo/slide" },
+] as const;
+
+const emptySubmissionRequirements = (): SubmissionRequirements => ({
+  repo: false,
+  demo: false,
+  reportSlide: false,
+  otherEnabled: false,
+  otherText: "",
+});
+
+/** Join the checked requirements into the newline-separated backend string. */
+function serializeSubmissionRequirements(req: SubmissionRequirements): string {
+  const parts: string[] = [];
+  for (const opt of SUBMISSION_URL_OPTIONS) {
+    if (req[opt.key]) parts.push(opt.label);
+  }
+  if (req.otherEnabled && req.otherText.trim()) {
+    parts.push(`Khác: ${req.otherText.trim()}`);
+  }
+  return parts.join("\n");
+}
+
+/**
+ * Reverse of `serializeSubmissionRequirements` — turns the stored backend string
+ * back into checkbox state so the edit form shows what was selected before.
+ * Lines matching a known URL label tick that box; a "Khác: …" line (or any
+ * unrecognized line) fills the custom "Khác" field. Empty input → all unchecked.
+ */
+function parseSubmissionRequirements(stored: string | null | undefined): SubmissionRequirements {
+  const req = emptySubmissionRequirements();
+  if (!stored) return req;
+
+  const otherLines: string[] = [];
+  for (const raw of stored.split("\n")) {
+    const line = raw.trim();
+    if (!line) continue;
+
+    const matched = SUBMISSION_URL_OPTIONS.find((opt) => opt.label === line);
+    if (matched) {
+      req[matched.key] = true;
+    } else if (/^khác\s*:/i.test(line)) {
+      otherLines.push(line.replace(/^khác\s*:/i, "").trim());
+    } else {
+      otherLines.push(line);
+    }
+  }
+
+  const otherText = otherLines.filter(Boolean).join("\n");
+  if (otherText) {
+    req.otherEnabled = true;
+    req.otherText = otherText;
+  }
+  return req;
 }
 
 interface RoundForm {
@@ -69,7 +152,7 @@ const emptyTrack = (): TrackForm => ({
   trackName: "",
   description: "",
   templateId: "",
-  submissionRuleDescription: "",
+  submissionRequirements: emptySubmissionRequirements(),
   judgeUserIds: [],
   mentorUserIds: [],
 });
@@ -599,6 +682,113 @@ function EventPhotoUpload({
   );
 }
 
+// ─── Submission requirements (vertical checkboxes) ────────────────────────────
+
+function SubmissionRequirementsField({
+  value,
+  onChange,
+  savedReference,
+}: {
+  value: SubmissionRequirements;
+  onChange: (next: SubmissionRequirements) => void;
+  /** When defined (edit mode), shows the saved requirement as a read-only reference. */
+  savedReference?: string;
+}) {
+  const savedLines =
+    savedReference === undefined
+      ? null
+      : savedReference.split("\n").map((l) => l.trim()).filter(Boolean);
+
+  const checkboxRow = (
+    key: string,
+    checked: boolean,
+    label: string,
+    onToggle: () => void,
+  ) => (
+    <label
+      key={key}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        cursor: "pointer",
+      }}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onToggle}
+        style={{ width: 16, height: 16, cursor: "pointer", accentColor: "var(--color-primary)" }}
+      />
+      <span className="t-body-sm" style={{ color: "var(--color-ink)" }}>
+        {label}
+      </span>
+    </label>
+  );
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <span className="t-caption-xs" style={{ color: "var(--color-mute)" }}>
+        Yêu cầu nộp bài
+      </span>
+
+      {savedLines !== null && (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 4,
+            padding: "8px 10px",
+            background: "var(--color-surface-soft)",
+            border: "var(--border-hairline)",
+            borderRadius: "var(--radius-sm)",
+          }}
+        >
+          <span className="t-caption-xs" style={{ color: "var(--color-mute)", fontWeight: 700 }}>
+            Đã lưu trước đó
+          </span>
+          {savedLines.length === 0 ? (
+            <span className="t-caption-sm" style={{ color: "var(--color-mute)", fontStyle: "italic" }}>
+              Chưa có yêu cầu nào được lưu.
+            </span>
+          ) : (
+            <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 2 }}>
+              {savedLines.map((line, i) => (
+                <li key={i} className="t-caption-sm" style={{ color: "var(--color-ink)" }}>
+                  {line}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 2 }}>
+        {SUBMISSION_URL_OPTIONS.map((opt) =>
+          checkboxRow(opt.key, value[opt.key], opt.label, () =>
+            onChange({ ...value, [opt.key]: !value[opt.key] }),
+          ),
+        )}
+        {checkboxRow("other", value.otherEnabled, "Khác", () =>
+          onChange({ ...value, otherEnabled: !value.otherEnabled }),
+        )}
+        {value.otherEnabled && (
+          <input
+            className="text-input"
+            value={value.otherText}
+            placeholder="Nhập yêu cầu nộp bài khác…"
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+              onChange({ ...value, otherText: e.target.value })
+            }
+            style={{ marginLeft: 26, width: "calc(100% - 26px)" }}
+          />
+        )}
+      </div>
+      <Hint>Chọn ít nhất một yêu cầu thí sinh cần nộp (có thể chọn nhiều).</Hint>
+    </div>
+  );
+}
+
 // ─── Track editor ─────────────────────────────────────────────────────────────
 
 function TrackCard({
@@ -671,11 +861,10 @@ function TrackCard({
         </select>
       </Field>
 
-      <TextArea
-        label="Yêu cầu nộp bài"
-        value={track.submissionRuleDescription}
-        onChange={(v) => onChange({ submissionRuleDescription: v })}
-        placeholder="VD: Nộp link GitHub repo và bản thuyết trình (PDF)."
+      <SubmissionRequirementsField
+        value={track.submissionRequirements}
+        onChange={(next) => onChange({ submissionRequirements: next })}
+        savedReference={track.savedSubmissionRule}
       />
 
       <UserSearchSelect
@@ -956,6 +1145,20 @@ function EditEventLoader({
   }
 
   const { event, rounds, tracks } = editQuery.data;
+
+  // `submissionRuleDescription` is only returned nested inside GET /Events/{id}
+  // (EventModel.rounds[].tracks[]), not by the flat /Tracks/event list — build a
+  // trackId → rule lookup so the edit form can pre-fill the requirement checkboxes.
+  const submissionRuleByTrackId = new Map<string, string>();
+  const nestedRounds =
+    (event as { rounds?: Array<{ tracks?: Array<{ id?: string; submissionRuleDescription?: string | null }> }> })
+      .rounds ?? [];
+  for (const r of nestedRounds) {
+    for (const t of r.tracks ?? []) {
+      if (t.id) submissionRuleByTrackId.set(t.id, t.submissionRuleDescription ?? "");
+    }
+  }
+
   const orderedRounds = [...rounds].sort((a, b) => a.roundNumber - b.roundNumber);
   const initialForm: EventForm = {
     eventName: event.eventName ?? "",
@@ -980,7 +1183,12 @@ function EditEventLoader({
           trackName: t.trackName ?? "",
           description: t.description ?? "",
           templateId: t.templateId ?? "",
-          submissionRuleDescription: "",
+          // Pre-fill the requirement checkboxes from the saved rule (joined via id).
+          submissionRequirements: parseSubmissionRequirements(
+            submissionRuleByTrackId.get(t.id),
+          ),
+          // Keep the raw saved string to show as a read-only reference in edit mode.
+          savedSubmissionRule: submissionRuleByTrackId.get(t.id) ?? "",
           judgeUserIds: [],
           mentorUserIds: [],
         })),
@@ -1083,6 +1291,14 @@ function EventFormBody({
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["events"] });
       notify.success("Tạo sự kiện thành công!");
+      // D1: KHÔNG chặn cứng (giám khảo được mời sau), nhưng CẢNH BÁO nếu chưa gắn giám khảo nào.
+      const totalJudges = form.rounds.reduce(
+        (sum, r) => sum + r.tracks.reduce((s, t) => s + (t.judgeUserIds?.length ?? 0), 0),
+        0,
+      );
+      if (totalJudges === 0) {
+        notify.warning("Sự kiện chưa có giám khảo nào. Hãy mời giám khảo trước khi mở chấm điểm.");
+      }
       if (data?.id) {
         router.push(`/events/${data.id}/manage`);
       }
@@ -1125,6 +1341,7 @@ function EventFormBody({
             trackName: t.trackName.trim(),
             templateId: t.templateId.trim() || null,
             description: t.description.trim(),
+            submissionRuleDescription: serializeSubmissionRequirements(t.submissionRequirements),
           };
           let trackId = t.id;
           if (trackId) await tracksApi.update(trackId, trackPayload);
@@ -1151,6 +1368,9 @@ function EventFormBody({
       queryClient.invalidateQueries({ queryKey: ["eventModel", eventId] });
       queryClient.invalidateQueries({ queryKey: ["rounds", eventId] });
       queryClient.invalidateQueries({ queryKey: ["tracks", eventId] });
+      // Refresh the edit form's own data so reopening it reflects the saved
+      // submission requirements (and any other edits) instead of stale cache.
+      queryClient.invalidateQueries({ queryKey: ["eventEditData", eventId] });
       notify.success("Cập nhật sự kiện thành công!");
     },
     onError: (e) => notify.error(getErrorMessage(e, "Cập nhật sự kiện thất bại. Vui lòng thử lại.")),
@@ -1268,7 +1488,7 @@ function EventFormBody({
           trackName: t.trackName.trim(),
           description: t.description.trim(),
           templateId: t.templateId.trim() || null,
-          submissionRuleDescription: t.submissionRuleDescription.trim(),
+          submissionRuleDescription: serializeSubmissionRequirements(t.submissionRequirements),
           judgeUserIds: [],
           mentorUserIds: [],
         })),
@@ -1342,8 +1562,15 @@ function EventFormBody({
       }
 
       for (let j = 0; j < r.tracks.length; j++) {
-        if (!r.tracks[j].trackName.trim())
+        const track = r.tracks[j];
+        if (!track.trackName.trim())
           return `Vòng ${i + 1} – Hạng mục ${j + 1}: vui lòng nhập tên hạng mục.`;
+
+        const req = track.submissionRequirements;
+        if (req.otherEnabled && !req.otherText.trim())
+          return `Vòng ${i + 1} – Hạng mục ${j + 1}: đã chọn "Khác" nhưng chưa nhập nội dung yêu cầu.`;
+        if (!serializeSubmissionRequirements(req).trim())
+          return `Vòng ${i + 1} – Hạng mục ${j + 1}: vui lòng chọn ít nhất một yêu cầu nộp bài.`;
       }
     }
     return null;

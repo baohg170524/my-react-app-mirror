@@ -20,7 +20,7 @@ export function CompetitionRegistrationTab({ userId }: Props) {
   if (editing) {
     return (
       <div className="p-1 md:p-2">
-        <h2 className="t-heading-md mb-4">Đăng ký thi đấu</h2>
+        <h2 className="t-heading-md mb-4">{profile ? 'Cập nhật hồ sơ' : 'Đăng ký hồ sơ thí sinh'}</h2>
         <RegistrationForm
           defaults={{
             fullName: profile?.fullName ?? user?.fullName ?? '',
