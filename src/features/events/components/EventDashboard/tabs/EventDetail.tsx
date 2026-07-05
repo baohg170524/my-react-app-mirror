@@ -5,7 +5,7 @@ import { useEvent } from '@/features/events/hooks/useEvents';
 import { Card } from '../Card';
 import { CardSkeleton } from '../SkeletonLoaders';
 import { EventStructureView } from '../../AdminEventDashboard/EventStructureView';
-import { formatDate } from '@/lib/date';
+import { formatDateTime } from '@/lib/date';
 
 interface Props { eventId: string; userId: string; }
 
@@ -53,15 +53,42 @@ export function EventDetailTab({ eventId }: Props) {
             {event.description || 'Chưa có mô tả.'}
           </p>
           <div className="space-y-3">
+            <div className="pb-1">
+               <span className="t-caption-xs text-primary font-bold tracking-wider">THỜI GIAN SỰ KIỆN</span>
+            </div>
             <div className="flex justify-between items-baseline">
-              <span className="t-body-sm text-mute">Ngày bắt đầu</span>
-              <span className="t-body-strong text-ink">{formatDate(event.startDate)}</span>
+              <span className="t-body-sm text-mute">Bắt đầu</span>
+              <span className="t-body-strong text-ink">{formatDateTime(event.startDate)}</span>
             </div>
             <div className="flex justify-between items-baseline border-t border-hairline pt-3">
-              <span className="t-body-sm text-mute">Ngày kết thúc</span>
-              <span className="t-body-strong text-ink">{formatDate(event.endDate)}</span>
+              <span className="t-body-sm text-mute">Kết thúc</span>
+              <span className="t-body-strong text-ink">{formatDateTime(event.endDate)}</span>
             </div>
-            <div className="flex justify-between items-baseline border-t border-hairline pt-3">
+
+            {(event.registrationStartDate || event.registrationEndDate) && (
+              <>
+                <div className="pt-3 pb-1 mt-1 border-t border-hairline">
+                   <span className="t-caption-xs text-primary font-bold tracking-wider">THỜI GIAN ĐĂNG KÝ</span>
+                </div>
+                {event.registrationStartDate && (
+                  <div className="flex justify-between items-baseline">
+                    <span className="t-body-sm text-mute">Bắt đầu</span>
+                    <span className="t-body-strong text-ink">{formatDateTime(event.registrationStartDate)}</span>
+                  </div>
+                )}
+                {event.registrationEndDate && (
+                  <div className="flex justify-between items-baseline border-t border-hairline pt-3">
+                    <span className="t-body-sm text-mute">Kết thúc</span>
+                    <span className="t-body-strong text-ink">{formatDateTime(event.registrationEndDate)}</span>
+                  </div>
+                )}
+              </>
+            )}
+
+            <div className="pt-3 pb-1 mt-1 border-t border-hairline">
+               <span className="t-caption-xs text-primary font-bold tracking-wider">THÔNG TIN KHÁC</span>
+            </div>
+            <div className="flex justify-between items-baseline">
               <span className="t-body-sm text-mute">Trạng thái</span>
               <span className={`inline-block px-3 py-1 rounded-sm t-caption-sm font-bold uppercase ${status.cls}`}>
                 {status.label}

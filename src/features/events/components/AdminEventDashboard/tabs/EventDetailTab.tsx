@@ -15,6 +15,7 @@ import { Button } from '../../EventDashboard/Button';
 import { CardSkeleton } from '../../EventDashboard/SkeletonLoaders';
 import { CreateEventForm } from '../../CreateEventForm';
 import { EventStructureView } from '../EventStructureView';
+import { formatDateTime } from '@/lib/date';
 
 interface EventDetailTabProps {
   eventId: string;
@@ -39,9 +40,6 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
   const mentorCount = new Set(
     roles.filter(isMentorRole).map((r) => r.userId).filter(Boolean),
   ).size;
-
-  const formatDate = (date: string) =>
-    new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
   const deleteMutation = useMutation({
     mutationFn: () => eventsApi.remove(eventId),
@@ -124,11 +122,11 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
               </div>
               <div className="flex justify-between items-baseline">
                 <span className="t-body-sm text-mute">Bắt đầu</span>
-                <span className="t-body-strong text-ink">{formatDate(event.startDate)}</span>
+                <span className="t-body-strong text-ink">{formatDateTime(event.startDate)}</span>
               </div>
               <div className="flex justify-between items-baseline border-t border-hairline pt-3">
                 <span className="t-body-sm text-mute">Kết thúc</span>
-                <span className="t-body-strong text-ink">{formatDate(event.endDate)}</span>
+                <span className="t-body-strong text-ink">{formatDateTime(event.endDate)}</span>
               </div>
               
               {(event.registrationStartDate || event.registrationEndDate) && (
@@ -139,13 +137,13 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
                   {event.registrationStartDate && (
                     <div className="flex justify-between items-baseline">
                       <span className="t-body-sm text-mute">Bắt đầu</span>
-                      <span className="t-body-strong text-ink">{formatDate(event.registrationStartDate)}</span>
+                      <span className="t-body-strong text-ink">{formatDateTime(event.registrationStartDate)}</span>
                     </div>
                   )}
                   {event.registrationEndDate && (
                     <div className="flex justify-between items-baseline border-t border-hairline pt-3">
                       <span className="t-body-sm text-mute">Kết thúc</span>
-                      <span className="t-body-strong text-ink">{formatDate(event.registrationEndDate)}</span>
+                      <span className="t-body-strong text-ink">{formatDateTime(event.registrationEndDate)}</span>
                     </div>
                   )}
                 </>
