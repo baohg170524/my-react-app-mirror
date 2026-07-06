@@ -29,6 +29,8 @@ export interface UserListParams {
   isApproved?: boolean;
   /** Filter by event — only users registered in this event. */
   eventId?: string;
+  /** Filter to show only users who have submitted their profile (schoolId, etc). */
+  hasSubmittedProfile?: boolean;
 }
 
 /** Matches backend CreateUserRequestModel. */
@@ -70,12 +72,14 @@ export const usersApi = {
     pageSize = 50,
     isApproved,
     eventId,
+    hasSubmittedProfile,
   }: UserListParams = {}): Promise<PagedResult<UserSummary>> => {
     const { data } = await apiClient.get<PagedResult<UserSummary>>("/Users", {
       params: {
         Search: search.trim() || undefined,
         IsApproved: isApproved,
         EventId: eventId || undefined,
+        HasSubmittedProfile: hasSubmittedProfile,
         PageNumber: pageNumber,
         PageSize: pageSize,
       },

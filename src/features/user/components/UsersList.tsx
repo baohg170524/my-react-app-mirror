@@ -264,6 +264,7 @@ export function UsersList() {
         pageNumber: page,
         pageSize: PAGE_SIZE,
         isApproved: filter === "pending" ? false : undefined,
+        hasSubmittedProfile: filter === "pending" ? true : undefined,
         eventId: eventId || undefined,
       }),
     enabled: isAuthenticated,
