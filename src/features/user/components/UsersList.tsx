@@ -247,6 +247,7 @@ export function UsersList() {
   const [debounced, setDebounced] = useState("");
   const [filter, setFilter] = useState<"all" | "pending">("all");
   const [eventId, setEventId] = useState("");
+  const [accountType, setAccountType] = useState<"all" | "non_student" | "student_fpt" | "student_other">("all");
   const [page, setPage] = useState(1);
   const [actionError, setActionError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -257,7 +258,7 @@ export function UsersList() {
   const eventsQuery = useAllEvents(isAdmin);
 
   const usersQuery = useQuery({
-    queryKey: ["users", "list", filter, debounced, eventId, page],
+    queryKey: ["users", "list", filter, debounced, eventId, accountType, page],
     queryFn: () =>
       usersApi.list({
         search: debounced,
@@ -266,6 +267,8 @@ export function UsersList() {
         isApproved: filter === "pending" ? false : undefined,
         hasSubmittedProfile: filter === "pending" ? true : undefined,
         eventId: eventId || undefined,
+        isStudent: accountType === "non_student" ? false : (accountType.startsWith("student_") ? true : undefined),
+        isFpt: accountType === "student_fpt" ? true : (accountType === "student_other" ? false : undefined),
       }),
     enabled: isAuthenticated,
     staleTime: 60_000,
@@ -484,6 +487,21 @@ export function UsersList() {
               />
               <select
                 className="text-input"
+                value={accountType}
+                onChange={(e) => {
+                  setAccountType(e.target.value as typeof accountType);
+                  setPage(1);
+                }}
+                style={{ width: 200, maxWidth: "100%" }}
+                aria-label="Lọc theo loại tài khoản"
+              >
+                <option value="all">Tất cả tài khoản</option>
+                <option value="non_student">Tài khoản khách (Khác)</option>
+                <option value="student_fpt">Sinh viên FPT</option>
+                <option value="student_other">Sinh viên trường khác</option>
+              </select>
+              <select
+                className="text-input"
                 value={eventId}
                 onChange={(e) => {
                   setEventId(e.target.value);
@@ -600,20 +618,7 @@ export function UsersList() {
                       //  • Đã duyệt   → Sửa / Vô hiệu hóa
                       //  • Được mời   → không có Duyệt/Từ chối (họ được mời, không cần duyệt)
                       const menuItems: MenuItem[] = [];
-                      if (isAdmin && !u.isApproved && !isInvited) {
-                        menuItems.push({
-                          label: approveBusy ? "Đang lưu…" : "Duyệt",
-                          tone: "primary",
-                          disabled: approveBusy || rejectBusy,
-                          onClick: () => { setActionError(null); approveMutation.mutate(u); },
-                        });
-                        menuItems.push({
-                          label: rejectBusy ? "Đang xử lý…" : "Từ chối",
-                          tone: "danger",
-                          disabled: approveBusy || rejectBusy,
-                          onClick: () => handleReject(u),
-                        });
-                      }
+
                       if (isAdmin) {
                         menuItems.push({
                           label: "Xem chi tiết",
@@ -694,6 +699,23 @@ export function UsersList() {
                           <td style={{ ...td, textAlign: "right" }}>
                             {filter === "pending" && isAdmin && !isInvited ? (
                               <div style={{ display: "inline-flex", gap: "var(--space-sm)", justifyContent: "flex-end" }}>
+                                <button
+                                  type="button"
+                                  onClick={() => { setActionError(null); setViewUser(u); }}
+                                  className="t-caption-sm"
+                                  style={{
+                                    fontWeight: 700,
+                                    background: "none",
+                                    border: "1px solid var(--color-hairline-strong)",
+                                    color: "var(--color-ink)",
+                                    borderRadius: "var(--radius-sm)",
+                                    padding: "4px 10px",
+                                    cursor: "pointer",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  Chi tiết
+                                </button>
                                 <button
                                   type="button"
                                   disabled={approveBusy || rejectBusy}
@@ -1241,22 +1263,6 @@ function UserDetailModal({
           <InfoRow label="Loại tài khoản" value={user.isFpt ? "Sinh viên FPT" : "Trường khác"} />
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
-            <button
-              type="button"
-              onClick={() => setMode("edit")}
-              className="t-body-sm"
-              style={{
-                fontWeight: 700,
-                background: "var(--color-primary)",
-                color: "#fff",
-                border: "none",
-                borderRadius: "var(--radius-sm)",
-                padding: "8px 20px",
-                cursor: "pointer",
-              }}
-            >
-              Sửa
-            </button>
             <button
               type="button"
               onClick={onClose}

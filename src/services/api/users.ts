@@ -31,6 +31,10 @@ export interface UserListParams {
   eventId?: string;
   /** Filter to show only users who have submitted their profile (schoolId, etc). */
   hasSubmittedProfile?: boolean;
+  sortBy?: string;
+  isAscending?: boolean;
+  isStudent?: boolean;
+  isFpt?: boolean;
 }
 
 /** Matches backend CreateUserRequestModel. */
@@ -73,6 +77,10 @@ export const usersApi = {
     isApproved,
     eventId,
     hasSubmittedProfile,
+    sortBy = "CreatedTime",
+    isAscending = false,
+    isStudent,
+    isFpt,
   }: UserListParams = {}): Promise<PagedResult<UserSummary>> => {
     const { data } = await apiClient.get<PagedResult<UserSummary>>("/Users", {
       params: {
@@ -82,6 +90,10 @@ export const usersApi = {
         HasSubmittedProfile: hasSubmittedProfile,
         PageNumber: pageNumber,
         PageSize: pageSize,
+        SortBy: sortBy,
+        IsAscending: isAscending,
+        IsStudent: isStudent,
+        IsFpt: isFpt,
       },
     });
     return data;
