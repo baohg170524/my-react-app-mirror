@@ -7,8 +7,8 @@ import { useCurrentUser } from '@/hooks/useAuth';
 import { scoresApi } from '@/services/api';
 import { eventRolesApi } from '@/features/events/api/eventRoles';
 import { tracksApi, roundsApi } from '@/features/events/api/roundTrack';
-import { templatesApi } from '@/features/events/api/templates';
 import { resultsApi } from '@/features/results/api/results';
+import { getCriteria } from '@/services/criteriaService';
 import { getAllSubmissions } from '@/services/submissionService';
 
 /**
@@ -66,9 +66,9 @@ export default function ScoringPanel({ eventId, trackId = null }) {
 
         // 3) Tải song song: vòng thi, bộ tiêu chí, danh sách bài nộp, phiếu đã chấm,
         //    và trạng thái công bố kết quả (FinalResults của vòng đã tồn tại?).
-        const [round, template, subsRes, existingScores, published] = await Promise.all([
+        const [round, allCriteria, subsRes, existingScores, published] = await Promise.all([
           track.roundId ? roundsApi.getById(track.roundId) : Promise.resolve(null),
-          templatesApi.getById(track.templateId),
+          getCriteria(track.templateId),
           getAllSubmissions({ EventId: eventId, TrackId: effectiveTrackId, PageSize: 100 }),
           scoresApi.listByEventRole(roleId),
           track.roundId
@@ -78,17 +78,11 @@ export default function ScoringPanel({ eventId, trackId = null }) {
 
         if (cancelled) return;
 
-        // 4) Bộ tiêu chí (chỉ tiêu chí đang bật) → shape mà ScoringView/EditModal mong đợi.
-        const crit = (template.criterias ?? [])
-          .filter(c => c.isActive !== false)
-          .map(c => ({
-            id:       c.criteriaId,
-            label:    c.criteriaName,
-            labelVi:  c.criteriaName,
-            desc:     c.description ?? '',
-            weight:   c.weight   ?? 0,
-            maxScore: c.maxScore ?? 10,
-          }));
+        // 4) Bộ tiêu chí: getCriteria(templateId) đã map sẵn shape ScoringView/EditModal cần
+        //    ({ id, label, labelVi, desc, weight, maxScore, isActive }) với weight/maxScore lấy
+        //    từ template. Nó trả về TOÀN BỘ tiêu chí hệ thống nên chỉ giữ tiêu chí đang bật &
+        //    thực sự thuộc template (weight > 0).
+        const crit = allCriteria.filter(c => c.isActive !== false && c.weight > 0);
 
         // 5) Nạp trước điểm đã chấm: submitResultId → điểm theo từng tiêu chí.
         const scored = existingScores.filter(s => s.submitResultId);
