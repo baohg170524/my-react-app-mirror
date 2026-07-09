@@ -103,7 +103,7 @@ export default function ScoringPanel({ eventId, trackId = null }) {
 
         const prefill = {};
         for (const { submitResultId, details } of detailList) {
-          const byCriteria = Object.fromEntries(details.map(d => [d.criteriaId, d.score]));
+          const byCriteria = Object.fromEntries(details.map(d => [d.criteriaId, d.value]));
           prefill[submitResultId] = crit.map(c => byCriteria[c.id] ?? 0);
         }
 
@@ -156,7 +156,7 @@ export default function ScoringPanel({ eventId, trackId = null }) {
       await scoresApi.save({
         eventRoleId,
         submitResultId,
-        details: criteria.map((c, i) => ({ criteriaId: c.id, score: scores[i] ?? 0 })),
+        details: criteria.map((c, i) => ({ criteriaId: c.id, value: scores[i] ?? 0 })),
       });
       setTeams(p => p.map(t => t.id === submitResultId ? { ...t, scores, comments: cmts } : t));
       setEditT(null);

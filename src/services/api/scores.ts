@@ -5,9 +5,11 @@ import type { PagedResult } from "./types";
 
 export interface ScoreDetail {
   id: string;
-  scoreId: string | null;
+  scoreId?: string | null;
+  templateId?: string | null;
   criteriaId: string | null;
-  score: number;
+  /** BE dùng `value` (không phải `score`) cho điểm từng tiêu chí. */
+  value: number;
 }
 
 export interface Score {
@@ -29,17 +31,19 @@ export interface CreateScorePayload {
   submitResultId: string;
 }
 
-/** POST /api/Scores/save — gộp tạo/cập nhật phiếu chấm + chi tiết 1 lần */
+/** POST /api/Scores/save — gộp tạo/cập nhật phiếu chấm + chi tiết 1 lần.
+ *  Mỗi detail dùng `value` (khớp SaveScoreDetailItem của BE); `comment` là tùy chọn. */
 export interface SaveScorePayload {
   eventRoleId: string;
   submitResultId: string;
-  details: { criteriaId: string; score: number }[];
+  comment?: string;
+  details: { criteriaId: string; value: number }[];
 }
 
 export interface CreateScoreDetailPayload {
   scoreId: string;
   criteriaId: string;
-  score: number;
+  value: number;
 }
 
 // ─── ScoreDetails API ─────────────────────────────────────────────────────────
@@ -58,8 +62,8 @@ export const scoreDetailsApi = {
   },
 
   // PUT /api/ScoreDetails/{id}
-  update: async (id: string, score: number): Promise<ScoreDetail> => {
-    const { data } = await apiClient.put<ScoreDetail>(`/ScoreDetails/${id}`, { score });
+  update: async (id: string, value: number): Promise<ScoreDetail> => {
+    const { data } = await apiClient.put<ScoreDetail>(`/ScoreDetails/${id}`, { value });
     return data;
   },
 
