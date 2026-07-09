@@ -26,6 +26,17 @@ export interface TrackUpsertPayload {
   submissionRuleDescription: string;
 }
 
+/** Full round model returned by GET /Rounds/{id}. */
+export interface RoundModel {
+  id: string;
+  eventId: string | null;
+  roundName: string | null;
+  roundNumber: number;
+  startDate: string; // ISO 8601
+  endDate: string;   // ISO 8601 — hạn nộp bài; giám khảo chỉ chấm sau mốc này
+  advancementRule: string | null;
+}
+
 /** Full track model returned by GET /Tracks/{id}. */
 export interface TrackModel {
   id: string;
@@ -46,6 +57,12 @@ export const roundsApi = {
     apiClient.put(`/Rounds/${encodeURIComponent(id)}`, payload).then(() => undefined),
   remove: (id: string): Promise<void> =>
     apiClient.delete(`/Rounds/${encodeURIComponent(id)}`).then(() => undefined),
+
+  /** GET /api/Rounds/{id} — chi tiết vòng thi (endDate dùng để khóa/mở form chấm). */
+  getById: async (id: string): Promise<RoundModel> => {
+    const { data } = await apiClient.get<RoundModel>(`/Rounds/${encodeURIComponent(id)}`);
+    return data;
+  },
 };
 
 export const tracksApi = {

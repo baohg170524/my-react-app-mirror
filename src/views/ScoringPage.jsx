@@ -1,6 +1,6 @@
 import { calcScore } from '../utils.jsx';
 
-export default function ScoringPage({ teams, criteria, onEdit }) {
+export default function ScoringPage({ teams, criteria, onEdit, disabled = false }) {
   return (
     <div className="animate-fadeUp">
       <div className="mb-7">
@@ -44,7 +44,15 @@ export default function ScoringPage({ teams, criteria, onEdit }) {
               <div className="flex justify-end mt-4">
                 <button className="btn-hover flex items-center gap-2 px-4 py-2 text-xs font-bold"
                   onClick={() => onEdit(t)}
-                  style={{ background: '#f7f7f7', border: '1px solid #cccccc', color: '#000', borderRadius: 2 }}>
+                  disabled={disabled}
+                  style={{
+                    background: '#f7f7f7',
+                    border: '1px solid #cccccc',
+                    color: disabled ? '#aaaaaa' : '#000',
+                    borderRadius: 2,
+                    cursor: disabled ? 'not-allowed' : 'pointer',
+                    opacity: disabled ? 0.6 : 1,
+                  }}>
                   ≡ Chấm / Sửa
                 </button>
               </div>
