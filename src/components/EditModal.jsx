@@ -31,7 +31,6 @@ export default function EditModal({ team, criteria, onClose, onSave }) {
 
         {/* Criteria list */}
         {criteria.map((c, i) => {
-          // const weighted = Math.round((scores[i] || 0) * (c.weight / 100) * 100) / 100; // hệ 10 cũ
           const sc = scores[i] || 0;
           const al = c.levels ? c.levels.findIndex(lv => {
             const pts = lv.range.replace('–', '-').split('-').map(Number);
@@ -48,9 +47,9 @@ export default function EditModal({ team, criteria, onClose, onSave }) {
               <div className="grid gap-2 items-center mb-3" style={{ gridTemplateColumns: '1fr 70px 100px 110px' }}>
                 <div>
                   <div className="font-bold text-sm" style={{ color: '#000' }}>{c.label}</div>
-                  <div className="text-[11px] mt-0.5" style={{ color: '#757575' }}>{c.labelVi} · {c.weight}%</div>
+                  <div className="text-[11px] mt-0.5" style={{ color: '#757575' }}>{c.labelVi} · {c.weight}/10</div>
                 </div>
-                <div className="text-center text-xs font-bold" style={{ color: '#757575' }}>{c.weight}%</div>
+                <div className="text-center text-xs font-bold" style={{ color: '#757575' }}>{c.weight}/10</div>
                 <input
                   type="number" min="0" max={c.weight} step="0.5"
                   value={scores[i] || 0}

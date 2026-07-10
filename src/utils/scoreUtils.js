@@ -5,19 +5,19 @@
  * Logic must match backend scoring formula.
  *
  * BACKEND MATCH:
- *   Score = Σ (criteriaScore[i] * criteria[i].weight / 100)
+ *   Score = Σ (criteriaScore[i] * criteria[i].weight / 10)
  *   This mirrors the server-side calculation in ScoringService.cs
  */
 
 // ── WEIGHTED SCORE ─────────────────────────────────────────────────────────────
 export const calcScore = (scores, criteria) => {
   if (!scores || !criteria || !scores.length) return 0;
-  const total = criteria.reduce((sum, c, i) => sum + (scores[i] || 0) * (c.weight / 100), 0);
+  const total = criteria.reduce((sum, c, i) => sum + (scores[i] || 0) * (c.weight / 10), 0);
   return Math.round(total * 100) / 100;
 };
 
 // ── TOTAL WEIGHT CHECK ─────────────────────────────────────────────────────────
-// BACKEND: CriteriaService validates totalWeight === 100 before saving
+// BACKEND: CriteriaService validates totalWeight === 10 before saving
 export const totalWeight = (criteria) =>
   criteria.reduce((s, c) => s + Number(c.weight), 0);
 

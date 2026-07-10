@@ -120,8 +120,8 @@ export default function TemplatePage({ sn }) {
     const oldW = critModal.mode === 'edit'
       ? ((tmpl?.criterias ?? []).find(tc => tc.criteriaId === critModal.criteriaId)?.weight ?? 0)
       : 0;
-    if (existingW - oldW + Number(critF.weight) > 100) {
-      sn(`Tổng trọng số sẽ là ${existingW - oldW + Number(critF.weight)}%, vượt quá 100%`, 'e');
+    if (existingW - oldW + Number(critF.weight) > 10) {
+      sn(`Tổng trọng số sẽ là ${existingW - oldW + Number(critF.weight)}, vượt quá 10`, 'e');
       return;
     }
     setSaving(true);
@@ -339,10 +339,10 @@ export default function TemplatePage({ sn }) {
             <div className="flex gap-4 mb-6">
               <div className="flex-1">
                 <label className="block text-xs font-bold mb-1.5 uppercase tracking-wider" style={{ color: '#757575' }}>
-                  Trọng số (%)
+                  Trọng số (thang 10)
                 </label>
                 <input
-                  type="number" min="0" max="100"
+                  type="number" min="0" max="10"
                   value={critF.weight}
                   onChange={e => setCritF({ ...critF, weight: Number(e.target.value) })}
                   className="input-field"
@@ -362,9 +362,10 @@ export default function TemplatePage({ sn }) {
               </div> */}
             </div>
 
-            {critF.weight > 0 && (
-              <div className="mb-6 p-3 text-xs" style={{ background: 'rgba(118,185,0,0.08)', color: '#5a8d00', borderRadius: 2, border: '1px solid rgba(118,185,0,0.3)' }}>
-                Tiêu chí được chấm trên <strong>thang điểm 10</strong>; trọng số <strong>{critF.weight}%</strong> quyết định mức đóng góp vào điểm tổng (cũng hệ 10).
+            {critF.weight > 0 && critF.maxScore > 0 && critF.weight !== critF.maxScore && (
+              <div className="mb-6 p-3 text-xs" style={{ background: 'rgba(223,101,0,0.1)', color: '#df6500', borderRadius: 2, border: '1px solid rgba(223,101,0,0.3)' }}>
+                <strong>Lưu ý:</strong> Trọng số là <strong>{critF.weight}</strong> nhưng điểm tối đa là <strong>{critF.maxScore}</strong>.
+                Hệ thống sẽ tự động quy đổi: 1 điểm chấm tương đương <strong>{((critF.weight / critF.maxScore) || 0).toFixed(2)}</strong> điểm trong tổng thang 10. Hãy chắc chắn đây là ý đồ của bạn.
               </div>
             )}
 
@@ -413,7 +414,7 @@ export default function TemplatePage({ sn }) {
       {templates.length === 0 && (
         <div className="text-center py-20" style={{ color: '#757575' }}>
           <div className="text-base font-bold mb-1.5" style={{ color: '#76b900' }}>Chưa có bộ tiêu chí nào</div>
-          <div className="text-sm">Bấm "+ Tạo bộ tiêu chí" để bắt đầu.</div>
+          <div className="text-sm">Bấm &quot;+ Tạo bộ tiêu chí&quot; để bắt đầu.</div>
         </div>
       )}
       {templates.length > 0 && filteredTemplates.length === 0 && (
@@ -482,17 +483,17 @@ export default function TemplatePage({ sn }) {
                     <div className="flex justify-between mb-2">
                       <span className="text-xs" style={{ color: '#757575' }}>Tổng trọng số</span>
                       <span className="text-xs font-bold"
-                        style={{ color: totalW === 100 ? '#76b900' : '#df6500' }}>
-                        {totalW}% / 100%
-                        {totalW !== 100 && <span style={{ fontWeight: 400, marginLeft: 6 }}>
-                          ({totalW < 100 ? `thiếu ${100 - totalW}%` : `thừa ${totalW - 100}%`})
+                        style={{ color: totalW === 10 ? '#76b900' : '#df6500' }}>
+                        {totalW} / 10
+                        {totalW !== 10 && <span style={{ fontWeight: 400, marginLeft: 6 }}>
+                          ({totalW < 10 ? `thiếu ${10 - totalW}` : `thừa ${totalW - 10}`})
                         </span>}
                       </span>
                     </div>
                     <div className="h-1.5 overflow-hidden flex gap-0.5" style={{ background: '#e5e5e5', borderRadius: 2 }}>
                       {(t.criterias ?? []).map((tc, i) => (
                         <div key={tc.criteriaId} style={{
-                          height: '100%', width: `${tc.weight ?? 0}%`,
+                          height: '100%', width: `${((tc.weight ?? 0) / 10) * 100}%`,
                           background: COLORS[i % COLORS.length], transition: 'width .4s',
                         }} />
                       ))}
@@ -501,7 +502,7 @@ export default function TemplatePage({ sn }) {
                       {(t.criterias ?? []).map((tc, i) => (
                         <div key={tc.criteriaId} className="flex items-center gap-1.5 text-xs" style={{ color: '#757575' }}>
                           <div style={{ width: 7, height: 7, background: COLORS[i % COLORS.length], borderRadius: 2 }} />
-                          {tc.criteriaName} ({tc.weight}%)
+                          {tc.criteriaName} ({tc.weight}/10)
                         </div>
                       ))}
                     </div>
@@ -540,7 +541,7 @@ export default function TemplatePage({ sn }) {
                         <div style={{ width: 100, textAlign: 'center' }}>
                           <span className="px-2 py-0.5 text-xs font-bold"
                             style={{ background: 'rgba(118,185,0,.1)', color: '#5a8d00', borderRadius: 2 }}>
-                            {tc.weight}%
+                            {tc.weight}/10
                           </span>
                         </div>
                         <div style={{ width: 110, textAlign: 'center' }}>

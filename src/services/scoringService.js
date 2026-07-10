@@ -52,7 +52,7 @@ export const exportLeaderboardCsv = async (rankedTeams, criteria) => {
 
 const generateCsvClientSide = (rankedTeams, criteria) => {
   const calcScore = (scores, crit) =>
-    Math.round(crit.reduce((s, c, i) => s + (scores[i] || 0) * (c.weight / 100), 0) * 100) / 100;
+    Math.round(crit.reduce((s, c, i) => s + (scores[i] || 0) * (c.weight / 10), 0) * 100) / 100;
 
   const header = ['Rank', 'TeamId', 'TeamName', ...criteria.map(c => c.label), 'TotalScore'];
   const rows = rankedTeams.map((t, i) => [

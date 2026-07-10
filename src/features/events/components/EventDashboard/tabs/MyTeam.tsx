@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useMyTeamForEvent, useInviteToTeam, useLeaveTeam, useTeamInvitations, useTransferLeader } from '@/features/teams/hooks/useTeams';
+import { useMyTeamForEvent, useInviteToTeam, useLeaveTeam, useTeamInvitations, useTransferLeader, useConfirmRegistration } from '@/features/teams/hooks/useTeams';
 import { useEventDashboard } from '@/features/events/contexts/EventDashboardContext';
 import { useNotify } from '@/components/NotificationProvider';
 
@@ -22,6 +22,9 @@ export function MyTeamTab({ eventId, userId }: Props) {
   const invite = useInviteToTeam(teamId);
   const leave  = useLeaveTeam(teamId, eventId, userId);
   const transfer = useTransferLeader(teamId, eventId, userId);
+  const confirm  = useConfirmRegistration(teamId, eventId, userId);
+
+  const isRegistered = team?.status === 'Registered';
   const [email, setEmail] = useState('');
   const notify = useNotify();
 
@@ -36,7 +39,14 @@ export function MyTeamTab({ eventId, userId }: Props) {
     <section className="p-6 max-w-2xl mx-auto space-y-6">
       <div className="border border-hairline rounded-sm bg-canvas p-4 md:p-6 space-y-4">
         <header>
-          <h2 className="t-heading-md">{team.teamName}</h2>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h2 className="t-heading-md">{team.teamName}</h2>
+            {isRegistered && (
+              <span className="text-xs font-bold px-2 py-0.5 rounded-sm bg-green-50 text-green-700 border border-green-200 whitespace-nowrap">
+                ✓ Đã chốt danh sách
+              </span>
+            )}
+          </div>
           {team.description ? <p className="t-body-sm text-mute mt-1">{team.description}</p> : null}
         </header>
 
@@ -56,7 +66,7 @@ export function MyTeamTab({ eventId, userId }: Props) {
                         className="btn btn-secondary btn-sm"
                         disabled={transfer.isPending}
                         onClick={() => {
-                          if (!confirm(`Chuyển quyền trưởng nhóm cho ${m.fullName}? Bạn sẽ trở thành thành viên thường.`)) return;
+                          if (!window.confirm(`Chuyển quyền trưởng nhóm cho ${m.fullName}? Bạn sẽ trở thành thành viên thường.`)) return;
                           transfer.mutate(m.userId, {
                             onSuccess: () => notify.success(`Đã chuyển quyền trưởng nhóm cho ${m.fullName}.`),
                             onError: (err: any) => notify.error(err?.response?.data?.message || 'Chuyển quyền thất bại.'),
@@ -76,7 +86,7 @@ export function MyTeamTab({ eventId, userId }: Props) {
       </div>
 
       {/* Chỉ trưởng nhóm mới mời được (BE chặn 403 với thành viên thường). */}
-      {isLeader && (
+      {isLeader && !isRegistered && (
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -139,14 +149,52 @@ export function MyTeamTab({ eventId, userId }: Props) {
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={() => { if (confirm('Bạn chắc chắn rời đội?')) leave.mutate(undefined, { onSuccess: () => setActiveTab('createTeam') }); }}
-        disabled={leave.isPending}
-        className="btn btn-outline-danger"
-      >
-        {leave.isPending ? 'Đang rời…' : 'Rời đội'}
-      </button>
+      <div className="flex flex-wrap gap-3">
+
+        {/* Nút chốt danh sách — chỉ trưởng nhóm, chưa chốt */}
+        {isLeader && !isRegistered && (
+          <button
+            type="button"
+            disabled={confirm.isPending}
+            onClick={() => {
+              if (!window.confirm(
+                'Chốt danh sách đội?\n\n' +
+                '⚠ Sau khi chốt:\n' +
+                '• Không thể thêm hoặc xóa thành viên\n' +
+                '• Thành viên không thể tự rời đội\n' +
+                '• Yêu cầu đủ 3–5 thành viên đã được duyệt\n\n' +
+                'Xác nhận tiếp tục?'
+              )) return;
+              confirm.mutate(undefined, {
+                onSuccess: () => notify.success('Đã chốt danh sách đội thành công!'),
+                onError: (err: any) => notify.error(
+                  err?.response?.data?.message ||
+                  'Chốt danh sách thất bại. Kiểm tra đủ 3–5 thành viên đã duyệt.'
+                ),
+              });
+            }}
+            className="btn btn-primary"
+          >
+            {confirm.isPending ? 'Đang chốt…' : '✓ Chốt danh sách'}
+          </button>
+        )}
+
+        {/* Nút rời đội — ẩn khi đã chốt */}
+        {!isRegistered && (
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm('Bạn chắc chắn rời đội?'))
+                leave.mutate(undefined, { onSuccess: () => setActiveTab('createTeam') });
+            }}
+            disabled={leave.isPending}
+            className="btn btn-outline-danger"
+          >
+            {leave.isPending ? 'Đang rời…' : 'Rời đội'}
+          </button>
+        )}
+
+      </div>
     </section>
   );
 }

@@ -1,6 +1,6 @@
 export const INIT_CRITERIA = [
   {
-    id: 'C-001', label: 'Innovation', labelVi: 'Tính sáng tạo', weight: 25,
+    id: 'C-001', label: 'Innovation', labelVi: 'Tính sáng tạo', weight: 2.5,
     desc: 'Tính mới mẻ, sáng tạo của giải pháp',
     levels: [
       { range: '0–2',  desc: 'Chưa có ý tưởng' },
@@ -10,7 +10,7 @@ export const INIT_CRITERIA = [
     ],
   },
   {
-    id: 'C-002', label: 'Technical Quality', labelVi: 'Chất lượng kỹ thuật', weight: 30,
+    id: 'C-002', label: 'Technical Quality', labelVi: 'Chất lượng kỹ thuật', weight: 3,
     desc: 'Chất lượng code, kiến trúc hệ thống',
     levels: [
       { range: '0–2',  desc: 'Code rối, không hoạt động' },
@@ -20,7 +20,7 @@ export const INIT_CRITERIA = [
     ],
   },
   {
-    id: 'C-003', label: 'Business Impact', labelVi: 'Tính ứng dụng', weight: 20,
+    id: 'C-003', label: 'Business Impact', labelVi: 'Tính ứng dụng', weight: 2,
     desc: 'Tính ứng dụng thực tế, khả năng thương mại hóa',
     levels: [
       { range: '0–2',  desc: 'Không có giá trị thực tế' },
@@ -30,7 +30,7 @@ export const INIT_CRITERIA = [
     ],
   },
   {
-    id: 'C-004', label: 'Presentation', labelVi: 'Thuyết trình', weight: 15,
+    id: 'C-004', label: 'Presentation', labelVi: 'Thuyết trình', weight: 1.5,
     desc: 'Chất lượng thuyết trình, demo, slide',
     levels: [
       { range: '0–2',  desc: 'Demo thất bại, slide kém' },
@@ -40,7 +40,7 @@ export const INIT_CRITERIA = [
     ],
   },
   {
-    id: 'C-005', label: 'Teamwork', labelVi: 'Làm việc nhóm', weight: 10,
+    id: 'C-005', label: 'Teamwork', labelVi: 'Làm việc nhóm', weight: 1,
     desc: 'Phối hợp nhóm, quản lý thời gian',
     levels: [
       { range: '0–2',  desc: 'Không có bằng chứng phối hợp' },
