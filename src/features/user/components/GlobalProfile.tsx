@@ -15,6 +15,16 @@ export function GlobalProfile() {
 
   if (isLoading) return <div className="t-body-md text-mute p-6 text-center">Đang tải hồ sơ...</div>;
 
+  // Admin không phải thí sinh → không render khối này.
+  if (user && user.role === 'ADMIN') {
+    return (
+      <div className="card max-w-[40rem] mx-auto mt-8 p-6 text-center shadow-sm bg-white rounded-lg">
+        <h2 className="t-heading-md mb-2">Hồ sơ tài khoản</h2>
+        <p className="t-body-md text-mute m-0">Tài khoản quản trị không cần hồ sơ thí sinh.</p>
+      </div>
+    );
+  }
+
   if (editing) {
     return (
       <div className="card max-w-[40rem] mx-auto mt-8 p-6 shadow-sm bg-white rounded-lg">

@@ -57,10 +57,6 @@ interface TrackForm {
    * "đã lưu trước đó" reference. `undefined` in create mode (no reference shown).
    */
   savedSubmissionRule?: string;
-  /** Optional — judge accounts to invite to this track. */
-  judgeUserIds: InvitedUser[];
-  /** Optional — mentor accounts to invite to this track. */
-  mentorUserIds: InvitedUser[];
 }
 
 /** Fixed URL-based submission options shown as checkboxes, in display order. */
@@ -155,8 +151,6 @@ const emptyTrack = (): TrackForm => ({
   description: "",
   templateId: "",
   submissionRequirements: emptySubmissionRequirements(),
-  judgeUserIds: [],
-  mentorUserIds: [],
 });
 
 const emptyRound = (): RoundForm => ({
@@ -870,21 +864,6 @@ function TrackCard({
         onChange={(next) => onChange({ submissionRequirements: next })}
         savedReference={track.savedSubmissionRule}
       />
-
-      <UserSearchSelect
-        label="Judge (tùy chọn)"
-        values={track.judgeUserIds}
-        onChange={(next) => onChange({ judgeUserIds: next })}
-        placeholder="Nhập email để tìm judge…"
-        hint="Tìm theo email/tên tài khoản có trong hệ thống."
-      />
-
-      <UserSearchSelect
-        label="Mentor (tùy chọn)"
-        values={track.mentorUserIds}
-        onChange={(next) => onChange({ mentorUserIds: next })}
-        placeholder="Nhập email để tìm mentor…"
-      />
     </div>
   );
 }
@@ -1195,8 +1174,6 @@ function EditEventLoader({
           ),
           // Keep the raw saved string to show as a read-only reference in edit mode.
           savedSubmissionRule: submissionRuleByTrackId.get(t.id) ?? "",
-          judgeUserIds: [],
-          mentorUserIds: [],
         })),
     })),
   };
@@ -1243,68 +1220,15 @@ function EventFormBody({
   });
   const templates = templatesQuery.data ?? [];
 
-  const inviteUsersToTrack = async (eventId: string, trackId: string, judges: InvitedUser[], mentors: InvitedUser[]) => {
-    for (const judge of judges) {
-      const email = judge.email?.trim();
-      if (!email) continue;
-      await manageApi.inviteJudge({
-        eventId,
-        trackId,
-        judgeEmail: email,
-        judgeFullName: judge.fullName?.trim() || email,
-        notes: "",
-      });
-    }
-
-    for (const mentor of mentors) {
-      const email = mentor.email?.trim();
-      if (!email) continue;
-      await manageApi.inviteMentor({
-        eventId,
-        trackId,
-        mentorEmail: email,
-        mentorFullName: mentor.fullName?.trim() || email,
-        notes: "",
-      });
-    }
-  };
-
   const createMutation = useMutation({
     mutationFn: async (payload: CreateEventPayload) => {
       const created = await eventsApi.create(payload);
-      const [createdRounds, createdTracks] = await Promise.all([
-        manageApi.listEventRounds(created.id),
-        manageApi.listEventTracks(created.id),
-      ]);
-
-      for (let ri = 0; ri < form.rounds.length; ri++) {
-        const r = form.rounds[ri];
-        const createdRound = createdRounds.find((round) => round.roundNumber === ri + 1);
-        if (!createdRound?.id) continue;
-
-        const roundTracks = createdTracks.filter((track) => track.roundId === createdRound.id);
-        for (let ti = 0; ti < r.tracks.length; ti++) {
-          const t = r.tracks[ti];
-          const createdTrack = roundTracks[ti];
-          if (!createdTrack?.id) continue;
-
-          await inviteUsersToTrack(created.id, createdTrack.id, t.judgeUserIds, t.mentorUserIds);
-        }
-      }
-
+      // Wait for rounds/tracks creation logic handled in backend (or keep checking for validity, though backend handles creation of rounds/tracks directly from payload)
       return created;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["events"] });
       notify.success("Tạo sự kiện thành công!");
-      // D1: KHÔNG chặn cứng (giám khảo được mời sau), nhưng CẢNH BÁO nếu chưa gắn giám khảo nào.
-      const totalJudges = form.rounds.reduce(
-        (sum, r) => sum + r.tracks.reduce((s, t) => s + (t.judgeUserIds?.length ?? 0), 0),
-        0,
-      );
-      if (totalJudges === 0) {
-        notify.warning("Sự kiện chưa có giám khảo nào. Hãy mời giám khảo trước khi mở chấm điểm.");
-      }
       if (data?.id) {
         router.push(`/events/${data.id}/manage`);
       }
@@ -1315,7 +1239,19 @@ function EventFormBody({
   const editMutation = useMutation({
     mutationFn: async () => {
       const id = eventId as string;
-      await eventsApi.update(id, {
+      const oldStart = new Date(initialForm.startDate).getTime();
+      const oldEnd = new Date(initialForm.endDate).getTime();
+      const newStart = new Date(form.startDate).getTime();
+      const newEnd = new Date(form.endDate).getTime();
+
+      // Create a temporary bounding box that encloses BOTH the old and new timelines.
+      // This prevents the backend from rejecting the Event update if the new bounds
+      // shrink to exclude old rounds, or rejecting Round updates if they expand outside old bounds.
+      const tempStart = newStart < oldStart ? toIso(form.startDate) : toIso(initialForm.startDate);
+      const tempEnd = newEnd > oldEnd ? toIso(form.endDate) : toIso(initialForm.endDate);
+      const requiresTempWidening = tempStart !== toIso(form.startDate) || tempEnd !== toIso(form.endDate);
+
+      const finalPayload = {
         eventName: form.eventName.trim(),
         season: form.season.trim(),
         year: Number(form.year) || 0,
@@ -1326,8 +1262,16 @@ function EventFormBody({
         description: form.description.trim(),
         status: form.status,
         photoEventUrl: form.photoEventUrl || null,
-      });
+      };
 
+      // 1. Update Event to the widest bounds temporarily (if needed)
+      if (requiresTempWidening) {
+        await eventsApi.update(id, { ...finalPayload, startDate: tempStart, endDate: tempEnd });
+      } else {
+        await eventsApi.update(id, finalPayload);
+      }
+
+      // 2. Update Rounds and Tracks to their new times
       for (let ri = 0; ri < form.rounds.length; ri++) {
         const r = form.rounds[ri];
         const roundPayload = {
@@ -1353,9 +1297,7 @@ function EventFormBody({
           };
           let trackId = t.id;
           if (trackId) await tracksApi.update(trackId, trackPayload);
-          else trackId = (await tracksApi.create(trackPayload)).id;
-
-          await inviteUsersToTrack(id, trackId, t.judgeUserIds, t.mentorUserIds);
+          else await tracksApi.create(trackPayload);
         }
       }
 
@@ -1368,6 +1310,11 @@ function EventFormBody({
       const keptRoundIds = new Set(form.rounds.map((r) => r.id).filter(Boolean));
       for (const rid of originalRoundIds.current) {
         if (!keptRoundIds.has(rid)) await roundsApi.remove(rid);
+      }
+
+      // 3. Finalize Event to its actual bounds
+      if (requiresTempWidening) {
+        await eventsApi.update(id, finalPayload);
       }
     },
     onSuccess: () => {
@@ -1499,8 +1446,6 @@ function EventFormBody({
           description: t.description.trim(),
           templateId: t.templateId.trim() || null,
           submissionRuleDescription: serializeSubmissionRequirements(t.submissionRequirements),
-          judgeUserIds: [],
-          mentorUserIds: [],
         })),
       })),
     };

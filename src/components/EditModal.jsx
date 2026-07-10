@@ -51,9 +51,9 @@ export default function EditModal({ team, criteria, onClose, onSave }) {
                 </div>
                 <div className="text-center text-xs font-bold" style={{ color: '#757575' }}>{c.weight}/10</div>
                 <input
-                  type="number" min="0" max={c.weight} step="0.5"
+                  type="number" min="0" max="10" step="0.5"
                   value={scores[i] || 0}
-                  onChange={e => { const val = Math.min(parseFloat(e.target.value) || 0, c.weight); const v = [...scores]; v[i] = val; setScores(v); }}
+                  onChange={e => { const val = Math.min(parseFloat(e.target.value) || 0, 10); const v = [...scores]; v[i] = val; setScores(v); }}
                   className="text-center text-lg font-black w-full"
                   style={{
                     background: '#fff',
@@ -65,7 +65,7 @@ export default function EditModal({ team, criteria, onClose, onSave }) {
                   }}
                 />
                 <div className="text-right text-sm font-bold" style={{ color: '#76b900' }}>
-                  {(scores[i] || 0).toFixed(2)} / {c.weight}
+                  {(scores[i] || 0).toFixed(2)} / 10
                 </div>
               </div>
 

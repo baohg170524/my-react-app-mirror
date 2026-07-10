@@ -9,6 +9,7 @@ import type {
 } from "./types";
 
 export const authApi = {
+  /** POST /api/Auth/login — đăng nhập, trả về access token + refresh token */
   login: async (payload: LoginRequest): Promise<LoginResponse> => {
     const { data } = await apiClient.post<LoginResponse>("/Auth/login", payload);
     return data;
@@ -23,10 +24,12 @@ export const authApi = {
     return data;
   },
 
+  /** POST /api/Auth/logout — đăng xuất, huỷ refresh token */
   logout: async (): Promise<void> => {
     await apiClient.post("/Auth/logout");
   },
 
+  /** POST /api/Auth/refresh-token — làm mới access token bằng refresh token */
   refreshToken: async (
     refreshToken: string,
   ): Promise<RefreshTokenResponse> => {
@@ -37,6 +40,7 @@ export const authApi = {
     return data;
   },
 
+  /** GET /api/Auth/verify-email — xác minh email qua token */
   verifyEmail: async (token: string): Promise<boolean> => {
     const { data } = await apiClient.get<boolean>("/Auth/verify-email", {
       params: { token },

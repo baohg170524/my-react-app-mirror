@@ -10,7 +10,8 @@ import {
   type SchoolModel,
   type CreateUserPayload,
 } from "@/services/api";
-import { useIsAuthenticated } from "@/hooks/useAuth";
+import { eventRolesApi } from "@/features/events/api/eventRoles";
+import { useIsAuthenticated, useCurrentUser } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useAllEvents } from "@/features/events/hooks/useEvents";
 import { useNotify } from "@/components/NotificationProvider";
@@ -19,6 +20,54 @@ import { getErrorMessage } from "@/lib/apiError";
 const PAGE_SIZE = 20;
 
 const errMsg = getErrorMessage;
+
+// ─── RoleBadge: hiển thị vai trò trong sự kiện ───────────────────────────────────
+
+const ROLE_STYLE: Record<string, { label: string; bg: string; fg: string; bd: string }> = {
+  Judge: {
+    label: "Judge",
+    bg: "rgba(0,70,164,0.08)", fg: "#0046a4", bd: "rgba(0,70,164,0.3)",
+  },
+  EventCoordinator: {
+    label: "Coordinator",
+    bg: "rgba(149,47,198,0.08)", fg: "#952fc6", bd: "rgba(149,47,198,0.3)",
+  },
+  TeamLeader: {
+    label: "Team Leader",
+    bg: "rgba(118,185,0,0.1)", fg: "var(--color-primary)", bd: "var(--color-primary)",
+  },
+  Member: {
+    label: "Member",
+    bg: "var(--color-surface-soft)", fg: "var(--color-mute)", bd: "var(--color-hairline)",
+  },
+  Mentor: {
+    label: "Mentor",
+    bg: "rgba(13,148,136,0.08)", fg: "#0D9488", bd: "rgba(13,148,136,0.3)",
+  },
+};
+
+function RoleBadge({ roleName }: { roleName: string }) {
+  const style = ROLE_STYLE[roleName] ?? {
+    label: roleName,
+    bg: "var(--color-surface-soft)",
+    fg: "var(--color-mute)",
+    bd: "var(--color-hairline)",
+  };
+  return (
+    <span
+      className="badge-tag"
+      style={{
+        background: style.bg,
+        color: style.fg,
+        border: `1px solid ${style.bd}`,
+        fontSize: "var(--fs-utility-xs)",
+        fontWeight: 700,
+      }}
+    >
+      {style.label}
+    </span>
+  );
+}
 
 function Badge({
   children,
@@ -191,30 +240,35 @@ function ActionMenu({ items }: { items: MenuItem[] }) {
 export function UsersList() {
   const isAuthenticated = useIsAuthenticated();
   const isAdmin = useUserRole() === "admin";
+  const { data: currentUser } = useCurrentUser();
   const queryClient = useQueryClient();
   const notify = useNotify();
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
   const [filter, setFilter] = useState<"all" | "pending">("all");
   const [eventId, setEventId] = useState("");
+  const [accountType, setAccountType] = useState<"all" | "non_student" | "student_fpt" | "student_other">("all");
   const [page, setPage] = useState(1);
   const [actionError, setActionError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [editUser, setEditUser] = useState<UserSummary | null>(null);
+  const [viewUser, setViewUser] = useState<UserSummary | null>(null);
   const [preview, setPreview] = useState<{ url: string; name: string } | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const eventsQuery = useAllEvents(isAdmin);
 
   const usersQuery = useQuery({
-    queryKey: ["users", "list", filter, debounced, eventId, page],
+    queryKey: ["users", "list", filter, debounced, eventId, accountType, page],
     queryFn: () =>
       usersApi.list({
         search: debounced,
         pageNumber: page,
         pageSize: PAGE_SIZE,
         isApproved: filter === "pending" ? false : undefined,
+        hasSubmittedProfile: filter === "pending" ? true : undefined,
         eventId: eventId || undefined,
+        isStudent: accountType === "non_student" ? false : (accountType.startsWith("student_") ? true : undefined),
+        isFpt: accountType === "student_fpt" ? true : (accountType === "student_other" ? false : undefined),
       }),
     enabled: isAuthenticated,
     staleTime: 60_000,
@@ -329,6 +383,22 @@ export function UsersList() {
     staleTime: 5 * 60_000,
   });
 
+  // Khi chọn 1 sự kiện → load roles của event đó để hiển thị vai trò event.
+  const eventRolesQuery = useQuery({
+    queryKey: ["eventRoles", "byEvent", eventId],
+    queryFn: () => eventRolesApi.listByEvent(eventId),
+    enabled: isAuthenticated && !!eventId,
+    staleTime: 60_000,
+  });
+
+  // Map userId → roleName trong event đang chọn.
+  const userEventRoleMap: Record<string, string> = {};
+  if (eventId && eventRolesQuery.data) {
+    for (const r of eventRolesQuery.data) {
+      userEventRoleMap[r.userId] = r.roleName;
+    }
+  }
+
   // Admin: create a new account.
   const createMutation = useMutation({
     mutationFn: usersApi.create,
@@ -345,23 +415,25 @@ export function UsersList() {
     },
   });
 
-  // Admin: edit a user's info (name, student code, school, status).
+  // Admin: sửa thông tin user (Họ tên, MSSV, Trường) — role/trạng thái giữ nguyên.
   const editMutation = useMutation({
-    mutationFn: (vars: { id: string; user: UserSummary; edits: { fullName: string; studentCode: string; schoolId: string; isApproved: boolean } }) =>
+    mutationFn: (vars: {
+      id: string;
+      user: UserSummary;
+      edits: { fullName: string; studentCode: string; schoolId: string };
+    }) =>
       usersApi.update(vars.id, {
         schoolId: vars.edits.schoolId || null,
         studentCode: vars.edits.studentCode.trim() || null,
         fullName: vars.edits.fullName.trim(),
-        // Role is intentionally NOT editable here — keep the user's existing flags.
         isStudent: vars.user.isStudent,
         isAdmin: vars.user.isAdmin,
-        isApproved: vars.edits.isApproved,
+        isApproved: vars.user.isApproved,
         isFpt: vars.user.isFpt,
         photoStudentCardUrl: null,
       }),
     onSuccess: () => {
       setActionError(null);
-      setEditUser(null);
       notify.success("Đã cập nhật tài khoản thành công!");
       queryClient.invalidateQueries({ queryKey: ["users", "list"] });
     },
@@ -413,6 +485,21 @@ export function UsersList() {
                 placeholder="Tìm theo tên hoặc email…"
                 style={{ width: 280, maxWidth: "100%" }}
               />
+              <select
+                className="text-input"
+                value={accountType}
+                onChange={(e) => {
+                  setAccountType(e.target.value as typeof accountType);
+                  setPage(1);
+                }}
+                style={{ width: 200, maxWidth: "100%" }}
+                aria-label="Lọc theo loại tài khoản"
+              >
+                <option value="all">Tất cả tài khoản</option>
+                <option value="non_student">Tài khoản khách (Khác)</option>
+                <option value="student_fpt">Sinh viên FPT</option>
+                <option value="student_other">Sinh viên trường khác</option>
+              </select>
               <select
                 className="text-input"
                 value={eventId}
@@ -506,7 +593,7 @@ export function UsersList() {
                       <th style={th}>MSSV</th>
                       <th style={th}>Trường</th>
                       <th style={th}>Vai trò</th>
-                      <th style={th}>Trạng thái</th>
+                      {filter === "pending" && <th style={th}>Trạng thái</th>}
                       <th style={{ ...th, textAlign: "right" }}>Thao tác</th>
                     </tr>
                   </thead>
@@ -521,31 +608,24 @@ export function UsersList() {
                       const deleteBusy =
                         deleteMutation.isPending && deleteMutation.variables?.id === u.id;
 
+                      // Không cho admin tự thu hồi duyệt / tự xoá chính mình (BE cũng chặn 400).
+                      const isSelf = !!currentUser?.id && u.id === currentUser.id;
+                      // Tài khoản judge/mentor ĐƯỢC MỜI (chưa kích hoạt) — không nộp hồ sơ để duyệt.
+                      const isInvited = u.isTemporary === true;
+
                       // Gom thao tác theo vòng đời tài khoản (chỉ có cờ isApproved):
                       //  • Chờ duyệt  → Duyệt / Từ chối / Sửa
                       //  • Đã duyệt   → Sửa / Vô hiệu hóa
+                      //  • Được mời   → không có Duyệt/Từ chối (họ được mời, không cần duyệt)
                       const menuItems: MenuItem[] = [];
-                      if (isAdmin && !u.isApproved) {
-                        menuItems.push({
-                          label: approveBusy ? "Đang lưu…" : "Duyệt",
-                          tone: "primary",
-                          disabled: approveBusy || rejectBusy,
-                          onClick: () => { setActionError(null); approveMutation.mutate(u); },
-                        });
-                        menuItems.push({
-                          label: rejectBusy ? "Đang xử lý…" : "Từ chối",
-                          tone: "danger",
-                          disabled: approveBusy || rejectBusy,
-                          onClick: () => handleReject(u),
-                        });
-                      }
+
                       if (isAdmin) {
                         menuItems.push({
-                          label: "Sửa",
-                          onClick: () => { setActionError(null); setEditUser(u); },
+                          label: "Xem chi tiết",
+                          onClick: () => { setActionError(null); setViewUser(u); },
                         });
                       }
-                      if (u.isApproved) {
+                      if (u.isApproved && !isSelf) {
                         menuItems.push({
                           label: pending ? "Đang lưu…" : "Thu hồi duyệt",
                           tone: "danger",
@@ -560,7 +640,7 @@ export function UsersList() {
                           onClick: () => handleToggle(u),
                         });
                       }
-                      if (isAdmin) {
+                      if (isAdmin && !isSelf) {
                         menuItems.push({
                           label: deleteBusy ? "Đang xoá…" : "Xoá tài khoản",
                           tone: "danger",
@@ -597,18 +677,45 @@ export function UsersList() {
                             {u.isFpt ? "FPT University" : schoolName(u.schoolId)}
                           </td>
                           <td style={td}>
-                            <Badge tone={u.isAdmin ? "primary" : "neutral"}>
-                              {u.isAdmin ? "Admin" : "User"}
-                            </Badge>
+                            {eventId && userEventRoleMap[u.id] ? (
+                              <RoleBadge roleName={userEventRoleMap[u.id]} />
+                            ) : (
+                              <Badge tone={u.isAdmin ? "primary" : "neutral"}>
+                                {u.isAdmin ? "Admin" : "User"}
+                              </Badge>
+                            )}
                           </td>
-                          <td style={td}>
-                            <Badge tone={u.isApproved ? "success" : u.isRejected ? "danger" : "pending"}>
-                              {u.isApproved ? "Đã duyệt" : u.isRejected ? "Bị từ chối" : "Chờ duyệt"}
-                            </Badge>
-                          </td>
+                          {filter === "pending" && (
+                            <td style={td}>
+                              {isInvited ? (
+                                <Badge tone="neutral">Được mời</Badge>
+                              ) : (
+                                <Badge tone={u.isApproved ? "success" : u.isRejected ? "danger" : "pending"}>
+                                  {u.isApproved ? "Đã duyệt" : u.isRejected ? "Bị từ chối" : "Chờ duyệt"}
+                                </Badge>
+                              )}
+                            </td>
+                          )}
                           <td style={{ ...td, textAlign: "right" }}>
-                            {filter === "pending" && isAdmin ? (
+                            {filter === "pending" && isAdmin && !isInvited ? (
                               <div style={{ display: "inline-flex", gap: "var(--space-sm)", justifyContent: "flex-end" }}>
+                                <button
+                                  type="button"
+                                  onClick={() => { setActionError(null); setViewUser(u); }}
+                                  className="t-caption-sm"
+                                  style={{
+                                    fontWeight: 700,
+                                    background: "none",
+                                    border: "1px solid var(--color-hairline-strong)",
+                                    color: "var(--color-ink)",
+                                    borderRadius: "var(--radius-sm)",
+                                    padding: "4px 10px",
+                                    cursor: "pointer",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  Chi tiết
+                                </button>
                                 <button
                                   type="button"
                                   disabled={approveBusy || rejectBusy}
@@ -727,14 +834,14 @@ export function UsersList() {
         />
       )}
 
-      {isAdmin && editUser && (
-        <EditUserModal
-          user={editUser}
+      {isAdmin && viewUser && (
+        <UserDetailModal
+          user={viewUser}
           schools={schoolsQuery.data?.data ?? []}
           busy={editMutation.isPending}
-          onClose={() => setEditUser(null)}
+          onClose={() => setViewUser(null)}
           onSubmit={(edits) =>
-            editMutation.mutate({ id: editUser.id, user: editUser, edits })
+            editMutation.mutate({ id: viewUser.id, user: viewUser, edits })
           }
         />
       )}
@@ -1006,9 +1113,42 @@ function CreateUserModal({
   );
 }
 
-// ─── Edit-user modal ────────────────────────────────────────────────────────────
+// ─── InfoRow: dùng trong modal xem chi tiết ──────────────────────────────────────
 
-function EditUserModal({
+function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        padding: "10px 0",
+        borderBottom: "1px solid var(--color-hairline)",
+        gap: 12,
+      }}
+    >
+      <span
+        style={{
+          fontSize: 12,
+          fontWeight: 700,
+          color: "var(--color-mute)",
+          textTransform: "uppercase",
+          letterSpacing: "0.05em",
+          flexShrink: 0,
+        }}
+      >
+        {label}
+      </span>
+      <span style={{ fontSize: "var(--fs-body-sm)", color: "var(--color-ink)", fontWeight: 600, textAlign: "right" }}>
+        {value || "—"}
+      </span>
+    </div>
+  );
+}
+
+// ─── User detail modal — xem + sửa trong cùng 1 popup ────────────────────────────
+
+function UserDetailModal({
   user,
   schools,
   busy,
@@ -1019,54 +1159,215 @@ function EditUserModal({
   schools: SchoolModel[];
   busy: boolean;
   onClose: () => void;
-  onSubmit: (edits: { fullName: string; studentCode: string; schoolId: string; isApproved: boolean }) => void;
+  onSubmit: (edits: { fullName: string; studentCode: string; schoolId: string }) => void;
 }) {
+  const [mode, setMode] = useState<"view" | "edit">("view");
   const [fullName, setFullName] = useState(user.fullName ?? "");
   const [studentCode, setStudentCode] = useState(user.studentCode ?? "");
   const [schoolId, setSchoolId] = useState(user.schoolId ?? "");
-  const [isApproved, setIsApproved] = useState(user.isApproved);
-  const [error, setError] = useState("");
+  const [formError, setFormError] = useState("");
+
+  const schoolLabel = user.isFpt
+    ? "FPT University"
+    : schools.find((s) => s.id === user.schoolId)?.schoolName ?? "—";
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!fullName.trim()) return setError("Vui lòng nhập họ và tên.");
-    setError("");
-    onSubmit({ fullName, studentCode, schoolId, isApproved });
+    if (!fullName.trim()) { setFormError("Vui lòng nhập họ và tên."); return; }
+    setFormError("");
+    onSubmit({ fullName, studentCode, schoolId });
+    setMode("view");
+  }
+
+  function handleCancel() {
+    setFullName(user.fullName ?? "");
+    setStudentCode(user.studentCode ?? "");
+    setSchoolId(user.schoolId ?? "");
+    setFormError("");
+    setMode("view");
   }
 
   return (
-    <Modal title={`Sửa thông tin: ${user.fullName || user.email || ""}`} onClose={onClose}>
-      <form onSubmit={handleSubmit} style={FORM_GAP} noValidate>
-        <Field label="Email">
-          <input className="text-input" value={user.email ?? ""} disabled style={{ opacity: 0.6, cursor: "not-allowed" }} />
-        </Field>
-        <Field label="Họ và tên">
-          <input className="text-input" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Nguyễn Văn A" />
-        </Field>
-        <Field label="Mã số sinh viên">
-          <input className="text-input" value={studentCode} onChange={(e) => setStudentCode(e.target.value)} placeholder="VD: SE123456" />
-        </Field>
-        <Field label="Trường">
-          <select className="text-input" value={schoolId} onChange={(e) => setSchoolId(e.target.value)}>
-            <option value="">— Chọn trường —</option>
-            {schools.map((s) => (
-              <option key={s.id} value={s.id}>{s.schoolName}</option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Trạng thái">
-          <select className="text-input" value={isApproved ? "active" : "disabled"} onChange={(e) => setIsApproved(e.target.value === "active")}>
-            <option value="active">Hoạt động</option>
-            <option value="disabled">Vô hiệu hóa</option>
-          </select>
-        </Field>
+    <Modal title="Chi tiết tài khoản" onClose={onClose}>
+      {mode === "view" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+          {user.photoStudentCardUrl && (
+            <div style={{ marginBottom: 16, textAlign: "center" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={user.photoStudentCardUrl}
+                alt="Ảnh thẻ sinh viên"
+                style={{
+                  width: 120,
+                  height: 80,
+                  objectFit: "cover",
+                  borderRadius: "var(--radius-sm)",
+                  border: "1px solid var(--color-hairline)",
+                  display: "inline-block",
+                }}
+              />
+              <p
+                style={{
+                  fontSize: 11,
+                  color: "var(--color-mute)",
+                  margin: "6px 0 0",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                Ảnh thẻ sinh viên
+              </p>
+            </div>
+          )}
 
-        {error && <p className="t-caption-sm" style={{ color: "var(--color-error)", margin: 0 }}>{error}</p>}
+          <InfoRow label="Họ và tên" value={user.fullName} />
+          <InfoRow label="Email" value={user.email} />
+          <InfoRow label="MSSV" value={user.studentCode} />
+          <InfoRow label="Trường" value={schoolLabel} />
+          <InfoRow
+            label="Vai trò"
+            value={
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  padding: "2px 8px",
+                  borderRadius: "var(--radius-sm)",
+                  background: user.isAdmin ? "rgba(118,185,0,0.1)" : "var(--color-surface-soft)",
+                  color: user.isAdmin ? "var(--color-primary)" : "var(--color-mute)",
+                  border: `1px solid ${user.isAdmin ? "var(--color-primary)" : "var(--color-hairline)"}`,
+                }}
+              >
+                {user.isAdmin ? "Admin" : "User"}
+              </span>
+            }
+          />
+          <InfoRow
+            label="Trạng thái"
+            value={
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  padding: "2px 8px",
+                  borderRadius: "var(--radius-sm)",
+                  background: user.isApproved ? "rgba(118,185,0,0.1)" : "var(--color-surface-soft)",
+                  color: user.isApproved ? "var(--color-primary)" : "var(--color-stone)",
+                  border: `1px solid ${user.isApproved ? "var(--color-primary)" : "var(--color-hairline-strong)"}`,
+                }}
+              >
+                {user.isApproved ? "Đã duyệt" : "Chờ duyệt"}
+              </span>
+            }
+          />
+          <InfoRow label="Loại tài khoản" value={user.isFpt ? "Sinh viên FPT" : "Trường khác"} />
 
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 4 }}>
-          <PrimaryButton disabled={busy}>{busy ? "Đang lưu…" : "Lưu thay đổi"}</PrimaryButton>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
+            <button
+              type="button"
+              onClick={onClose}
+              className="t-body-sm"
+              style={{
+                fontWeight: 700,
+                background: "none",
+                border: "1px solid var(--color-hairline-strong)",
+                borderRadius: "var(--radius-sm)",
+                padding: "8px 20px",
+                cursor: "pointer",
+                color: "var(--color-ink)",
+              }}
+            >
+              Đóng
+            </button>
+          </div>
         </div>
-      </form>
+      )}
+
+      {mode === "edit" && (
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }} noValidate>
+          <Field label="Email">
+            <input
+              className="text-input"
+              value={user.email ?? ""}
+              disabled
+              style={{ opacity: 0.6, cursor: "not-allowed" }}
+            />
+          </Field>
+
+          <Field label="Họ và tên *">
+            <input
+              className="text-input"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Nguyễn Văn A"
+            />
+          </Field>
+
+          <Field label="Mã số sinh viên">
+            <input
+              className="text-input"
+              value={studentCode}
+              onChange={(e) => setStudentCode(e.target.value)}
+              placeholder="VD: SE123456"
+            />
+          </Field>
+
+          <Field label="Trường">
+            <select
+              className="text-input"
+              value={schoolId}
+              onChange={(e) => setSchoolId(e.target.value)}
+            >
+              <option value="">— Chọn trường —</option>
+              {schools.map((s) => (
+                <option key={s.id} value={s.id}>{s.schoolName}</option>
+              ))}
+            </select>
+          </Field>
+
+          {formError && (
+            <p className="t-caption-sm" style={{ color: "var(--color-error)", margin: 0 }}>
+              {formError}
+            </p>
+          )}
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 4 }}>
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="t-body-sm"
+              style={{
+                fontWeight: 700,
+                background: "none",
+                border: "1px solid var(--color-hairline-strong)",
+                borderRadius: "var(--radius-sm)",
+                padding: "8px 20px",
+                cursor: "pointer",
+                color: "var(--color-ink)",
+              }}
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              disabled={busy}
+              className="t-body-sm"
+              style={{
+                fontWeight: 700,
+                background: "var(--color-primary)",
+                color: "#fff",
+                border: "none",
+                borderRadius: "var(--radius-sm)",
+                padding: "8px 20px",
+                cursor: busy ? "not-allowed" : "pointer",
+                opacity: busy ? 0.6 : 1,
+              }}
+            >
+              {busy ? "Đang lưu…" : "Lưu thay đổi"}
+            </button>
+          </div>
+        </form>
+      )}
     </Modal>
   );
 }

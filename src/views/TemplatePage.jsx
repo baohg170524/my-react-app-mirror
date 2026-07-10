@@ -127,6 +127,9 @@ export default function TemplatePage({ sn }) {
     setSaving(true);
     try {
       const { templateId, mode, criteriaId: editId } = critModal;
+      // hệ 10: giám khảo luôn chấm 0-10 mỗi tiêu chí; maxScore lưu lại đóng góp tối đa
+      // vào tổng 10 điểm (weight/10) để hiển thị, không dùng để giới hạn điểm nhập.
+      const maxScore = Number(critF.weight) / 10;
       if (mode === 'add') {
         await addCriteriaToTemplate(templateId, {
           criteriaId: critF.criteriaId,
@@ -545,7 +548,7 @@ export default function TemplatePage({ sn }) {
                           </span>
                         </div>
                         <div style={{ width: 110, textAlign: 'center' }}>
-                          <span className="text-sm" style={{ color: '#000' }}>{tc.maxScore}</span>
+                          <span className="text-sm" style={{ color: '#000' }}>{Number((tc.weight / 10).toFixed(1))}</span>
                         </div>
                         <div className="flex gap-2 justify-end" style={{ width: 110 }}>
                           <button className="btn-hover px-2.5 py-1 text-xs font-bold"

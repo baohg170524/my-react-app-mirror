@@ -16,6 +16,9 @@ export interface UserSummary {
   isRejected?: boolean;
   isFpt: boolean;
   photoStudentCardUrl?: string | null;
+  /** True nếu là tài khoản được MỜI (judge/mentor) chưa kích hoạt — không phải thí sinh
+   *  nộp hồ sơ để duyệt. BE: UserModel.IsTemporary. Optional để tránh vỡ kiểu ở mock cũ. */
+  isTemporary?: boolean;
 }
 
 export interface UserListParams {
@@ -26,6 +29,12 @@ export interface UserListParams {
   isApproved?: boolean;
   /** Filter by event — only users registered in this event. */
   eventId?: string;
+  /** Filter to show only users who have submitted their profile (schoolId, etc). */
+  hasSubmittedProfile?: boolean;
+  sortBy?: string;
+  isAscending?: boolean;
+  isStudent?: boolean;
+  isFpt?: boolean;
 }
 
 /** Matches backend CreateUserRequestModel. */
@@ -67,14 +76,24 @@ export const usersApi = {
     pageSize = 50,
     isApproved,
     eventId,
+    hasSubmittedProfile,
+    sortBy = "CreatedTime",
+    isAscending = false,
+    isStudent,
+    isFpt,
   }: UserListParams = {}): Promise<PagedResult<UserSummary>> => {
     const { data } = await apiClient.get<PagedResult<UserSummary>>("/Users", {
       params: {
         Search: search.trim() || undefined,
         IsApproved: isApproved,
         EventId: eventId || undefined,
+        HasSubmittedProfile: hasSubmittedProfile,
         PageNumber: pageNumber,
         PageSize: pageSize,
+        SortBy: sortBy,
+        IsAscending: isAscending,
+        IsStudent: isStudent,
+        IsFpt: isFpt,
       },
     });
     return data;

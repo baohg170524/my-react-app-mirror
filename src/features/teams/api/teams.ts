@@ -32,6 +32,8 @@ export interface TeamInvitationListItem {
   invitedByUserId: string;
   /** PendingAccept | Accepted | Declined | Expired */
   status: string;
+  /** Nhãn tiếng Việt do BE trả kèm (vd "Đang chờ xác nhận"). Bind thẳng, đừng tự map từ status. */
+  statusLabel?: string;
   expiresAt: string;
   respondedAt: string | null;
   notes: string | null;

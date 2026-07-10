@@ -70,7 +70,13 @@ apiClient.interceptors.response.use(
     ) {
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
-      window.location.href = "/auth";
+      localStorage.removeItem("currentUser");
+
+      if (window.location.pathname !== "/") {
+        window.location.href = "/auth";
+      } else {
+        window.location.reload();
+      }
     }
     return Promise.reject(error);
   },

@@ -7,12 +7,13 @@ import { useNotify } from '@/components/NotificationProvider';
 
 interface Props { eventId: string; userId: string; }
 
-/** Nhãn + màu cho trạng thái lời mời (phía người gửi). */
+/** Màu badge theo trạng thái lời mời (phía người gửi). Nhãn chữ lấy từ BE (`statusLabel`);
+ *  `label` ở đây chỉ là fallback khi BE bản cũ chưa trả statusLabel. */
 const INVITE_BADGE: Record<string, { label: string; cls: string }> = {
-  PendingAccept: { label: 'Đang mời',    cls: 'bg-amber-50 text-amber-700 border border-amber-200' },
-  Accepted:      { label: 'Đã tham gia', cls: 'bg-green-50 text-green-700 border border-green-200' },
-  Declined:      { label: 'Đã từ chối',  cls: 'bg-red-50 text-red-700 border border-red-200' },
-  Expired:       { label: 'Hết hạn',     cls: 'bg-gray-100 text-gray-500 border border-gray-200' },
+  PendingAccept: { label: 'Đang chờ xác nhận', cls: 'bg-amber-50 text-amber-700 border border-amber-200' },
+  Accepted:      { label: 'Đã tham gia',       cls: 'bg-green-50 text-green-700 border border-green-200' },
+  Declined:      { label: 'Đã từ chối',        cls: 'bg-red-50 text-red-700 border border-red-200' },
+  Expired:       { label: 'Hết hạn',           cls: 'bg-gray-100 text-gray-500 border border-gray-200' },
 };
 
 export function MyTeamTab({ eventId, userId }: Props) {
@@ -34,6 +35,17 @@ export function MyTeamTab({ eventId, userId }: Props) {
 
   if (isLoading) return <div className="p-6 t-body-md text-mute">Đang tải…</div>;
   if (!team) return <div className="p-6 t-body-md text-mute">Bạn chưa có đội.</div>;
+
+  // "Lời mời đã gửi" chỉ hiển thị lời mời VÀO ĐỘI. Yêu cầu chuyển quyền tái dùng chung
+  // bảng TeamInvitations (BE không có field phân biệt loại) nhưng luôn gửi cho người ĐÃ
+  // trong đội → lọc bỏ theo membership để không lẫn vào danh sách lời mời.
+  // Chuẩn hoá chữ thường + đối chiếu cả userId lẫn email để tránh trượt do GUID khác hoa/thường.
+  const norm = (s?: string | null) => (s ?? '').trim().toLowerCase();
+  const memberIds = new Set(team.members.map((m) => norm(m.userId)).filter(Boolean));
+  const memberEmails = new Set(team.members.map((m) => norm(m.email)).filter(Boolean));
+  const sentInvitations = invitations.filter(
+    (inv) => !memberIds.has(norm(inv.invitedUserId)) && !memberEmails.has(norm(inv.invitedUserEmail)),
+  );
 
   return (
     <section className="p-6 max-w-2xl mx-auto space-y-6">
@@ -66,10 +78,10 @@ export function MyTeamTab({ eventId, userId }: Props) {
                         className="btn btn-secondary btn-sm"
                         disabled={transfer.isPending}
                         onClick={() => {
-                          if (!window.confirm(`Chuyển quyền trưởng nhóm cho ${m.fullName}? Bạn sẽ trở thành thành viên thường.`)) return;
+                          if (!window.confirm(`Gửi yêu cầu chuyển quyền trưởng nhóm cho ${m.fullName}? ${m.fullName} cần xác nhận ở chuông thông báo thì mới thành trưởng nhóm.`)) return;
                           transfer.mutate(m.userId, {
-                            onSuccess: () => notify.success(`Đã chuyển quyền trưởng nhóm cho ${m.fullName}.`),
-                            onError: (err: any) => notify.error(err?.response?.data?.message || 'Chuyển quyền thất bại.'),
+                            onSuccess: () => notify.success(`Đã gửi yêu cầu chuyển quyền trưởng nhóm, chờ ${m.fullName} xác nhận.`),
+                            onError: (err: any) => notify.error(err?.response?.data?.message || 'Gửi yêu cầu chuyển quyền thất bại.'),
                           });
                         }}
                       >
@@ -124,12 +136,14 @@ export function MyTeamTab({ eventId, userId }: Props) {
       {isLeader && (
         <div className="border border-hairline rounded-sm bg-canvas p-4 md:p-6 space-y-3">
           <h3 className="t-body-md font-bold">Lời mời đã gửi</h3>
-          {invitations.length === 0 ? (
+          {sentInvitations.length === 0 ? (
             <p className="t-body-sm text-mute">Chưa gửi lời mời nào.</p>
           ) : (
             <ul className="divide-y divide-hairline">
-              {invitations.map((inv) => {
+              {sentInvitations.map((inv) => {
                 const badge = INVITE_BADGE[inv.status] ?? { label: inv.status, cls: 'bg-gray-100 text-gray-500 border border-gray-200' };
+                // Ưu tiên nhãn tiếng Việt từ BE; fallback về map cục bộ nếu BE cũ chưa trả.
+                const statusText = inv.statusLabel || badge.label;
                 return (
                   <li key={inv.invitationId} className="py-2 flex items-center justify-between gap-3">
                     <span className="t-body-sm">
@@ -139,7 +153,7 @@ export function MyTeamTab({ eventId, userId }: Props) {
                       ) : null}
                     </span>
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-sm whitespace-nowrap ${badge.cls}`}>
-                      {badge.label}
+                      {statusText}
                     </span>
                   </li>
                 );

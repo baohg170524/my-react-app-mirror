@@ -33,38 +33,38 @@ function adaptTemplate(t) {
   };
 }
 
-// GET /Templates?PageNumber=1&PageSize=50
+/** GET /api/Templates — danh sách bộ tiêu chí (phân trang) */
 export const getTemplates = async () => {
   const res   = await apiClient.get(ENDPOINTS.LIST, { params: { PageNumber: 1, PageSize: 50 } });
   const items = res.data?.data ?? [];
   return items.map(adaptTemplate);
 };
 
-// GET /Templates/{id}  → kèm criterias[]
+/** GET /api/Templates/{id} — chi tiết bộ tiêu chí (kèm danh sách tiêu chí) */
 export const getTemplateDetail = async (id) => {
   const res = await apiClient.get(ENDPOINTS.DETAIL(id));
   return adaptTemplate(res.data);
 };
 
-// POST /Templates  { templateName, description }
+/** POST /api/Templates — tạo bộ tiêu chí mới */
 export const createTemplate = async ({ templateName, description = '' }) => {
   const res = await apiClient.post(ENDPOINTS.CREATE, { templateName, description });
   return adaptTemplate(res.data);
 };
 
-// PUT /Templates/{id}
+/** PUT /api/Templates/{id} — cập nhật bộ tiêu chí */
 export const updateTemplate = async (id, { templateName, description = '' }) => {
   const res = await apiClient.put(ENDPOINTS.UPDATE(id), { templateName, description });
   return adaptTemplate(res.data);
 };
 
-// DELETE /Templates/{id}
+/** DELETE /api/Templates/{id} — xóa bộ tiêu chí */
 export const deleteTemplate = async (id) => {
   const res = await apiClient.delete(ENDPOINTS.DELETE(id));
   return res.data;
 };
 
-// POST /Templates/{id}/criteria  { criteriaId, weight, maxScore }
+/** POST /api/Templates/{id}/criteria — thêm tiêu chí vào bộ */
 export const addCriteriaToTemplate = async (templateId, { criteriaId, weight, maxScore }) => {
   const res = await apiClient.post(ENDPOINTS.ADD_CRITERIA(templateId), {
     criteriaId,
@@ -74,7 +74,7 @@ export const addCriteriaToTemplate = async (templateId, { criteriaId, weight, ma
   return res.data;
 };
 
-// PUT /Templates/{id}/criteria/{criteriaId}
+/** PUT /api/Templates/{id}/criteria/{criteriaId} — cập nhật cấu hình tiêu chí trong bộ */
 export const updateTemplateCriteria = async (templateId, criteriaId, { weight, maxScore }) => {
   const res = await apiClient.put(ENDPOINTS.UPDATE_CRITERIA(templateId, criteriaId), {
     weight:   Number(weight),
@@ -83,7 +83,7 @@ export const updateTemplateCriteria = async (templateId, criteriaId, { weight, m
   return adaptTemplateCriteria(res.data);
 };
 
-// DELETE /Templates/{id}/criteria/{criteriaId}
+/** DELETE /api/Templates/{id}/criteria/{criteriaId} — gỡ tiêu chí khỏi bộ */
 export const removeFromTemplate = async (templateId, criteriaId) => {
   const res = await apiClient.delete(ENDPOINTS.REMOVE_CRITERIA(templateId, criteriaId));
   return res.data;

@@ -47,8 +47,6 @@ export interface CreateTrackPayload {
   /** Template GUID, or null when no template is selected (avoids a 500). */
   templateId: string | null;
   submissionRuleDescription: string;
-  judgeUserIds: string[];
-  mentorUserIds: string[];
 }
 
 /** Round inside an event — matches RoundRequestDto. */
