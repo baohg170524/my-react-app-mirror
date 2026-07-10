@@ -7,13 +7,16 @@ import type { PagedResult } from "@/services/api";
 export interface SubmitResultListItem {
   id: string;
   teamId: string;
-  teamName: string;
+  teamName?: string;        // optional — backend chưa trả
   trackId: string;
-  roundId: string;
-  projectName: string;
-  repoUrl: string;
-  status: string;
-  submittedAt: string;
+  submissionUrl?: string;   // ← field thật
+  repoUrl?: string;         // giữ để tương thích
+  projectName?: string;     // optional — backend chưa trả
+  isActive: boolean;        // ← field thật
+  createdTime?: string;     // ← field thật
+  submittedAt?: string;     // giữ để tương thích
+  status?: string;
+  roundId?: string;
 }
 
 /** Chi tiết bài nộp (GET /api/SubmitResults/{id}). */
@@ -44,6 +47,7 @@ export interface UpdateSubmitResultRequest {
 }
 
 export interface ListSubmitResultParams {
+  eventId?: string;
   teamId?: string;
   roundId?: string;
   trackId?: string;
@@ -60,6 +64,7 @@ export const submitResultsApi = {
   list: async (params?: ListSubmitResultParams): Promise<SubmitResultListItem[]> => {
     const { data } = await apiClient.get<PagedResult<SubmitResultListItem>>("/SubmitResults", {
       params: {
+        EventId:     params?.eventId,
         TeamId:      params?.teamId,
         RoundId:     params?.roundId,
         TrackId:     params?.trackId,

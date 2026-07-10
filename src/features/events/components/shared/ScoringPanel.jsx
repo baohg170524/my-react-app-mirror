@@ -5,6 +5,11 @@ import EditModal from '@/components/EditModal';
 import ScoringView from '@/views/ScoringPage';
 import { useCurrentUser } from '@/hooks/useAuth';
 import { scoresApi } from '@/services/api';
+import { eventRolesApi } from '@/features/events/api/eventRoles';
+import { tracksApi } from '@/features/events/api/roundTrack';
+import { templatesApi } from '@/features/events/api/templates';
+import { submitResultsApi } from '@/features/events/api/submitResults';
+import { getErrorMessage } from '@/lib/apiError';
 
 /**
  * Phần chấm điểm tái sử dụng từ trang /scoring, nhúng vào tab dashboard.
@@ -31,38 +36,77 @@ export default function ScoringPanel({ eventId, trackId = null }) {
   }, []);
 
   useEffect(() => {
-    if (!currentUser?.id || !eventId) {
-      setLoading(false);
-      return;
-    }
+    // `loading` đã mặc định true — chưa đủ currentUser/eventId thì cứ giữ spinner,
+    // không setState ở đây (tránh setState đồng bộ trong effect); effect sẽ tự chạy
+    // lại và tải thật khi 2 giá trị này sẵn sàng (đã có trong dependency array).
+    if (!currentUser?.id || !eventId) return;
 
     let cancelled = false;
 
-    // thay đổi khi có API thật trackId
     const load = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // ── MOCK DATA ── xóa khi có API thật ──────────────────────
-        const mockCriteria = [
-          { id: 'c1', label: 'Tính sáng tạo',    weight: 30, maxScore: 3, desc: '' },
-          { id: 'c2', label: 'Kỹ năng trình bày', weight: 30, maxScore: 3, desc: '' },
-          { id: 'c3', label: 'Tính khả thi',       weight: 20, maxScore: 2, desc: '' },
-          { id: 'c4', label: 'Tác động thực tế',   weight: 20, maxScore: 2, desc: '' },
-        ];
-        const mockTeams = [
-          { id: 's1', name: 'Team Alpha', scores: [0, 0, 0, 0], comments: ['', '', '', ''] },
-          { id: 's2', name: 'Team Beta',  scores: [0, 0, 0, 0], comments: ['', '', '', ''] },
-          { id: 's3', name: 'Team Gamma', scores: [0, 0, 0, 0], comments: ['', '', '', ''] },
-        ];
+        // ── Bước 1: Lấy eventRole → eventRoleId + trackId ───────────────
+        const role = await eventRolesApi.getUserRole(currentUser.id, eventId);
         if (cancelled) return;
-        setCriteria(mockCriteria);
-        setTeams(mockTeams);
-        setEventRoleId('mock-role-id');
-        // ── END MOCK ───────────────────────────────────────────────
+
+        if (!role) throw new Error('Bạn chưa được phân công vai trò trong sự kiện này.');
+
+        // trackId có thể truyền vào từ props (Admin/Judge xem cụ thể)
+        // hoặc lấy từ role (Judge tự động)
+        const resolvedTrackId = trackId ?? role.trackId;
+        if (!resolvedTrackId) throw new Error('Bạn chưa được phân công hạng mục (track) trong sự kiện này.');
+
+        setEventRoleId(role.id);
+
+        // ── Bước 2: Lấy track → templateId ──────────────────────────────
+        const track = await tracksApi.getById(resolvedTrackId);
+        if (cancelled) return;
+
+        if (!track.templateId) throw new Error('Hạng mục chưa được gắn bộ tiêu chí. Vui lòng liên hệ ban tổ chức.');
+
+        // ── Bước 3: Lấy template → criterias[] ───────────────────────────
+        const template = await templatesApi.getById(track.templateId);
+        if (cancelled) return;
+
+        const mappedCriteria = (template.criterias ?? []).map(c => ({
+          id:       c.criteriaId,
+          label:    c.criteriaName,
+          labelVi:  c.criteriaName,
+          weight:   c.weight,
+          maxScore: c.maxScore ?? c.weight, // hệ 100: maxScore = weight
+          desc:     c.description ?? '',
+          levels:   [],
+        }));
+
+        if (mappedCriteria.length === 0) throw new Error('Bộ tiêu chí chưa có tiêu chí nào.');
+
+        setCriteria(mappedCriteria);
+
+        // ── Bước 4: Lấy danh sách bài nộp của track ──────────────────────
+        const submissions = await submitResultsApi.list({
+          eventId: eventId,
+          trackId: resolvedTrackId,
+        });
+        if (cancelled) return;
+
+        setTeams(submissions.map(s => ({
+          id:       s.id,          // submitResultId — dùng cho scoresApi.save
+          name:     s.teamName ?? `Đội ${s.teamId?.slice(0, 4)}`,
+          scores:   Array(mappedCriteria.length).fill(0),
+          comments: Array(mappedCriteria.length).fill(''),
+        })));
+
       } catch (e) {
-        if (!cancelled) setError(e?.message ?? 'Không thể tải dữ liệu chấm điểm');
+        // Lỗi validate tự ném (Error thường, không có .response) → giữ nguyên message gốc.
+        // Lỗi từ API (axios, có .response) → lấy message thật từ backend thay vì text
+        // chung chung "Request failed with status code ..." để biết đúng lý do (vd hết
+        // hạn chấm, chưa tới vòng chấm...).
+        if (!cancelled) {
+          setError(e?.response ? getErrorMessage(e, 'Không thể tải dữ liệu chấm điểm.') : (e?.message ?? 'Không thể tải dữ liệu chấm điểm.'));
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }

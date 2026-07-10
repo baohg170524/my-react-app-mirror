@@ -1,14 +1,16 @@
 'use client';
 import { useState, useEffect } from 'react';
 import SubmissionView from '@/views/SubmissionPage';
-import { getAllSubmissions } from '@/services/submissionService';
+import { submitResultsApi } from '@/features/events/api/submitResults';
+import { getErrorMessage } from '@/lib/apiError';
 
 /**
- * Danh sách bài nộp tái sử dụng từ trang /submission, nhúng vào tab dashboard.
+ * Danh sách bài nộp — nhúng vào tab dashboard.
+ * Dùng API thật từ submitResultsApi (TS) thay vì submissionService.js cũ.
  *
  * Props:
- *  - eventId: bắt buộc — backend yêu cầu EventId cho GET /SubmitResults.
- *  - trackId: nếu có — judge/mentor chỉ thấy bài nộp của hạng mục được giao.
+ *  - eventId: bắt buộc — backend cần EventId cho GET /SubmitResults
+ *  - trackId: nếu có — chỉ lấy bài nộp của hạng mục đó
  *
  * @param {{ eventId?: string | null, trackId?: string | null }} props
  */
@@ -18,34 +20,65 @@ export default function SubmissionsPanel({ eventId = null, trackId = null }) {
   const [error,       setError]       = useState(null);
 
   useEffect(() => {
+    // `loading` đã mặc định true — chưa có eventId thì giữ spinner, không setState ở
+    // đây (tránh setState đồng bộ trong effect); effect tự chạy lại khi có eventId.
+    if (!eventId) return;
+
     let cancelled = false;
-    setLoading(true);
-    setError(null);
-    const params = {
-      PageSize: 100,
-      ...(eventId ? { EventId: eventId } : {}),
-      ...(trackId ? { TrackId: trackId } : {}),
+
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const items = await submitResultsApi.list({
+            eventId:  eventId ?? undefined,
+            trackId:  trackId ?? undefined,
+            pageSize: 100,
+          });
+        if (cancelled) return;
+        // Map từ SubmitResultListItem → shape SubmissionView mong đợi
+        setSubmissions(items.map(item => ({
+          id:          item.id,
+          teamId:      item.teamId,
+          teamName:    item.teamName ?? '—',
+          projectName: item.teamId?.slice(0, 8).toUpperCase() ?? '—',
+          repo:        item.submissionUrl ?? item.repoUrl ?? '',
+          submittedAt: item.createdTime
+          ? new Date(item.createdTime.replace('+00:00', 'Z')).toLocaleString('vi-VN', {
+              day: '2-digit', month: '2-digit', year: 'numeric',
+              hour: '2-digit', minute: '2-digit',
+            })
+          : '—',
+          status: item.isActive ? 'Đã nhận' : 'Không hoạt động',
+        })));
+      } catch (err) {
+        // Lấy message thật từ backend (nếu có) thay vì text chung chung của axios,
+        // để biết đúng lý do thất bại (vd hết hạn nộp, chưa tới vòng...).
+        if (!cancelled) setError(getErrorMessage(err, 'Lỗi tải dữ liệu bài nộp.'));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     };
-    getAllSubmissions(params)
-      .then(result => { if (!cancelled) setSubmissions(result.items); })
-      .catch(err   => { if (!cancelled) setError(err?.response?.data?.message ?? err?.message ?? 'Lỗi tải dữ liệu'); })
-      .finally(()  => { if (!cancelled) setLoading(false); });
+
+    load();
     return () => { cancelled = true; };
   }, [eventId, trackId]);
 
   if (loading) {
     return (
-      <div style={{ color: '#7da88a', textAlign: 'center', paddingTop: 80, fontSize: 14 }}>
+      <div style={{ color: '#757575', textAlign: 'center', paddingTop: 80, fontSize: 14 }}>
         Đang tải danh sách bài nộp…
       </div>
     );
   }
+
   if (error) {
     return (
-      <div style={{ color: '#ff4d6d', textAlign: 'center', paddingTop: 80, fontSize: 14 }}>
+      <div style={{ color: '#d32f2f', textAlign: 'center', paddingTop: 80, fontSize: 14 }}>
         {error}
       </div>
     );
   }
+
   return <SubmissionView submissions={submissions} teams={[]} />;
 }

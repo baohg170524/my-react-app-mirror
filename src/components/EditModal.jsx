@@ -12,7 +12,7 @@ export default function EditModal({ team, criteria, onClose, onSave }) {
   const next = calcScore(scores, criteria);
 
   return (
-    <div className="modal-overlay" style={{ padding: '24px 16px' }}>
+    <div className="modal-overlay" style={{ padding: '24px 16px', zIndex: 200, alignItems: 'flex-start', paddingTop: '80px' }}>
       <div className="modal-box" style={{ maxWidth: 680 }}>
 
         {/* Header */}
@@ -20,7 +20,7 @@ export default function EditModal({ team, criteria, onClose, onSave }) {
           <div>
             <div className="text-lg font-bold" style={{ color: '#000' }}>Chấm / Chỉnh sửa điểm số</div>
             <div className="text-xs mt-1" style={{ color: '#757575' }}>Xem lại và điều chỉnh điểm số theo từng tiêu chí.</div>
-            <div className="text-sm mt-1.5 font-bold" style={{ color: '#76b900' }}>{team.id} · {team.name}</div>
+            <div className="text-sm mt-1.5 font-bold" style={{ color: '#76b900' }}>Đội {String(team.id || '').slice(0, 8).toUpperCase()}</div>
           </div>
           <button
             className="btn-hover text-xl leading-none"
