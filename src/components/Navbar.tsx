@@ -129,6 +129,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { User } from "lucide-react";
 import { useCurrentUser, useIsAuthenticated, useLogout } from "@/hooks/useAuth";
 import { NotificationBell } from "./NotificationBell";
 
@@ -324,11 +325,12 @@ export function Navbar() {
               {user?.fullName && (
                 <Link 
                   href="/profile"
-                  style={{ fontSize: "var(--fs-body-sm)", color: "var(--color-on-dark-mute)", textDecoration: "none", transition: "color 0.2s" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-primary)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-on-dark-mute)")}
+                  style={{ display: "flex", alignItems: "center", transition: "opacity 0.2s" }}
+                  onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.8")}
+                  onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+                  title={`Hồ sơ của ${user.fullName}`}
                 >
-                  {user.fullName}
+                  <User color="rgb(118, 185, 0)" size={20} />
                 </Link>
               )}
               <button
