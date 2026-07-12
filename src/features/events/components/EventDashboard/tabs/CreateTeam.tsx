@@ -6,6 +6,8 @@ import { useCreateTeam, TEAM_KEYS } from '@/features/teams/hooks/useTeams';
 import { useEventDashboard } from '@/features/events/contexts/EventDashboardContext';
 import { useCurrentUser } from '@/hooks/useAuth';
 import { useRegistration } from '@/features/registration/hooks/useRegistration';
+import { useUserRole } from '@/hooks/useUserRole';
+import Link from 'next/link';
 
 interface Props { eventId: string; userId: string; }
 
@@ -13,6 +15,7 @@ export function CreateTeamTab({ eventId, userId }: Props) {
   const qc = useQueryClient();
   const { setActiveTab } = useEventDashboard();
   const { data: me } = useCurrentUser();
+  const role = useUserRole();
   const create = useCreateTeam(eventId, userId);
   const { status: registrationStatus } = useRegistration(userId);
 
@@ -40,6 +43,20 @@ export function CreateTeamTab({ eventId, userId }: Props) {
       },
     );
   };
+
+  if (role !== 'student') {
+    return (
+      <div className="p-6 max-w-[36rem] mx-auto border border-hairline rounded-sm bg-canvas flex flex-col gap-3">
+        <h2 className="t-heading-md m-0">Tạo đội</h2>
+        <p className="t-body-sm text-mute m-0">
+          Phần này chỉ dành cho những sinh viên trường Đại học FPT và sinh viên ngoài trường đã được xét duyệt, nếu muốn tham gia thi và tạo đội hãy cập nhật đầy đủ hồ sơ.
+        </p>
+        <Link href="/profile" className="btn btn-primary w-fit">
+          Cập nhật hồ sơ
+        </Link>
+      </div>
+    );
+  }
 
   if (registrationStatus !== 'approved') {
     return (

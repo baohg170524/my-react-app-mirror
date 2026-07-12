@@ -60,5 +60,6 @@ export function getEventTabs(args: {
   }
 
   // Mặc định (ví dụ MENTOR toàn cục nhưng không tham gia event này)
-  return [TAB.detail];
+  // Hiện thêm tab Tạo đội để hướng dẫn người dùng thường/chưa là sinh viên cập nhật hồ sơ
+  return [TAB.detail, TAB.createTeam];
 }
