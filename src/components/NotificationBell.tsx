@@ -5,6 +5,7 @@ import { invitationsApi } from '@/features/invitations/api/invitationsApi';
 import { teamsApi } from '@/features/teams/api/teams';
 import { useNotify } from '@/components/NotificationProvider';
 import { useRejectionNotifications } from '@/hooks/useRejectionNotifications';
+import { useApprovalNotification } from '@/hooks/useApprovalNotification';
 import Link from 'next/link';
 
 export function NotificationBell() {
@@ -24,14 +25,16 @@ export function NotificationBell() {
   });
 
   const { activeRejections, rejectionCount, isLoading: isRejLoading, refetch: refetchRej } = useRejectionNotifications();
+  const { showApproval, dismissApproval, isLoading: isApprovalLoading, refetch: refetchApproval } = useApprovalNotification();
 
   // Mở chuông = lấy lại danh sách mới nhất
   useEffect(() => {
     if (isOpen) {
       refetchInvites();
       refetchRej();
+      refetchApproval();
     }
-  }, [isOpen, refetchInvites, refetchRej]);
+  }, [isOpen, refetchInvites, refetchRej, refetchApproval]);
 
   // Đóng dropdown khi click ra ngoài
   useEffect(() => {
@@ -96,10 +99,10 @@ export function NotificationBell() {
       </span>
     ) : null;
 
-  const totalPending = (inviteData?.totalPending || 0) + rejectionCount;
+  const totalPending = (inviteData?.totalPending || 0) + rejectionCount + (showApproval ? 1 : 0);
   const invitations = inviteData?.invitations ?? [];
   const isPending = respondTeamMut.isPending || respondRoleMut.isPending;
-  const isLoading = isInviteLoading || isRejLoading;
+  const isLoading = isInviteLoading || isRejLoading || isApprovalLoading;
 
   return (
     <div className="relative" ref={bellRef}>
@@ -126,12 +129,32 @@ export function NotificationBell() {
               <div className="p-6 flex justify-center items-center text-on-dark-mute">
                 <Loader2 className="animate-spin w-5 h-5" />
               </div>
-            ) : invitations.length === 0 && activeRejections.length === 0 ? (
+            ) : invitations.length === 0 && activeRejections.length === 0 && !showApproval ? (
               <div className="p-6 text-center text-sm text-on-dark-mute">
                 Bạn không có thông báo nào.
               </div>
             ) : (
               <div className="flex flex-col">
+                {/* Thông báo được duyệt hồ sơ */}
+                {showApproval && (
+                  <div className="p-3 border-b border-hairline-strong flex items-start gap-2 hover:bg-surface-elevated transition-colors bg-primary/5">
+                    <Check size={16} className="text-primary mt-0.5 shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm text-on-dark leading-snug mb-1">
+                        <span className="font-bold text-primary">Hồ sơ của bạn đã được duyệt!</span>
+                      </p>
+                      <p className="text-xs text-on-dark-mute">Bạn hiện đã có thể tạo hoặc tham gia nhóm.</p>
+                    </div>
+                    <button 
+                      onClick={dismissApproval}
+                      className="p-1 text-on-dark-mute hover:text-error transition-colors rounded-full hover:bg-error/10"
+                      title="Đóng thông báo"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+
                 {/* Thông báo bị từ chối hồ sơ */}
                 {activeRejections.map(rej => (
                   <div key={rej.id} className="p-3 border-b border-hairline-strong flex items-start gap-2 hover:bg-surface-elevated transition-colors bg-error/5">
