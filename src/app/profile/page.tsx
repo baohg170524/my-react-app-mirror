@@ -4,10 +4,17 @@ import { Navbar } from '@/components/Navbar';
 import { GlobalProfile } from '@/features/user/components/GlobalProfile';
 import { useCurrentUser } from '@/hooks/useAuth';
 
+import { useEffect, useState } from 'react';
+
 export default function ProfilePage() {
   const { data: user, isLoading } = useCurrentUser();
+  const [mounted, setMounted] = useState(false);
 
-  if (isLoading) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || isLoading) return null;
 
   if (!user) {
     return (

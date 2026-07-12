@@ -4,6 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invitationsApi } from '@/features/invitations/api/invitationsApi';
 import { teamsApi } from '@/features/teams/api/teams';
 import { useNotify } from '@/components/NotificationProvider';
+import { useRejectionNotifications } from '@/hooks/useRejectionNotifications';
+import Link from 'next/link';
 
 export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
@@ -11,7 +13,7 @@ export function NotificationBell() {
   const queryClient = useQueryClient();
   const notify = useNotify();
 
-  const { data: inviteData, isLoading, refetch } = useQuery({
+  const { data: inviteData, isLoading: isInviteLoading, refetch: refetchInvites } = useQuery({
     queryKey: ['my-invitations'],
     queryFn: invitationsApi.getMyInvitations,
     refetchInterval: 30000, // Polling mỗi 30s
@@ -21,10 +23,15 @@ export function NotificationBell() {
     staleTime: 0,
   });
 
-  // Mở chuông = lấy lại danh sách mới nhất (lời mời chết tự biến mất).
+  const { activeRejections, rejectionCount, isLoading: isRejLoading, refetch: refetchRej } = useRejectionNotifications();
+
+  // Mở chuông = lấy lại danh sách mới nhất
   useEffect(() => {
-    if (isOpen) refetch();
-  }, [isOpen, refetch]);
+    if (isOpen) {
+      refetchInvites();
+      refetchRej();
+    }
+  }, [isOpen, refetchInvites, refetchRej]);
 
   // Đóng dropdown khi click ra ngoài
   useEffect(() => {
@@ -82,7 +89,6 @@ export function NotificationBell() {
     }
   };
 
-  // Chip hạng mục (Track) — chỉ hiện với lời mời Judge/Mentor theo hạng mục, giúp phân biệt các lời mời cùng vai trò.
   const trackChip = (name?: string | null) =>
     name ? (
       <span className="inline-flex items-center px-2 py-0.5 text-[11px] font-semibold rounded-sm bg-primary/15 text-primary border border-primary/30">
@@ -90,9 +96,10 @@ export function NotificationBell() {
       </span>
     ) : null;
 
-  const totalPending = inviteData?.totalPending || 0;
+  const totalPending = (inviteData?.totalPending || 0) + rejectionCount;
   const invitations = inviteData?.invitations ?? [];
   const isPending = respondTeamMut.isPending || respondRoleMut.isPending;
+  const isLoading = isInviteLoading || isRejLoading;
 
   return (
     <div className="relative" ref={bellRef}>
@@ -119,12 +126,28 @@ export function NotificationBell() {
               <div className="p-6 flex justify-center items-center text-on-dark-mute">
                 <Loader2 className="animate-spin w-5 h-5" />
               </div>
-            ) : invitations.length === 0 ? (
+            ) : invitations.length === 0 && activeRejections.length === 0 ? (
               <div className="p-6 text-center text-sm text-on-dark-mute">
-                Bạn không có lời mời nào.
+                Bạn không có thông báo nào.
               </div>
             ) : (
               <div className="flex flex-col">
+                {/* Thông báo bị từ chối hồ sơ */}
+                {activeRejections.map(rej => (
+                  <div key={rej.id} className="p-3 border-b border-hairline-strong flex items-start gap-2 hover:bg-surface-elevated transition-colors bg-error/5">
+                    <X size={16} className="text-error mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm text-on-dark leading-snug mb-1">
+                        <span className="font-bold text-error">Hồ sơ của bạn đã bị từ chối!</span>
+                      </p>
+                      <p className="text-xs text-on-dark-mute mb-2">Lý do: {rej.reason}</p>
+                      <Link href="/profile" className="text-xs font-semibold text-primary hover:underline">
+                        Cập nhật hồ sơ ngay →
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+
                 {invitations.map((inv) => {
                   const responded = inv.status === 'Accepted' || inv.status === 'Declined';
 
