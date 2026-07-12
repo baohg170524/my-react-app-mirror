@@ -72,6 +72,7 @@ async function buildTeam(teamId: string, roles: EventRoleRow[]): Promise<TeamMod
     teamName: data.name?.trim() || '(Chưa đặt tên)',
     description: data.description,
     members,
+    status: (data as any).status ?? undefined,
   };
 }
 
@@ -99,6 +100,7 @@ export const teamsApi = {
       teamName: data.name?.trim() || '(Chưa đặt tên)',
       description: data.description,
       members: mappedMembers,
+      status: (data as any).status ?? undefined,
     };
   },
 
@@ -159,6 +161,14 @@ export const teamsApi = {
       ),
     ];
     return Promise.all(teamIds.map((id) => buildTeam(id, roles)));
+  },
+
+  /** POST /api/Teams/{teamId}/confirm-registration
+   *  TeamLeader chốt danh sách đội (yêu cầu 3-5 thành viên đã duyệt).
+   *  Sau khi chốt → trạng thái đội đổi thành "Registered", không thể thêm/xóa thành viên.
+   */
+  confirmRegistration: async (teamId: string): Promise<void> => {
+    await apiClient.post(`/Teams/${encodeURIComponent(teamId)}/confirm-registration`);
   },
 
   /** Get pending invitation for the current user to a specific team (if any). */

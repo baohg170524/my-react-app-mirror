@@ -17,7 +17,7 @@ export default function ScoringPage({ teams, criteria, onEdit, disabled = false 
             <div key={t.id} className="card-hover p-6"
               style={{ background: '#fff', border: '1px solid #cccccc', borderRadius: 2, animationDelay: `${i * 0.07}s` }}>
               <div className="flex justify-between items-start">
-                <div className="text-xs font-bold uppercase tracking-wider" style={{ color: '#757575' }}>{t.id}</div>
+                <div className="text-xs font-bold uppercase tracking-wider" style={{ color: '#757575' }}>{String(t.id).slice(0, 8).toUpperCase()}</div>
                 <div className="text-right">
                   <div className="text-3xl font-black leading-none" style={{ color: '#76b900' }}>{score.toFixed(2)}</div>
                   <div className="text-xs" style={{ color: '#757575' }}>/10 · {criteria.length} Bộ tiêu chí</div>

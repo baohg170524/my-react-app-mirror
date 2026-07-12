@@ -32,6 +32,7 @@ export function SubmissionTab({ teamId, eventId }: Props) {
   const [description, setDesc] = useState('');
   // Bài đang sửa (null = đang ở chế độ nộp mới). Chỉ sửa được link + mô tả, trong thời gian vòng còn mở.
   const [editing, setEditing] = useState<SubmissionModel | null>(null);
+  const [now] = useState(() => Date.now());
 
   // eventId bắt buộc: filter phân quyền BE cần EventId (thiếu sẽ bị 400).
   const {
@@ -57,7 +58,6 @@ export function SubmissionTab({ teamId, eventId }: Props) {
   };
   const isRoundOpen = (r?: RoundInfo) => {
     if (!r) return false;
-    const now = Date.now();
     return now >= new Date(r.startDate).getTime() && now <= new Date(r.endDate).getTime();
   };
 
@@ -119,7 +119,7 @@ export function SubmissionTab({ teamId, eventId }: Props) {
             )}
 
             <label className="block">
-              <span className="t-body-sm font-bold">Track</span>
+              <span className="t-body-sm font-bold">Hạng mục thi đấu</span>
               <select required value={trackId} onChange={(e) => setTrackId(e.target.value)} className="input w-full mt-1" disabled={!roundId}>
                 <option value="">— Chọn track —</option>
                 {tracksForRound.map((t) => <option key={t.id} value={t.id}>{t.trackName ?? 'Track ' + t.id.slice(0, 4)}</option>)}

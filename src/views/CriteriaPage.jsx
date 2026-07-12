@@ -181,14 +181,14 @@ export default function CriteriaPage({ criteria, setCriteria, sn }) {
         <div className="p-5 mb-6" style={{ background: '#f7f7f7', border: '1px solid #cccccc', borderRadius: 2 }}>
           <div className="flex justify-between mb-2.5">
             <span className="text-sm" style={{ color: '#757575' }}>Tổng trọng số (từ Template)</span>
-            <span className="text-sm font-bold" style={{ color: totalW === 100 ? '#76b900' : '#df6500' }}>
-              {totalW}% / 100%
+            <span className="text-sm font-bold" style={{ color: totalW === 10 ? '#76b900' : '#df6500' }}>
+              {totalW} / 10
             </span>
           </div>
           <div className="h-2 overflow-hidden flex gap-0.5" style={{ background: '#e5e5e5', borderRadius: 2 }}>
             {criteria.map((c, i) => (
               <div key={i} style={{
-                height: '100%', width: `${c.weight ?? 0}%`,
+                height: '100%', width: `${((c.weight ?? 0) / 10) * 100}%`,
                 background: COLORS[i % COLORS.length],
                 transition: 'width .4s',
               }} />
@@ -198,7 +198,7 @@ export default function CriteriaPage({ criteria, setCriteria, sn }) {
             {criteria.map((c, i) => (
               <div key={i} className="flex items-center gap-1.5 text-xs" style={{ color: '#757575' }}>
                 <div style={{ width: 8, height: 8, background: COLORS[i % COLORS.length], borderRadius: 2 }} />
-                {c.label} {c.weight ? `(${c.weight}%)` : ''}
+                {c.label} {c.weight ? `(${c.weight}/10)` : ''}
               </div>
             ))}
           </div>
@@ -238,7 +238,7 @@ export default function CriteriaPage({ criteria, setCriteria, sn }) {
                 {c.weight > 0 && (
                   <div className="px-2.5 py-0.5 text-xs font-bold"
                     style={{ background: 'rgba(118,185,0,.12)', border: '1px solid rgba(118,185,0,.3)', color: '#76b900', borderRadius: 2 }}>
-                    {c.weight}%
+                    {c.weight}/10
                   </div>
                 )}
                 <div className="text-base font-bold" style={{ color: '#000' }}>{c.label}</div>

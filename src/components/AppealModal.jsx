@@ -52,10 +52,10 @@ export default function AppealModal({ appeal, team, criteria, onClose, onUpdate 
                   <div key={i} className="grid items-center p-3 mb-1.5"
                     style={{ gridTemplateColumns: '1fr 70px 80px 100px', gap: 8, background: '#f7f7f7', borderRadius: 2 }}>
                     <div className="text-sm font-bold" style={{ color: '#000' }}>{c.label}</div>
-                    <div className="text-center text-xs" style={{ color: '#757575' }}>{c.weight}%</div>
+                    <div className="text-center text-xs" style={{ color: '#757575' }}>{c.weight}/10</div>
                     <div className="text-center text-base font-bold" style={{ color: '#000' }}>{team.scores[i] || 0}</div>
                     <div className="text-right text-sm font-bold" style={{ color: '#76b900' }}>
-                      {((team.scores[i] || 0) * (c.weight / 100)).toFixed(2)}
+                      {((team.scores[i] || 0) * (c.weight / 10)).toFixed(2)}
                     </div>
                   </div>
                 ))}
@@ -71,14 +71,14 @@ export default function AppealModal({ appeal, team, criteria, onClose, onUpdate 
                   <div key={i} className="grid items-center p-3 mb-1.5"
                     style={{ gridTemplateColumns: '1fr 70px 80px 100px', gap: 8, background: '#f7f7f7', borderRadius: 2 }}>
                     <div className="text-sm font-bold" style={{ color: '#000' }}>{c.label}</div>
-                    <div className="text-center text-xs" style={{ color: '#757575' }}>{c.weight}%</div>
+                    <div className="text-center text-xs" style={{ color: '#757575' }}>{c.weight}/10</div>
                     <input type="number" min="0" max="10" step="0.5" value={es[i] || 0}
                       onChange={e => { const v = [...es]; v[i] = parseFloat(e.target.value) || 0; setEs(v); }}
                       className="text-center text-sm font-bold w-full"
                       style={{ background: '#fff', border: '2px solid #76b900', padding: '7px 4px', color: '#000', outline: 'none', borderRadius: 2 }}
                     />
                     <div className="text-right text-sm font-bold" style={{ color: '#76b900' }}>
-                      {((es[i] || 0) * (c.weight / 100)).toFixed(2)}
+                      {((es[i] || 0) * (c.weight / 10)).toFixed(2)}
                     </div>
                   </div>
                 ))}

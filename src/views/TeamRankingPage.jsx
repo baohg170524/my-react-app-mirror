@@ -35,7 +35,7 @@ export default function TeamRankingPage({ teams, criteria, myId }) {
               <div key={i} className="p-3" style={{ background: '#f7f7f7', borderRadius: 2 }}>
                 <div className="text-xs mb-1" style={{ color: '#757575' }}>{c.label}</div>
                 <div className="text-xl font-bold" style={{ color: '#76b900' }}>{me.scores[i] || 0}</div>
-                <div className="text-xs" style={{ color: '#757575' }}>{c.weight}%</div>
+                <div className="text-xs" style={{ color: '#757575' }}>{c.weight}/10</div>
                 {me.comments?.[i] && (
                   <div className="text-xs mt-1 italic leading-snug" style={{ color: '#757575' }}>"{me.comments[i]}"</div>
                 )}

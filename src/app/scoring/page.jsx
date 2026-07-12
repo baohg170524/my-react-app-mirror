@@ -17,17 +17,69 @@ function ScoringInner() {
 
   // Khi không có eventId — event selector
   const [events, setEvents]               = useState([]);
-  const [eventsLoading, setEventsLoading] = useState(false);
+  const [eventsLoading, setEventsLoading] = useState(true);
 
   // Load danh sách sự kiện khi chưa có eventId
   useEffect(() => {
     if (eventId || !currentUser?.id) return;
-    setEventsLoading(true);
     eventsApi.list()
       .then(setEvents)
       .catch(console.error)
       .finally(() => setEventsLoading(false));
   }, [eventId, currentUser?.id]);
+
+  // Load dữ liệu chấm điểm khi đã có eventId — đã chuyển sang ScoringPanel
+    // const load = async () => {
+
+    //   try {
+    //     setLoading(true);
+    //     setError(null);
+
+    //     // 1. Lấy eventRole của judge → eventRoleId + trackId
+    //     const role = await eventRolesApi.getUserRole(currentUser.id, eventId);
+    //       if (cancelled) return;
+
+    //       if (!role) throw new Error('Bạn chưa được phân công vai trò trong sự kiện này');
+    //       if (!role.trackId) throw new Error('Bạn chưa được phân công track trong sự kiện này');
+    //     setEventRoleId(role.id);
+
+    //     // 2. Lấy track → templateId
+    //     const track = await tracksApi.getById(role.trackId);
+    //     if (cancelled) return;
+
+    //     if (!track.templateId) throw new Error('Track chưa được gắn bộ tiêu chí');
+
+    //     // 3. Lấy template → criterias[]
+    //     const template = await templatesApi.getById(track.templateId);
+    //     if (cancelled) return;
+
+    //     const mappedCriteria = (template.criterias ?? []).map(c => ({
+    //       id:      c.criteriaId,
+    //       label:   c.criteriaName,
+    //       labelVi: c.criteriaName,
+    //       weight:  c.weight,
+    //       desc:    c.description ?? '',
+    //       levels:  [],
+    //     }));
+    //     setCriteria(mappedCriteria);
+
+    //     // 4. Lấy danh sách bài nộp của track
+    //     const submissions = await submitResultsApi.list({ trackId: role.trackId });
+    //     if (cancelled) return;
+
+    //     setTeams(submissions.map(s => ({
+    //       id:       s.id,
+    //       name:     s.teamName,
+    //       scores:   Array(mappedCriteria.length).fill(0),
+    //       comments: Array(mappedCriteria.length).fill(''),
+    //     })));
+    //   } catch (e) {
+    //     if (!cancelled) setError(e?.message ?? 'Không thể tải dữ liệu chấm điểm');
+    //   } finally {
+    //     if (!cancelled) setLoading(false);
+    //   }
+    // };
+
 
   // ── Chưa chọn sự kiện ─────────────────────────────────────────────────────
   if (!eventId) {

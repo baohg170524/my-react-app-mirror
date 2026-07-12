@@ -11,6 +11,8 @@ export interface TeamModel {
   teamName: string;
   description: string | null;
   members: TeamMember[];
+  /** Trạng thái đội: "Draft" | "Registered" | ... */
+  status?: string;
 }
 
 /** Matches backend CreateTeamRequestModel. */

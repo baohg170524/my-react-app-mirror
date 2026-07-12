@@ -30,6 +30,11 @@ function InvitationInner() {
   const id = String(params?.id ?? "");
   const actionParam = search?.get("action"); // "accept" | "decline" | null
 
+  // Đọc trực tiếp lúc render (không qua effect/setState) — component này chỉ render
+  // trên client (bọc Suspense vì dùng useSearchParams) nên không có rủi ro hydration mismatch.
+  const hasToken = typeof window !== "undefined" && !!localStorage.getItem("accessToken");
+  const needsLogin = !hasToken && actionParam !== "decline";
+
   const [phase, setPhase] = useState<Phase>("checking");
   const [errorMsg, setErrorMsg] = useState("");
   const startedRef = useRef(false);
@@ -83,37 +88,31 @@ function InvitationInner() {
       setPhase("error");
     },
   });
-  const doDecline = () => {
-    setPhase("working");
-    declineMut.mutate();
-  };
-
   useEffect(() => {
     if (startedRef.current || !id) return;
     startedRef.current = true;
 
     // TỪ CHỐI qua email: công khai, KHÔNG cần đăng nhập -> hiện lời cảm ơn ngay.
+    // Gọi mutate() trực tiếp (không setPhase trước) — phase vẫn "checking", render
+    // giống hệt "working" nên không cần chuyển state đồng bộ trong effect.
     if (actionParam === "decline") {
-      doDecline();
+      declineMut.mutate();
       return;
     }
-
-    const hasToken =
-      typeof window !== "undefined" && !!localStorage.getItem("accessToken");
 
     if (!hasToken) {
-      // Chấp nhận (phải tạo vai trò đúng người) hoặc link trung tính -> yêu cầu đăng nhập.
+      // "need-login" giờ được suy ra từ `needsLogin` lúc render, effect chỉ lo phần
+      // side effect thật sự (ghi localStorage), không tự set phase nữa.
       const returnUrl = actionParam ? `/invitations/${id}?action=${actionParam}` : "/";
       localStorage.setItem("postLoginRedirect", returnUrl);
-      setPhase("need-login");
       return;
     }
 
-    if (actionParam === "accept") doRespond(true);
+    if (actionParam === "accept") respond.mutate(true);
     // Đã đăng nhập nhưng không có action (vào từ link) -> mở chuông thông báo ở trang chủ.
     else router.replace("/");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, actionParam]);
+  }, [id, actionParam, hasToken]);
 
   // ── Nội dung theo từng trạng thái ─────────────────────────────────────────
   let icon: React.ReactNode;
@@ -141,7 +140,12 @@ function InvitationInner() {
     <Link href="/" className="inv-btn">Về trang chủ</Link>
   );
 
-  switch (phase) {
+  // "need-login" được suy ra trực tiếp từ hasToken/actionParam thay vì lưu vào `phase`
+  // (tránh setState đồng bộ trong effect); chỉ áp dụng khi chưa có phản hồi thật nào xảy ra.
+  const effectivePhase: Phase =
+    needsLogin && (phase === "checking" || phase === "working") ? "need-login" : phase;
+
+  switch (effectivePhase) {
     case "checking":
     case "working":
       icon = spinner;

@@ -33,9 +33,7 @@ function RoundRow({ teamId, roundId, roundName, finalScore, rank, isAdvanced }: 
             <p className="t-body-sm text-mute">Chưa có phiếu chấm cho vòng này.</p>
           ) : null}
           {(breakdown ?? []).map(({ score, details }) => {
-            // Điểm có trọng số theo hệ 10: value/maxScore × weight/100 × 10 (tổng các tiêu chí = tổng của giám khảo).
-            const weighted = (d: { value: number; maxScore?: number; weight?: number }) =>
-              d.maxScore && d.maxScore > 0 ? (d.value / d.maxScore) * ((d.weight ?? 0) / 100) * 10 : 0;
+            const weightedSum = details.reduce((acc, d) => acc + d.value * ((d.weight ?? 10) / 10), 0);
             return (
               <div key={score.id} className="space-y-1">
                 <p className="t-body-sm">
@@ -51,8 +49,8 @@ function RoundRow({ teamId, roundId, roundName, finalScore, rank, isAdvanced }: 
                         <td>{d.criteriaName}</td>
                         <td>{d.value.toFixed(2)}</td>
                         <td>{d.maxScore ?? '—'}</td>
-                        <td>{d.weight != null ? `${d.weight}%` : '—'}</td>
-                        <td>{weighted(d).toFixed(2)}</td>
+                        <td>{d.weight ?? '—'}</td>
+                        <td>{(d.value * ((d.weight ?? 10) / 10)).toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -10,6 +10,7 @@ import { tracksApi, roundsApi } from '@/features/events/api/roundTrack';
 import { resultsApi } from '@/features/results/api/results';
 import { getCriteria } from '@/services/criteriaService';
 import { getAllSubmissions } from '@/services/submissionService';
+import { getErrorMessage } from '@/lib/apiError';
 
 /**
  * Phần chấm điểm tái sử dụng từ trang /scoring, nhúng vào tab dashboard.
@@ -23,14 +24,14 @@ import { getAllSubmissions } from '@/services/submissionService';
 export default function ScoringPanel({ eventId, trackId = null }) {
   const { data: currentUser } = useCurrentUser();
 
-  const [criteria, setCriteria]       = useState([]);
-  const [teams, setTeams]             = useState([]);
+  const [criteria, setCriteria] = useState([]);
+  const [teams, setTeams] = useState([]);
   const [eventRoleId, setEventRoleId] = useState(null);
-  const [lock, setLock]               = useState({ locked: false, message: null });
-  const [editT, setEditT]             = useState(null);
-  const [notif, setNotif]             = useState(null);
-  const [loading, setLoading]         = useState(true);
-  const [error, setError]             = useState(null);
+  const [lock, setLock] = useState({ locked: false, message: null });
+  const [editT, setEditT] = useState(null);
+  const [notif, setNotif] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const sn = useCallback((m, t = 's') => {
     setNotif({ m, t });
@@ -103,9 +104,9 @@ export default function ScoringPanel({ eventId, trackId = null }) {
 
         // 6) Bài nộp → "teams" (ẩn danh khi hiển thị; id = submitResultId dùng để lưu điểm).
         const mapped = subsRes.items.map(s => ({
-          id:       s.id,
-          name:     s.teamName ?? s.projectName ?? '—',
-          scores:   prefill[s.id] ?? crit.map(() => 0),
+          id: s.id,
+          name: s.teamName ?? s.projectName ?? '—',
+          scores: prefill[s.id] ?? crit.map(() => 0),
           comments: crit.map(() => ''),
         }));
 
@@ -128,8 +129,12 @@ export default function ScoringPanel({ eventId, trackId = null }) {
         setTeams(mapped);
         setLock(lockState);
       } catch (e) {
+        // Lỗi validate tự ném (Error thường, không có .response) → giữ nguyên message gốc.
+        // Lỗi từ API (axios, có .response) → lấy message thật từ backend thay vì text
+        // chung chung "Request failed with status code ..." để biết đúng lý do (vd hết
+        // hạn chấm, chưa tới vòng chấm, đã công bố kết quả...).
         if (!cancelled) {
-          setError(e?.response?.data?.message ?? e?.message ?? 'Không thể tải dữ liệu chấm điểm');
+          setError(e?.response ? getErrorMessage(e, 'Không thể tải dữ liệu chấm điểm.') : (e?.message ?? 'Không thể tải dữ liệu chấm điểm.'));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -150,6 +155,7 @@ export default function ScoringPanel({ eventId, trackId = null }) {
       await scoresApi.save({
         eventRoleId,
         submitResultId,
+        // Backend (SaveScoreRequestModel.cs) chỉ nhận field `value`, không có `score`.
         details: criteria.map((c, i) => ({ criteriaId: c.id, value: scores[i] ?? 0 })),
       });
       setTeams(p => p.map(t => t.id === submitResultId ? { ...t, scores, comments: cmts } : t));
@@ -157,7 +163,7 @@ export default function ScoringPanel({ eventId, trackId = null }) {
       sn('Đã lưu điểm thành công!');
     } catch (e) {
       // Đọc message lỗi từ Backend (400: vòng thi chưa kết thúc / 403: đã công bố kết quả).
-      const msg = e?.response?.data?.message ?? e?.message ?? 'Lưu điểm thất bại, vui lòng thử lại';
+      const msg = e?.response ? getErrorMessage(e, 'Lưu điểm thất bại, vui lòng thử lại') : (e?.message ?? 'Lưu điểm thất bại, vui lòng thử lại');
       sn(msg, 'e');
     }
   };

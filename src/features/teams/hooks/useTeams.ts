@@ -44,6 +44,18 @@ export const useTeamInvitations = (teamId: string, enabled = true) =>
     staleTime: 30_000,
   });
 
+export const useConfirmRegistration = (teamId: string, eventId: string, userId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => teamsApi.confirmRegistration(teamId),
+    onSuccess: () => {
+      // Làm mới team để cập nhật status → "Registered"
+      qc.invalidateQueries({ queryKey: TEAM_KEYS.myTeam(eventId, userId) });
+      qc.invalidateQueries({ queryKey: TEAM_KEYS.detail(teamId) });
+    },
+  });
+};
+
 export const useCreateTeam = (_eventId: string, _userId: string) => {
   // The caller seeds the freshly-created team into the myTeam cache so the team
   // view shows immediately; invalidating here would race a refetch that could

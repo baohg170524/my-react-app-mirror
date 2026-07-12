@@ -37,7 +37,7 @@ export default function SubmissionPage({ submissions, teams }) {
             <span className="badge-accent">{s.status}</span>
           </div>
           <div className="grid gap-2.5 mb-2.5" style={{ gridTemplateColumns: '1fr 1fr' }}>
-            {[['TÊN DỰ ÁN', s.projectName], ['THỜI GIAN NỘP', s.submittedAt]].map(([k, v]) => (
+            {[['ID NHÓM', s.projectName], ['THỜI GIAN NỘP', s.submittedAt]].map(([k, v]) => (
               <div key={k} className="p-3" style={{ background: '#f7f7f7', borderRadius: 2 }}>
                 <div className="text-[10px] tracking-widest mb-1 font-bold uppercase" style={{ color: '#757575' }}>{k}</div>
                 <div className="text-sm font-bold" style={{ color: '#000' }}>{v}</div>
