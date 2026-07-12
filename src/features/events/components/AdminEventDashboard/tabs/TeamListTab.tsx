@@ -15,13 +15,6 @@ interface TeamListTabProps {
   eventId: string;
 }
 
-interface MentorInfo {
-  userId: string;
-  name: string;
-  email: string;
-  roleId: string;
-}
-
 interface TeamMember {
   userId: string;
   name: string;
@@ -48,65 +41,9 @@ export function TeamListTab({ eventId }: TeamListTabProps) {
   const isLoading = rolesLoading || teamsLoading;
   const queryClient = useQueryClient();
   const notify = useNotify();
-  const [editTeam, setEditTeam] = useState<{ id: string; name: string } | null>(null);
   const [viewTeamId, setViewTeamId] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-
-  const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: ['eventRoles', eventId] });
-  const onOk = () => {
-    setActionError(null);
-    setEditTeam(null);
-    invalidate();
-  };
-  const showErr = (e: unknown, fallback?: string) => {
-    const msg = getErrorMessage(e, fallback);
-    setActionError(msg);
-    notify.error(msg);
-  };
-  const onErr = (e: unknown) => showErr(e);
-
-  // Set/replace a team's mentor: remove the old one first (if any), then assign.
-  const setMentorMutation = useMutation({
-    mutationFn: async (vars: { teamId: string; userId: string; oldRoleId?: string }) => {
-      if (vars.oldRoleId) await manageApi.removeRole(vars.oldRoleId);
-      await manageApi.assignRole({
-        userId: vars.userId,
-        eventId,
-        teamId: vars.teamId,
-        roleName: EVENT_ROLE.Mentor,
-      });
-    },
-    onSuccess: (_data, vars) => {
-      notify.success(vars.oldRoleId ? 'Đã đổi mentor cho đội thành công!' : 'Đã thêm mentor cho đội thành công!');
-      onOk();
-    },
-    onError: (e) => showErr(e, 'Không thể thêm người này.'),
-  });
-  const removeMentorMutation = useMutation({
-    mutationFn: (roleId: string) => manageApi.removeRole(roleId),
-    onSuccess: () => {
-      notify.success('Đã xóa mentor khỏi đội thành công!');
-      onOk();
-    },
-    onError: onErr,
-  });
-  const busy = setMentorMutation.isPending || removeMentorMutation.isPending;
 
   const teamById = new Map(allTeams.map((t) => [t.id, t]));
-
-  // Mentor (with its eventRole id) per team.
-  const mentorByTeam = new Map<string, MentorInfo>();
-  for (const role of roles) {
-    if (isMentorRole(role) && role.teamId && role.userId) {
-      mentorByTeam.set(role.teamId, {
-        userId: role.userId,
-        name: role.user?.fullName ?? '—',
-        email: role.user?.email ?? '',
-        roleId: role.id,
-      });
-    }
-  }
 
   // Members per team, deduped by userId (a user may hold several roles in a team).
   const membersByTeam = new Map<string, Map<string, TeamMember>>();
@@ -147,8 +84,6 @@ export function TeamListTab({ eventId }: TeamListTabProps) {
 
   if (isLoading) return <CardSkeleton />;
 
-  const editingMentor = editTeam ? mentorByTeam.get(editTeam.id) : undefined;
-
   return (
     <Card title="Danh sách đội">
       <div className="flex flex-col gap-4">
@@ -164,8 +99,6 @@ export function TeamListTab({ eventId }: TeamListTabProps) {
           <span className="t-body-sm text-mute">{teams?.length ?? 0} đội</span>
         </div>
 
-        {actionError && <p className="t-caption-sm text-error m-0">{actionError}</p>}
-
         {teams && teams.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
@@ -173,14 +106,12 @@ export function TeamListTab({ eventId }: TeamListTabProps) {
                 <tr className="border-b border-hairline-strong text-left">
                   <th className="t-caption-md text-mute font-bold uppercase py-3 px-2">Tên đội</th>
                   <th className="t-caption-md text-mute font-bold uppercase py-3 px-2">Mô tả</th>
-                  <th className="t-caption-md text-mute font-bold uppercase py-3 px-2">Mentor</th>
                   <th className="t-caption-md text-mute font-bold uppercase py-3 px-2 text-center">Thành viên</th>
                   <th className="t-caption-md text-mute font-bold uppercase py-3 px-2 text-right">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
                 {teams.map((team) => {
-                  const mentor = mentorByTeam.get(team.id);
                   const expanded = viewTeamId === team.id;
                   const members = [...(membersByTeam.get(team.id)?.values() ?? [])];
                   return (
@@ -189,16 +120,6 @@ export function TeamListTab({ eventId }: TeamListTabProps) {
                       <td className="t-body-sm font-bold text-ink py-3 px-2">{team.name}</td>
                       <td className="t-body-sm text-body py-3 px-2">
                         {team.description || <span className="text-mute">—</span>}
-                      </td>
-                      <td className="t-body-sm text-body py-3 px-2">
-                        {mentor ? (
-                          <>
-                            <span className="block">{mentor.name}</span>
-                            <span className="t-caption-sm text-mute">{mentor.email}</span>
-                          </>
-                        ) : (
-                          <span className="text-mute">Chưa phân công</span>
-                        )}
                       </td>
                       <td className="t-body-sm text-body py-3 px-2 text-center">{team.memberCount}</td>
                       <td className="py-3 px-2">
@@ -213,37 +134,12 @@ export function TeamListTab({ eventId }: TeamListTabProps) {
                           >
                             {expanded ? 'Ẩn thành viên' : 'Xem thành viên'}
                           </button>
-                          <button
-                            type="button"
-                            disabled={busy}
-                            onClick={() => {
-                              setActionError(null);
-                              setEditTeam((cur) =>
-                                cur?.id === team.id ? null : { id: team.id, name: team.name },
-                              );
-                            }}
-                            className="t-caption-sm font-bold text-primary disabled:opacity-50"
-                            style={{ background: 'none', border: '1px solid var(--color-hairline-strong)', borderRadius: 'var(--radius-sm)', padding: '4px 10px', cursor: busy ? 'not-allowed' : 'pointer' }}
-                          >
-                            {editTeam?.id === team.id ? 'Đóng' : mentor ? 'Đổi mentor' : 'Thêm mentor'}
-                          </button>
-                          {mentor && (
-                            <button
-                              type="button"
-                              disabled={busy}
-                              onClick={() => removeMentorMutation.mutate(mentor.roleId)}
-                              className="t-caption-sm font-bold text-error disabled:opacity-50"
-                              style={{ background: 'none', border: '1px solid var(--color-error)', borderRadius: 'var(--radius-sm)', padding: '4px 10px', cursor: busy ? 'not-allowed' : 'pointer' }}
-                            >
-                              Xóa mentor
-                            </button>
-                          )}
                         </div>
                       </td>
                     </tr>
                     {expanded && (
                       <tr className="bg-surface-soft">
-                        <td colSpan={5} className="px-2 py-3 align-top">
+                        <td colSpan={4} className="px-2 py-3 align-top">
                           <TeamMembersPanel teamName={team.name} members={members} />
                         </td>
                       </tr>
@@ -256,22 +152,6 @@ export function TeamListTab({ eventId }: TeamListTabProps) {
           </div>
         ) : (
           <p className="t-body-sm text-mute text-center py-8">Chưa có đội nào đăng ký</p>
-        )}
-
-        {/* Mentor editor: search a user by email and set as the team's mentor. */}
-        {editTeam && (
-          <MentorSearchPanel
-            teamName={editTeam.name}
-            currentMentorId={editingMentor?.userId}
-            busy={busy}
-            onPick={(user) =>
-              setMentorMutation.mutate({
-                teamId: editTeam.id,
-                userId: user.id,
-                oldRoleId: editingMentor?.roleId,
-              })
-            }
-          />
         )}
       </div>
     </Card>
@@ -322,78 +202,3 @@ function TeamMembersPanel({
   );
 }
 
-// ─── Mentor search panel ────────────────────────────────────────────────────────
-
-function MentorSearchPanel({
-  teamName,
-  currentMentorId,
-  busy,
-  onPick,
-}: {
-  teamName: string;
-  currentMentorId?: string;
-  busy: boolean;
-  onPick: (user: UserSummary) => void;
-}) {
-  const [query, setQuery] = useState('');
-  const [debounced, setDebounced] = useState('');
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const searchQuery = useQuery({
-    queryKey: ['userSearch', debounced],
-    enabled: debounced.length >= 2,
-    queryFn: () => usersApi.search(debounced),
-    staleTime: 30_000,
-  });
-  const results = (searchQuery.data ?? []).filter((u) => u.id !== currentMentorId);
-
-  const onType = (v: string) => {
-    setQuery(v);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => setDebounced(v.trim()), 250);
-  };
-
-  return (
-    <div className="border border-hairline-strong rounded-sm p-4 flex flex-col gap-3 bg-surface-soft">
-      <p className="t-body-strong text-ink m-0">Mentor cho đội: {teamName}</p>
-      <input
-        className="text-input"
-        value={query}
-        placeholder="Nhập email để tìm mentor…"
-        onChange={(e) => onType(e.target.value)}
-        style={{ width: '100%' }}
-      />
-
-      {debounced.length >= 2 && (
-        <div className="flex flex-col gap-2">
-          {searchQuery.isLoading ? (
-            <p className="t-caption-sm text-mute m-0">Đang tìm…</p>
-          ) : results.length === 0 ? (
-            <p className="t-caption-sm text-mute m-0">Không tìm thấy người dùng.</p>
-          ) : (
-            results.map((u) => (
-              <div
-                key={u.id}
-                className="flex items-center justify-between gap-3 bg-canvas border border-hairline rounded-sm px-3 py-2"
-              >
-                <div className="flex flex-col">
-                  <span className="t-body-sm text-ink">{u.email ?? '(không có email)'}</span>
-                  {u.fullName && <span className="t-caption-sm text-mute">{u.fullName}</span>}
-                </div>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => onPick(u)}
-                  className="t-caption-sm font-bold text-primary disabled:opacity-50"
-                  style={{ background: 'none', border: 'none', cursor: busy ? 'not-allowed' : 'pointer' }}
-                >
-                  Chọn
-                </button>
-              </div>
-            ))
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
