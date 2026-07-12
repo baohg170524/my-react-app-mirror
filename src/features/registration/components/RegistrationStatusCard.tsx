@@ -72,7 +72,7 @@ export function RegistrationStatusCard({
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h2 className="t-heading-md m-0">Hồ sơ thí sinh</h2>
         <div className="flex items-center gap-2">
-          {rejectionCount !== undefined && rejectionCount > 0 && (
+          {rejectionCount !== undefined && rejectionCount > 0 && status !== 'approved' && (
             <span
               className="badge-tag"
               style={{

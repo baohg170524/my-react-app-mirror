@@ -17,6 +17,7 @@ import { roundsApi, tracksApi } from "../api/roundTrack";
 import { usersApi, storageApi, type UserSummary } from "@/services/api";
 import { useNotify } from "@/components/NotificationProvider";
 import { getErrorMessage } from "@/lib/apiError";
+import { DateTimePicker } from "@/components/DateTimePicker";
 
 // ─── Form state types (mirror the create-event payload) ───────────────────────
 
@@ -951,19 +952,19 @@ function RoundCard({
 
       <TextField label="Tên vòng" value={round.roundName} onChange={(v) => onChange("roundName", v)} />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-md)" }}>
-        <TextField
-          label="Mở cổng nộp bài"
-          type="datetime-local"
-          value={round.startDate}
-          onChange={(v) => onChange("startDate", v)}
-        />
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <TextField
-            label="Hạn chót nộp bài (Deadline)"
-            type="datetime-local"
-            value={round.endDate}
-            onChange={(v) => onChange("endDate", v)}
+        <Field label="Mở cổng nộp bài">
+          <DateTimePicker
+            value={round.startDate}
+            onChange={(v) => onChange("startDate", v)}
           />
+        </Field>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <Field label="Hạn chót nộp bài (Deadline)">
+            <DateTimePicker
+              value={round.endDate}
+              onChange={(v) => onChange("endDate", v)}
+            />
+          </Field>
           {round.startDate && (
             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
               <span className="t-caption-xs" style={{ color: "var(--color-mute)" }}>Đặt nhanh:</span>
@@ -1568,18 +1569,18 @@ function EventFormBody({
             THỜI GIAN SỰ KIỆN
           </span>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-md)" }}>
-            <TextField
-              label="Bắt đầu"
-              type="datetime-local"
-              value={form.startDate}
-              onChange={(v) => setField("startDate", v)}
-            />
-            <TextField
-              label="Kết thúc"
-              type="datetime-local"
-              value={form.endDate}
-              onChange={(v) => setField("endDate", v)}
-            />
+            <Field label="Bắt đầu">
+              <DateTimePicker
+                value={form.startDate}
+                onChange={(v) => setField("startDate", v)}
+              />
+            </Field>
+            <Field label="Kết thúc">
+              <DateTimePicker
+                value={form.endDate}
+                onChange={(v) => setField("endDate", v)}
+              />
+            </Field>
           </div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -1587,19 +1588,19 @@ function EventFormBody({
             THỜI GIAN ĐĂNG KÝ
           </span>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-md)" }}>
-            <TextField
-              label="Bắt đầu"
-              type="datetime-local"
-              value={form.registrationStartDate}
-              onChange={(v) => setField("registrationStartDate", v)}
-            />
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <TextField
-                label="Kết thúc"
-                type="datetime-local"
-                value={form.registrationEndDate}
-                onChange={(v) => setField("registrationEndDate", v)}
+            <Field label="Bắt đầu">
+              <DateTimePicker
+                value={form.registrationStartDate}
+                onChange={(v) => setField("registrationStartDate", v)}
               />
+            </Field>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <Field label="Kết thúc">
+                <DateTimePicker
+                  value={form.registrationEndDate}
+                  onChange={(v) => setField("registrationEndDate", v)}
+                />
+              </Field>
               {form.registrationStartDate && (
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                   <span className="t-caption-xs" style={{ color: "var(--color-mute)" }}>Đặt nhanh:</span>
