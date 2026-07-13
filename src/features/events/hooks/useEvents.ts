@@ -34,11 +34,11 @@ export const useEventRoles = (eventId: string, roleName?: number) =>
     staleTime: 2 * 60 * 1000,
   });
 
-/** All teams (scoped to an event client-side via event roles). */
-export const useTeams = () =>
+/** Teams (filtered by eventId). */
+export const useTeams = (eventId?: string) =>
   useQuery({
-    queryKey: ['teams', 'all'],
-    queryFn: () => manageApi.listTeams(),
+    queryKey: ['teams', eventId || 'all'],
+    queryFn: () => manageApi.listTeams(eventId),
     staleTime: 2 * 60 * 1000,
   });
 

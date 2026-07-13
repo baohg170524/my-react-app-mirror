@@ -37,7 +37,7 @@ const roleLabelOf = (roleName: string | null): string => {
 
 export function TeamListTab({ eventId }: TeamListTabProps) {
   const { data: roles = [], isLoading: rolesLoading, error } = useEventRoles(eventId);
-  const { data: allTeams = [], isLoading: teamsLoading } = useTeams();
+  const { data: allTeams = [], isLoading: teamsLoading } = useTeams(eventId);
   const isLoading = rolesLoading || teamsLoading;
   const queryClient = useQueryClient();
   const notify = useNotify();

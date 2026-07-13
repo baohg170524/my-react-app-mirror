@@ -100,10 +100,13 @@ export const manageApi = {
     return data.data ?? [];
   },
 
-  /** GET /api/Teams — all teams (no event filter server-side; scoped via roles). */
-  listTeams: async (): Promise<TeamItem[]> => {
+  /** GET /api/Teams — filtered by eventId if provided. */
+  listTeams: async (eventId?: string): Promise<TeamItem[]> => {
+    const params: Record<string, any> = { PageNumber: 1, PageSize: 200 };
+    if (eventId) params.EventId = eventId;
+    
     const { data } = await apiClient.get<PagedResult<TeamItem>>("/Teams", {
-      params: { PageNumber: 1, PageSize: 200 },
+      params,
     });
     return data.data ?? [];
   },

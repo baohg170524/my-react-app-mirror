@@ -1080,7 +1080,7 @@ function CreateUserModal({
           <input className="text-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ten@email.com" autoComplete="off" />
         </Field>
         <Field label="Mật khẩu">
-          <input className="text-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Tối thiểu 8 ký tự" autoComplete="new-password" />
+          <input className="text-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Tối thiểu 6 ký tự" autoComplete="new-password" />
         </Field>
         <Field label="Họ và tên">
           <input className="text-input" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Nguyễn Văn A" />

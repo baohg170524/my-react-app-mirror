@@ -824,7 +824,7 @@ export default function AuthPage() {
                       password: e.target.value,
                     }))
                   }
-                  placeholder="Tối thiểu 8 ký tự"
+                  placeholder="Tối thiểu 6 ký tự"
                   autoComplete="new-password"
                 />
 
