@@ -27,6 +27,7 @@ export default function ScoringPanel({ eventId, trackId = null }) {
   const [criteria, setCriteria] = useState([]);
   const [teams, setTeams] = useState([]);
   const [eventRoleId, setEventRoleId] = useState(null);
+  const [templateId, setTemplateId] = useState(null); // bộ tiêu chí của track — bắt buộc trong mỗi detail khi lưu điểm
   const [roundInfo, setRoundInfo] = useState(null); // { roundName, startDate, endDate }
   const [lock, setLock] = useState({ locked: false, message: null });
   const [editT, setEditT] = useState(null);
@@ -137,6 +138,7 @@ export default function ScoringPanel({ eventId, trackId = null }) {
         }
 
         setEventRoleId(roleId);
+        setTemplateId(track.templateId);
         setCriteria(crit);
         setTeams(mapped);
         setLock(lockState);
@@ -167,8 +169,9 @@ export default function ScoringPanel({ eventId, trackId = null }) {
       await scoresApi.save({
         eventRoleId,
         submitResultId,
-        // Backend (SaveScoreRequestModel.cs) chỉ nhận field `value`, không có `score`.
-        details: criteria.map((c, i) => ({ criteriaId: c.id, value: scores[i] ?? 0 })),
+        // Backend (SaveScoreRequestModel.cs) nhận field `value` (không phải `score`) và
+        // BẮT BUỘC `templateId` cho từng detail (validation "TemplateId không được để trống").
+        details: criteria.map((c, i) => ({ templateId, criteriaId: c.id, value: scores[i] ?? 0 })),
       });
       setTeams(p => p.map(t => t.id === submitResultId ? { ...t, scores, comments: cmts } : t));
       setEditT(null);
