@@ -45,6 +45,15 @@ export function SubmissionTab({ teamId, eventId }: Props) {
 
   const allRounds = rounds as RoundInfo[];
   const allTracks = tracks as Array<{ id: string; roundId: string; trackName: string | null }>;
+
+  // Vòng đang diễn ra (dùng để hiện banner + highlight trong dropdown).
+  const activeRound = useMemo(
+    () => allRounds.find((r) =>
+      now >= new Date(r.startDate).getTime() && now <= new Date(r.endDate).getTime()
+    ),
+    [allRounds, now],
+  );
+
   const tracksForRound = useMemo(
     () => allTracks.filter((t) => t.roundId === roundId),
     [allTracks, roundId],
@@ -94,6 +103,35 @@ export function SubmissionTab({ teamId, eventId }: Props) {
     <section className="p-6 max-w-2xl mx-auto space-y-6">
       <h2 className="t-heading-md">{editing ? 'Sửa bài nộp' : 'Nộp bài'}</h2>
 
+      {activeRound && !editing && (
+        <div
+          className="flex items-center gap-3 px-4 py-3"
+          style={{ background: 'rgba(118,185,0,0.08)', border: '1px solid rgba(118,185,0,0.3)', borderRadius: 4 }}
+        >
+          <span style={{ fontSize: 16 }}>🟢</span>
+          <div className="text-sm">
+            <span className="font-bold" style={{ color: '#5a8d00' }}>
+              {activeRound.roundName ?? 'Vòng thi'} đang diễn ra
+            </span>
+            <span className="ml-2" style={{ color: '#757575' }}>
+              Hạn nộp: {fmt(activeRound.endDate)}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {!activeRound && allRounds.length > 0 && !editing && (
+        <div
+          className="flex items-center gap-3 px-4 py-3"
+          style={{ background: 'rgba(255,193,7,0.1)', border: '1px solid #ffc107', borderRadius: 4 }}
+        >
+          <span style={{ fontSize: 16 }}>⏳</span>
+          <p className="text-sm m-0" style={{ color: '#8a6d00' }}>
+            Hiện không có vòng thi nào đang mở. Bạn chỉ có thể xem bài đã nộp.
+          </p>
+        </div>
+      )}
+
       <form onSubmit={submit} className="space-y-3 border border-hairline rounded-sm bg-canvas p-4 md:p-6">
         {editing ? (
           <p className="t-body-sm text-mute">
@@ -105,9 +143,15 @@ export function SubmissionTab({ teamId, eventId }: Props) {
               <span className="t-body-sm font-bold">Vòng</span>
               <select required value={roundId} onChange={(e) => { setRoundId(e.target.value); setTrackId(''); }} className="input w-full mt-1">
                 <option value="">— Chọn vòng —</option>
-                {allRounds.map((r) => (
-                  <option key={r.id} value={r.id}>{r.roundName ?? 'Vòng ' + r.id.slice(0, 4)}</option>
-                ))}
+                {allRounds.map((r) => {
+                  const isActive = isRoundOpen(r);
+                  return (
+                    <option key={r.id} value={r.id}>
+                      {isActive ? '🟢 ' : ''}{r.roundName ?? 'Vòng ' + r.id.slice(0, 4)}
+                      {isActive ? ' (Đang mở)' : ''}
+                    </option>
+                  );
+                })}
               </select>
             </label>
 

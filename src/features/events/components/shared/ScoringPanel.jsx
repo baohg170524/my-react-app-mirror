@@ -27,6 +27,7 @@ export default function ScoringPanel({ eventId, trackId = null }) {
   const [criteria, setCriteria] = useState([]);
   const [teams, setTeams] = useState([]);
   const [eventRoleId, setEventRoleId] = useState(null);
+  const [roundInfo, setRoundInfo] = useState(null); // { roundName, startDate, endDate }
   const [lock, setLock] = useState({ locked: false, message: null });
   const [editT, setEditT] = useState(null);
   const [notif, setNotif] = useState(null);
@@ -70,7 +71,12 @@ export default function ScoringPanel({ eventId, trackId = null }) {
         const [round, allCriteria, subsRes, existingScores, published] = await Promise.all([
           track.roundId ? roundsApi.getById(track.roundId) : Promise.resolve(null),
           getCriteria(track.templateId),
-          getAllSubmissions({ EventId: eventId, TrackId: effectiveTrackId, PageSize: 100 }),
+          getAllSubmissions({
+            EventId: eventId,
+            TrackId: effectiveTrackId,
+            ...(track.roundId ? { RoundId: track.roundId } : {}),
+            PageSize: 100,
+          }),
           scoresApi.listByEventRole(roleId),
           track.roundId
             ? resultsApi.listRoundLeaderboard(track.roundId).then(r => r.length > 0).catch(() => false)
@@ -78,6 +84,12 @@ export default function ScoringPanel({ eventId, trackId = null }) {
         ]);
 
         if (cancelled) return;
+
+        setRoundInfo(round ? {
+          roundName: round.roundName ?? `Vòng ${round.roundNumber ?? '?'}`,
+          startDate: round.startDate ?? null,
+          endDate:   round.endDate   ?? null,
+        } : null);
 
         // 4) Bộ tiêu chí: getCriteria(templateId) đã map sẵn shape ScoringView/EditModal cần
         //    ({ id, label, labelVi, desc, weight, maxScore, isActive }) với weight/maxScore lấy
@@ -168,6 +180,12 @@ export default function ScoringPanel({ eventId, trackId = null }) {
     }
   };
 
+  const fmt = (iso) => iso
+    ? new Date(iso).toLocaleString('vi-VN', {
+        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+      })
+    : '—';
+
   return (
     <>
       <Notif n={notif} />
@@ -189,23 +207,44 @@ export default function ScoringPanel({ eventId, trackId = null }) {
         <div className="text-center py-20">
           <p className="text-sm font-semibold" style={{ color: '#d32f2f' }}>{error}</p>
         </div>
-      ) : teams.length === 0 ? (
-        <div className="text-center py-20">
-          <p className="text-sm" style={{ color: '#757575' }}>Chưa có đội nào nộp bài trong track của bạn.</p>
-        </div>
       ) : (
         <>
-          {lock.locked && (
+          {roundInfo && (
             <div
-              className="mb-5 flex items-start gap-3 p-4"
-              style={{ background: 'rgba(255,193,7,.1)', border: '1px solid #ffc107', borderRadius: 2 }}
-              role="alert"
+              className="mb-4 flex items-center gap-3 px-4 py-3"
+              style={{ background: 'rgba(118,185,0,0.08)', border: '1px solid rgba(118,185,0,0.3)', borderRadius: 2 }}
             >
-              <span style={{ color: '#b8860b', fontSize: 16, lineHeight: 1.2 }}>⚠</span>
-              <p className="text-sm m-0" style={{ color: '#8a6d00' }}>{lock.message}</p>
+              <span style={{ color: '#76b900', fontSize: 14 }}>🏁</span>
+              <div className="text-sm" style={{ color: '#5a8d00' }}>
+                <span className="font-bold">{roundInfo.roundName}</span>
+                {roundInfo.startDate && roundInfo.endDate && (
+                  <span style={{ fontWeight: 400, color: '#757575', marginLeft: 8 }}>
+                    {fmt(roundInfo.startDate)} → {fmt(roundInfo.endDate)}
+                  </span>
+                )}
+              </div>
             </div>
           )}
-          <ScoringView teams={teams} criteria={criteria} onEdit={setEditT} disabled={lock.locked} />
+
+          {teams.length === 0 ? (
+            <div className="text-center py-20">
+              <p className="text-sm" style={{ color: '#757575' }}>Chưa có đội nào nộp bài trong track của bạn.</p>
+            </div>
+          ) : (
+            <>
+              {lock.locked && (
+                <div
+                  className="mb-5 flex items-start gap-3 p-4"
+                  style={{ background: 'rgba(255,193,7,.1)', border: '1px solid #ffc107', borderRadius: 2 }}
+                  role="alert"
+                >
+                  <span style={{ color: '#b8860b', fontSize: 16, lineHeight: 1.2 }}>⚠</span>
+                  <p className="text-sm m-0" style={{ color: '#8a6d00' }}>{lock.message}</p>
+                </div>
+              )}
+              <ScoringView teams={teams} criteria={criteria} onEdit={setEditT} disabled={lock.locked} />
+            </>
+          )}
         </>
       )}
     </>
