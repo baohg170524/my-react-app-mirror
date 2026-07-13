@@ -105,9 +105,9 @@ export function MyTeamTab({ eventId, userId }: Props) {
           invite.mutate({ email }, {
             onSuccess: (res: any) => {
               setEmail('');
-              const status = res?.data?.status || res?.status;
-              if (status === 'EmailSentToNonRegisteredUser') {
-                notify.success('Thành viên này hiện chưa có tài khoản. Hệ thống đã gửi email yêu cầu đăng ký. Vui lòng mời lại sau khi họ đã tạo tài khoản và được duyệt!');
+              const isNewTempUser = res?.isNewTemporaryUser ?? res?.data?.isNewTemporaryUser ?? false;
+              if (isNewTempUser) {
+                notify.success('Người này chưa có tài khoản. Hệ thống đã gửi email kích hoạt và đã lưu lời mời. Sau khi họ kích hoạt tài khoản, cập nhật hồ sơ và được duyệt, họ sẽ chấp nhận được lời mời này.');
               } else {
                 notify.success('Đã gửi lời mời thành công!');
               }
