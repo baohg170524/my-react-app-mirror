@@ -70,6 +70,36 @@ export const useRoundFinalResults = (roundId: string | undefined) =>
   });
 
 /**
+ * FE-01 — Tính kết quả cả vòng (EC/Admin). `topN` tùy chọn (bỏ trống để BE tự
+ * quyết). Sau khi tính, làm mới leaderboard của vòng để hiển thị kết quả vừa công bố.
+ */
+export const useCalculateRoundResults = (roundId: string | undefined) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (topN?: number) =>
+      manageApi.calculateRoundResults(roundId as string, topN),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['finalResults', roundId] });
+    },
+  });
+};
+
+/**
+ * FE-02 — Hủy công bố kết quả cả vòng (EC/Admin). Sau khi hủy, làm mới leaderboard
+ * (sẽ rỗng) → UI tự ẩn bảng & hiện lại nút "Tính kết quả"; form chấm của vòng cũng
+ * tự mở lại vì ScoringPanel suy trạng thái "đã công bố" từ leaderboard.
+ */
+export const useCancelRoundResults = (roundId: string | undefined) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => manageApi.cancelRoundResults(roundId as string),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['finalResults', roundId] });
+    },
+  });
+};
+
+/**
  * Events the user has actually joined — derived from their EventRoles
  * (competitor/judge/mentor). We list the user's roles to get the joined
  * event ids, then filter the public events list down to those ids.
