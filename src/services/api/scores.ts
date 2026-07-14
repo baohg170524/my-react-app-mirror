@@ -32,12 +32,12 @@ export interface CreateScorePayload {
 }
 
 /** POST /api/Scores/save — gộp tạo/cập nhật phiếu chấm + chi tiết 1 lần.
- *  Mỗi detail cần `templateId` (BE bắt buộc) + `criteriaId` + `value`; `comment` tùy chọn. */
+ *  Mỗi detail dùng `value` (khớp SaveScoreDetailItem của BE); `comment` là tùy chọn. */
 export interface SaveScorePayload {
   eventRoleId: string;
   submitResultId: string;
   comment?: string;
-  details: { templateId: string; criteriaId: string; value: number }[];
+  details: { criteriaId: string; value: number }[];
 }
 
 export interface CreateScoreDetailPayload {
