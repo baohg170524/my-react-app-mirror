@@ -39,6 +39,9 @@ export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
   const calculate = useCalculateRoundResults(roundId);
   const cancel = useCancelRoundResults(roundId);
 
+  // topN chỉ là dự phòng: khi vòng CHƯA đặt luật thăng vòng thì mới cần nhập tay.
+  const [topN, setTopN] = useState<string>('');
+
   // ─── Trạng thái vòng thi (suy ra từ dữ liệu — BE không có field status) ───
   // "Đã kết thúc" = đã qua endDate (đồng bộ với logic khóa form của ScoringPanel).
   // "Đã công bố" = leaderboard của vòng đã tồn tại.
@@ -47,6 +50,10 @@ export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
     : false;
   const isPublished = results.length > 0;
   const busy = calculate.isPending || cancel.isPending;
+  // Số đội thăng vòng lấy từ advancementRule (vd "top:2"). Có rule → BE tự quyết,
+  // bỏ qua mọi topN gửi lên. Chưa có rule → cần EC nhập topN dự phòng.
+  const advancementRule = selectedRound?.advancementRule?.trim() ?? '';
+  const hasRule = advancementRule !== '';
 
   const endDateText = selectedRound?.endDate
     ? new Date(selectedRound.endDate).toLocaleString('vi-VN', {
@@ -59,13 +66,25 @@ export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
     : '';
 
   // ─── FE-01: Tính kết quả ───
-  // Không gửi topN — theo yêu cầu, BE tự quyết số đội thăng vòng.
+  // Vòng có advancementRule → không gửi topN (BE tự quyết). Vòng chưa có rule →
+  // gửi topN EC nhập (nếu bỏ trống, BE dùng mặc định của nó).
   const handleCalculate = () => {
     if (!roundId || !roundEnded || busy) return;
+    let parsedTopN: number | undefined;
+    if (!hasRule) {
+      const raw = topN.trim();
+      if (raw !== '') {
+        parsedTopN = Number(raw);
+        if (!Number.isInteger(parsedTopN) || parsedTopN <= 0) {
+          notify.warning('Số đội thăng vòng phải là số nguyên dương, hoặc để trống.');
+          return;
+        }
+      }
+    }
     const msg = `Tính kết quả cho "${selectedRound?.roundName ?? 'vòng thi'}"?`;
     if (typeof window !== 'undefined' && !window.confirm(msg)) return;
 
-    calculate.mutate(undefined, {
+    calculate.mutate(parsedTopN, {
       onSuccess: (rows) => {
         notify.success(`Đã công bố kết quả: ${rows.length} đội được xếp hạng.`);
       },
@@ -155,21 +174,48 @@ export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
           </div>
         ) : (
           // ─── FE-01: chưa công bố → cho tính ───
-          <div className="flex flex-col gap-1 md:ml-auto">
-            <button
-              type="button"
-              onClick={handleCalculate}
-              disabled={!roundEnded || busy}
-              className="px-4 py-2 rounded-sm t-body-sm font-bold bg-primary text-on-primary disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-            >
-              {calculate.isPending ? 'Đang tính…' : 'Tính kết quả'}
-            </button>
-            {!roundEnded && (
-              <p className="t-caption-sm text-warning m-0">
-                Nút mở khi vòng thi kết thúc{endDateText ? ` (${endDateText})` : ''}.
-              </p>
+          <>
+            {hasRule ? (
+              // Vòng đã đặt luật thăng vòng → BE tự quyết số đội, không cần nhập.
+              <div className="flex flex-col gap-1">
+                <label className="t-caption-sm text-mute font-bold uppercase">Luật thăng vòng</label>
+                <span className="t-body-sm text-ink font-bold px-3 py-2 bg-surface-soft rounded-sm border border-hairline">
+                  {advancementRule}
+                </span>
+              </div>
+            ) : (
+              // Vòng chưa đặt luật → EC nhập số đội thăng (dự phòng).
+              <div className="flex flex-col gap-1">
+                <label className="t-caption-sm text-mute font-bold uppercase">
+                  Số đội thăng vòng
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={topN}
+                  onChange={(e) => setTopN(e.target.value)}
+                  placeholder="Vòng chưa có luật — nhập số đội"
+                  className="border border-hairline rounded-sm px-3 py-2 t-body-sm text-ink bg-canvas w-56"
+                />
+              </div>
             )}
-          </div>
+            <div className="flex flex-col gap-1 md:ml-auto">
+              <button
+                type="button"
+                onClick={handleCalculate}
+                disabled={!roundEnded || busy}
+                className="px-4 py-2 rounded-sm t-body-sm font-bold bg-primary text-on-primary disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              >
+                {calculate.isPending ? 'Đang tính…' : 'Tính kết quả vòng'}
+              </button>
+              {!roundEnded && (
+                <p className="t-caption-sm text-warning m-0">
+                  Nút mở khi vòng thi kết thúc{endDateText ? ` (${endDateText})` : ''}.
+                </p>
+              )}
+            </div>
+          </>
         )}
       </div>
 
