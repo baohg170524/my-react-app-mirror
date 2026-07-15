@@ -46,6 +46,8 @@ export interface LoginResponse {
   fullName: string;
   isAdmin: boolean;
   isStudent: boolean;
+  /** true nếu là tài khoản tạm (được mời vào đội) — FE bắt buộc đổi mật khẩu ngay. */
+  mustChangePassword?: boolean;
 }
 
 export interface RefreshTokenResponse {

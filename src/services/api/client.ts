@@ -71,6 +71,7 @@ apiClient.interceptors.response.use(
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
       localStorage.removeItem("currentUser");
+      localStorage.removeItem("mustChangePassword");
 
       if (window.location.pathname !== "/") {
         window.location.href = "/auth";

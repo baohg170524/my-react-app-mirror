@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { AuthProvider } from "@/context/AuthContext";
 import { NotificationProvider } from "@/components/NotificationProvider";
+import { ForcePasswordChangeGate } from "@/components/ForcePasswordChangeGate";
 import "./globals.css";
 
 const inter = Inter({
@@ -25,7 +26,10 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col antialiased" suppressHydrationWarning>
         <AuthProvider>
           <QueryProvider>
-            <NotificationProvider>{children}</NotificationProvider>
+            <NotificationProvider>
+              {children}
+              <ForcePasswordChangeGate />
+            </NotificationProvider>
           </QueryProvider>
         </AuthProvider>
       </body>
