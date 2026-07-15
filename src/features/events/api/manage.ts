@@ -66,6 +66,15 @@ export interface FinalResult {
   isAdvanced: boolean;
 }
 
+/** Matches backend CalculateRoundResultItemModel (trả về khi tính kết quả cả vòng). */
+export interface CalculateResultItem {
+  finalResultId: string | null;
+  teamId: string | null;
+  finalScore: number;
+  rank: number;
+  isAdvanced: boolean;
+}
+
 // ─── Role classifiers (roleName is a free string in the response) ──────────────
 
 export const isEventCoordinatorRole = (r: EventRole) =>
@@ -100,10 +109,13 @@ export const manageApi = {
     return data.data ?? [];
   },
 
-  /** GET /api/Teams — all teams (no event filter server-side; scoped via roles). */
-  listTeams: async (): Promise<TeamItem[]> => {
+  /** GET /api/Teams — filtered by eventId if provided. */
+  listTeams: async (eventId?: string): Promise<TeamItem[]> => {
+    const params: Record<string, any> = { PageNumber: 1, PageSize: 200 };
+    if (eventId) params.EventId = eventId;
+    
     const { data } = await apiClient.get<PagedResult<TeamItem>>("/Teams", {
-      params: { PageNumber: 1, PageSize: 200 },
+      params,
     });
     return data.data ?? [];
   },
@@ -133,6 +145,33 @@ export const manageApi = {
       { params: { RoundId: roundId, PageNumber: 1, PageSize: 200 } },
     );
     return data.data ?? [];
+  },
+
+  /**
+   * FE-01 — POST /api/FinalResults/calculate/{roundId}: tính kết quả chung cuộc cả
+   * vòng (FinalScore = TB điểm giám khảo, xếp Rank, đánh dấu IsAdvanced cho top N).
+   * `topN` tùy chọn: bỏ trống để Backend tự quyết số đội thăng vòng. Chỉ EC/Admin.
+   * Response BaseResponse<List> đã được interceptor bóc `.data` → trả thẳng mảng.
+   */
+  calculateRoundResults: async (
+    roundId: string,
+    topN?: number,
+  ): Promise<CalculateResultItem[]> => {
+    const { data } = await apiClient.post<CalculateResultItem[]>(
+      `/FinalResults/calculate/${encodeURIComponent(roundId)}`,
+      undefined,
+      { params: topN != null ? { topN } : undefined },
+    );
+    return data ?? [];
+  },
+
+  /**
+   * FE-02 — DELETE /api/FinalResults/round/{roundId}: HỦY CÔNG BỐ, xóa trọn bộ
+   * FinalResult của vòng để mở lại khóa chấm/sửa điểm. Chỉ hủy được khi vòng sau
+   * chưa có bài nộp/kết quả (Backend kiểm tra). Chỉ EC/Admin.
+   */
+  cancelRoundResults: async (roundId: string): Promise<void> => {
+    await apiClient.delete(`/FinalResults/round/${encodeURIComponent(roundId)}`);
   },
 
   /**
