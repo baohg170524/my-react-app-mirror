@@ -120,25 +120,25 @@ export default function TemplatePage({ sn }) {
     const oldW = critModal.mode === 'edit'
       ? ((tmpl?.criterias ?? []).find(tc => tc.criteriaId === critModal.criteriaId)?.weight ?? 0)
       : 0;
-    if (existingW - oldW + Number(critF.weight) > 10) {
-      sn(`Tổng trọng số sẽ là ${existingW - oldW + Number(critF.weight)}, vượt quá 10`, 'e');
+    if (existingW - oldW + Number(critF.weight) > 100) {
+      sn(`Tổng trọng số sẽ là ${existingW - oldW + Number(critF.weight)}, vượt quá 100`, 'e');
       return;
     }
     setSaving(true);
     try {
       const { templateId, mode, criteriaId: editId } = critModal;
-      // hệ 10: giám khảo luôn chấm 0-10 mỗi tiêu chí; maxScore lưu lại đóng góp tối đa
-      // vào tổng 10 điểm (weight/10) để hiển thị, không dùng để giới hạn điểm nhập.
-      const maxScore = Number(critF.weight) / 10;
+      // hệ 100: giám khảo luôn chấm 0-10 mỗi tiêu chí; weight (%) quyết định đóng góp
+      // của tiêu chí vào tổng điểm cuối (FinalScore = Σ score × weight / 100).
+      // maxScore luôn cố định = 10, không phụ thuộc vào weight.
       if (mode === 'add') {
         await addCriteriaToTemplate(templateId, {
           criteriaId: critF.criteriaId,
           weight:     Number(critF.weight),
-          maxScore:   10, // hệ 10: mỗi tiêu chí chấm trên thang điểm 10; trọng số nằm ở weight
+          maxScore:   10, // hệ 100: mọi tiêu chí luôn chấm trên thang điểm 10
         });
         sn('Đã thêm tiêu chí vào bộ!');
       } else {
-        await updateTemplateCriteria(templateId, editId, { weight: critF.weight, maxScore: 10 }); // hệ 10
+        await updateTemplateCriteria(templateId, editId, { weight: Number(critF.weight), maxScore: 10 }); // hệ 100
         sn('Đã cập nhật cấu hình tiêu chí!');
       }
       const detail = await getTemplateDetail(templateId);
@@ -339,38 +339,24 @@ export default function TemplatePage({ sn }) {
               );
             })()}
 
-            <div className="flex gap-4 mb-6">
+            <div className="flex gap-4 mb-2">
               <div className="flex-1">
                 <label className="block text-xs font-bold mb-1.5 uppercase tracking-wider" style={{ color: '#757575' }}>
-                  Trọng số (thang 10)
+                  Trọng số (%)
                 </label>
                 <input
-                  type="number" min="0" max="10"
+                  type="number" min="0" max="100"
                   value={critF.weight}
                   onChange={e => setCritF({ ...critF, weight: Number(e.target.value) })}
                   className="input-field"
                 />
               </div>
-              {/* Điểm tối đa cố định = 10 (hệ 10), không cho nhập tay */}
-              {/* <div className="flex-1">
-                <label className="block text-xs font-bold mb-1.5 uppercase tracking-wider" style={{ color: '#757575' }}>
-                  Điểm tối đa
-                </label>
-                <input
-                  type="number" min="1"
-                  value={critF.maxScore}
-                  onChange={e => setCritF({ ...critF, maxScore: Number(e.target.value) })}
-                  className="input-field"
-                />
-              </div> */}
+              {/* Điểm tối đa luôn cố định = 10 cho mọi tiêu chí, không cho nhập tay */}
             </div>
-
-            {critF.weight > 0 && critF.maxScore > 0 && critF.weight !== critF.maxScore && (
-              <div className="mb-6 p-3 text-xs" style={{ background: 'rgba(223,101,0,0.1)', color: '#df6500', borderRadius: 2, border: '1px solid rgba(223,101,0,0.3)' }}>
-                <strong>Lưu ý:</strong> Trọng số là <strong>{critF.weight}</strong> nhưng điểm tối đa là <strong>{critF.maxScore}</strong>.
-                Hệ thống sẽ tự động quy đổi: 1 điểm chấm tương đương <strong>{((critF.weight / critF.maxScore) || 0).toFixed(2)}</strong> điểm trong tổng thang 10. Hãy chắc chắn đây là ý đồ của bạn.
-              </div>
-            )}
+            <div className="mb-6 text-xs" style={{ color: '#757575' }}>
+              Giám khảo luôn chấm mỗi tiêu chí trên thang <strong>0–10</strong>. Trọng số (%) quyết định
+              tỉ lệ đóng góp của tiêu chí vào tổng điểm cuối. Tổng trọng số của cả bộ phải bằng <strong>100</strong>.
+            </div>
 
             <div className="flex justify-end gap-3">
               <button className="btn btn-outline" onClick={closeCrit}>Hủy</button>
@@ -486,17 +472,17 @@ export default function TemplatePage({ sn }) {
                     <div className="flex justify-between mb-2">
                       <span className="text-xs" style={{ color: '#757575' }}>Tổng trọng số</span>
                       <span className="text-xs font-bold"
-                        style={{ color: totalW === 10 ? '#76b900' : '#df6500' }}>
-                        {totalW} / 10
-                        {totalW !== 10 && <span style={{ fontWeight: 400, marginLeft: 6 }}>
-                          ({totalW < 10 ? `thiếu ${10 - totalW}` : `thừa ${totalW - 10}`})
+                        style={{ color: totalW === 100 ? '#76b900' : '#df6500' }}>
+                        {totalW} / 100
+                        {totalW !== 100 && <span style={{ fontWeight: 400, marginLeft: 6 }}>
+                          ({totalW < 100 ? `thiếu ${100 - totalW}` : `thừa ${totalW - 100}`})
                         </span>}
                       </span>
                     </div>
                     <div className="h-1.5 overflow-hidden flex gap-0.5" style={{ background: '#e5e5e5', borderRadius: 2 }}>
                       {(t.criterias ?? []).map((tc, i) => (
                         <div key={tc.criteriaId} style={{
-                          height: '100%', width: `${((tc.weight ?? 0) / 10) * 100}%`,
+                          height: '100%', width: `${tc.weight ?? 0}%`,
                           background: COLORS[i % COLORS.length], transition: 'width .4s',
                         }} />
                       ))}
@@ -505,7 +491,7 @@ export default function TemplatePage({ sn }) {
                       {(t.criterias ?? []).map((tc, i) => (
                         <div key={tc.criteriaId} className="flex items-center gap-1.5 text-xs" style={{ color: '#757575' }}>
                           <div style={{ width: 7, height: 7, background: COLORS[i % COLORS.length], borderRadius: 2 }} />
-                          {tc.criteriaName} ({tc.weight}/10)
+                          {tc.criteriaName} ({tc.weight}%)
                         </div>
                       ))}
                     </div>
@@ -523,7 +509,7 @@ export default function TemplatePage({ sn }) {
                     <div className="flex items-center px-4 py-2 text-xs font-bold uppercase tracking-wider"
                       style={{ color: '#757575', background: '#fafafa', borderBottom: '1px solid #e5e5e5' }}>
                       <div style={{ flex: 1 }}>Tiêu chí</div>
-                      <div style={{ width: 100, textAlign: 'center' }}>Trọng số</div>
+                      <div style={{ width: 100, textAlign: 'center' }}>Trọng số (%)</div>
                       <div style={{ width: 110, textAlign: 'center' }}>Điểm tối đa</div>
                       <div style={{ width: 110 }}></div>
                     </div>
@@ -544,11 +530,11 @@ export default function TemplatePage({ sn }) {
                         <div style={{ width: 100, textAlign: 'center' }}>
                           <span className="px-2 py-0.5 text-xs font-bold"
                             style={{ background: 'rgba(118,185,0,.1)', color: '#5a8d00', borderRadius: 2 }}>
-                            {tc.weight}/10
+                            {tc.weight}%
                           </span>
                         </div>
                         <div style={{ width: 110, textAlign: 'center' }}>
-                          <span className="text-sm" style={{ color: '#000' }}>{Number((tc.weight / 10).toFixed(1))}</span>
+                          <span className="text-sm" style={{ color: '#000' }}>{tc.maxScore ?? 10}</span>
                         </div>
                         <div className="flex gap-2 justify-end" style={{ width: 110 }}>
                           <button className="btn-hover px-2.5 py-1 text-xs font-bold"

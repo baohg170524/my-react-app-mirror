@@ -43,7 +43,7 @@ function InvitationInner() {
     mutationFn: (accept: boolean) => invitationsApi.respondEventRole(id, accept),
     onSuccess: (_data, accept) => setPhase(accept ? "accepted" : "declined"),
     onError: (e: any) => {
-      // 403 = đang đăng nhập bằng tài khoản KHÔNG phải người được mời -> yêu cầu đổi đúng tài khoản.
+https://typescript-eslint.io/rules/no-explicit-any      // 403 = đang đăng nhập bằng tài khoản KHÔNG phải người được mời -> yêu cầu đổi đúng tài khoản.
       if (e?.response?.status === 403) {
         setPhase("wrong-account");
         return;

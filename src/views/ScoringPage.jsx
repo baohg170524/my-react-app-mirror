@@ -31,7 +31,7 @@ export default function ScoringPage({ teams, criteria, onEdit, disabled = false 
                   <div key={ci} className="flex items-center gap-2">
                     <div className="text-xs shrink-0" style={{ color: '#757575', width: 96 }}>{c.label}</div>
                     <div className="flex-1 h-1.5" style={{ background: '#e5e5e5', borderRadius: 2 }}>
-                      <div style={{ height: '100%', width: `${((t.scores[ci] || 0) / 10) * 100}%`, background: '#76b900' }} />
+                      <div style={{ height: '100%', width: `${((t.scores[ci] || 0) / (c.maxScore ?? 10)) * 100}%`, background: '#76b900' }} />
                     </div>
                     <div className="text-xs font-bold w-6 text-right" style={{ color: '#000' }}>{t.scores[ci] || 0}</div>
                   </div>

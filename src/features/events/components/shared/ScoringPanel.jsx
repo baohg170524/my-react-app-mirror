@@ -95,7 +95,15 @@ export default function ScoringPanel({ eventId, trackId = null }) {
         //    ({ id, label, labelVi, desc, weight, maxScore, isActive }) với weight/maxScore lấy
         //    từ template. Nó trả về TOÀN BỘ tiêu chí hệ thống nên chỉ giữ tiêu chí đang bật &
         //    thực sự thuộc template (weight > 0).
-        const crit = allCriteria.filter(c => c.isActive !== false && c.weight > 0);
+        // templateId cần cho mỗi detail khi lưu điểm (Backend yêu cầu — xem saveEdit bên dưới).
+        // QUAN TRỌNG: Backend validate điểm nhập KHÔNG được vượt quá `maxScore` thật lưu trong
+        // DB của từng tiêu chí (trả lỗi 400 nếu vượt) — nên KHÔNG được hardcode maxScore ở FE,
+        // phải dùng đúng giá trị backend trả về để tránh lệch với validate phía server.
+        // Nếu data cũ trong DB bị sai (vd maxScore=1, 1.5 thay vì 10) thì đây là lỗi DATA cần
+        // Admin sửa ở /criteria — không phải lỗi hiển thị của FE (xem fix-templatepage-he100.md).
+        const crit = allCriteria
+          .filter(c => c.isActive !== false && c.weight > 0)
+          .map(c => ({ ...c, maxScore: c.maxScore ?? 10, templateId: track.templateId }));
 
         // 5) Nạp trước điểm đã chấm: submitResultId → điểm theo từng tiêu chí.
         const scored = existingScores.filter(s => s.submitResultId);
@@ -157,20 +165,35 @@ export default function ScoringPanel({ eventId, trackId = null }) {
     return () => { cancelled = true; };
   }, [currentUser?.id, eventId, trackId]);
 
-  const saveEdit = async (submitResultId, scores, cmts) => {
+  const saveEdit = async (submitResultId, details) => {
     // Chặn sớm ở client cho đúng logic khóa/mở; Backend vẫn là nguồn quyết định cuối cùng.
     if (lock.locked) {
       sn(lock.message ?? 'Chưa thể chấm điểm ở thời điểm này.', 'e');
       return;
     }
+    // `details` đến từ EditModal đã được ghép sẵn theo criteriaId ({ criteriaId, value, comment }),
+    // không còn là mảng thô theo index nữa — tránh bug lệch điểm giữa các tiêu chí (từng xảy ra
+    // khi `criteria` state ở đây đổi thứ tự so với lúc EditModal khởi tạo `scores`).
+    const byCriteria = Object.fromEntries(criteria.map(c => [c.id, c]));
     try {
       await scoresApi.save({
         eventRoleId,
         submitResultId,
         // Backend (SaveScoreRequestModel.cs) chỉ nhận field `value`, không có `score`.
-        details: criteria.map((c, i) => ({ criteriaId: c.id, value: scores[i] ?? 0 })),
+        // templateId bắt buộc trong mỗi detail (thiếu → 400) — lấy theo đúng criteriaId,
+        // không dựa vào vị trí mảng.
+        details: details.map(d => ({
+          criteriaId: d.criteriaId,
+          value: d.value ?? 0,
+          templateId: byCriteria[d.criteriaId]?.templateId,
+        })),
       });
-      setTeams(p => p.map(t => t.id === submitResultId ? { ...t, scores, comments: cmts } : t));
+      // Cập nhật lại state local (dùng cho bảng danh sách + lần mở EditModal kế tiếp), ghép
+      // theo đúng thứ tự `criteria` hiện tại — an toàn vì tra theo criteriaId, không theo index.
+      const detailByCriteria = Object.fromEntries(details.map(d => [d.criteriaId, d]));
+      const scores = criteria.map(c => detailByCriteria[c.id]?.value ?? 0);
+      const comments = criteria.map(c => detailByCriteria[c.id]?.comment ?? '');
+      setTeams(p => p.map(t => t.id === submitResultId ? { ...t, scores, comments } : t));
       setEditT(null);
       sn('Đã lưu điểm thành công!');
     } catch (e) {
@@ -194,7 +217,7 @@ export default function ScoringPanel({ eventId, trackId = null }) {
           team={editT}
           criteria={criteria}
           onClose={() => setEditT(null)}
-          onSave={(s, c) => saveEdit(editT.id, s, c)}
+          onSave={(details) => saveEdit(editT.id, details)}
         />
       )}
 
