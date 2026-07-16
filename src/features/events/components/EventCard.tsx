@@ -28,9 +28,9 @@ function roleLabel(roleName?: string | null): string | null {
     case "eventcoordinator":
       return "EC";
     case "judge":
-      return "Judge";
+      return "Giám khảo";
     case "mentor":
-      return "Mentor";
+      return "Người hướng dẫn";
     case "teamleader":
       return "Team Leader";
     case "teammember":

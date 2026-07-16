@@ -21,6 +21,20 @@ import { useRouter } from 'next/navigation';
 
 interface EventDashboardProps { eventId: string; userId: string; }
 
+/** Giai đoạn hiển thị ở header: theo mốc thời gian, có xét cả trạng thái đóng. */
+function eventPhase(event: {
+  startDate: string;
+  endDate: string;
+  status: 'open' | 'closed';
+}): 'active' | 'upcoming' | 'ended' {
+  const now = Date.now();
+  const start = new Date(event.startDate).getTime();
+  const end = new Date(event.endDate).getTime();
+  if (!Number.isNaN(start) && now < start) return 'upcoming';
+  if (event.status === 'closed' || (!Number.isNaN(end) && now > end)) return 'ended';
+  return 'active';
+}
+
 export function EventDashboard({ eventId, userId }: EventDashboardProps) {
   const router = useRouter();
   const { activeTab } = useEventDashboard();
@@ -82,7 +96,7 @@ export function EventDashboard({ eventId, userId }: EventDashboardProps) {
   return (
     <div className="min-h-screen bg-canvas">
       <Sidebar eventId={eventId} />
-      <Header title={event.title} subtitle="Team Competition" status={event.status} />
+      <Header title={event.title} status={eventPhase(event)} />
       <main className="fixed top-24 md:top-20 left-0 right-0 bottom-0 overflow-hidden bg-canvas lg:left-60">
         <div className="h-full overflow-y-auto p-3 md:p-6">
           <div className="animate-fadeIn">{renderTabContent()}</div>

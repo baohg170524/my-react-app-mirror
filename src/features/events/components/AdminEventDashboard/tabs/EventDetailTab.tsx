@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { useEvent, useEventRoles, useUserEventRole } from '@/features/events/hooks/useEvents';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useCurrentUser } from '@/hooks/useAuth';
-import { isJudgeRole, isMentorRole } from '@/features/events/api/manage';
 import { eventsApi } from '@/features/events/api/events';
 import { useNotify } from '@/components/NotificationProvider';
 import { getErrorMessage } from '@/lib/apiError';
@@ -14,8 +13,7 @@ import { Card } from '../../EventDashboard/Card';
 import { Button } from '../../EventDashboard/Button';
 import { CardSkeleton } from '../../EventDashboard/SkeletonLoaders';
 import { CreateEventForm } from '../../CreateEventForm';
-import { EventStructureView } from '../EventStructureView';
-import { formatDateTime } from '@/lib/date';
+import { EventTimeline } from '../../EventDashboard/EventTimeline';
 
 interface EventDetailTabProps {
   eventId: string;
@@ -33,13 +31,8 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
   const queryClient = useQueryClient();
   const notify = useNotify();
 
+  // teamCount vẫn cần cho ràng buộc xóa; judge/mentor tổng đã chuyển vào StatsStrip.
   const teamCount = new Set(roles.map((r) => r.teamId).filter(Boolean)).size;
-  const judgeCount = new Set(
-    roles.filter(isJudgeRole).map((r) => r.userId).filter(Boolean),
-  ).size;
-  const mentorCount = new Set(
-    roles.filter(isMentorRole).map((r) => r.userId).filter(Boolean),
-  ).size;
 
   const deleteMutation = useMutation({
     mutationFn: () => eventsApi.remove(eventId),
@@ -99,100 +92,41 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
     );
   }
 
-  const stats = [
-    { label: 'Tổng số đội', value: teamCount },
-    { label: 'Số judge', value: judgeCount },
-    { label: 'Số mentor', value: mentorCount },
-  ];
-
   return (
     <div className="flex flex-col gap-4 md:gap-6">
-      <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-3">
-        <Card title="Chi tiết sự kiện" className="lg:col-span-2">
-          <div className="space-y-4">
-            {event.photoEventUrl && (
-              <div className="w-full h-64 md:h-80 rounded-sm overflow-hidden border border-hairline mb-4 relative">
-                <img src={event.photoEventUrl} alt={event.title} className="w-full h-full object-cover" />
-              </div>
-            )}
-            <p className="t-body-md text-body">{event.description}</p>
-            <div className="space-y-3">
-              <div className="pb-1">
-                 <span className="t-caption-xs text-primary font-bold tracking-wider">THỜI GIAN SỰ KIỆN</span>
-              </div>
-              <div className="flex justify-between items-baseline">
-                <span className="t-body-sm text-mute">Bắt đầu</span>
-                <span className="t-body-strong text-ink">{formatDateTime(event.startDate)}</span>
-              </div>
-              <div className="flex justify-between items-baseline border-t border-hairline pt-3">
-                <span className="t-body-sm text-mute">Kết thúc</span>
-                <span className="t-body-strong text-ink">{formatDateTime(event.endDate)}</span>
-              </div>
-              
-              {(event.registrationStartDate || event.registrationEndDate) && (
-                <>
-                  <div className="pt-3 pb-1 mt-1 border-t border-hairline">
-                     <span className="t-caption-xs text-primary font-bold tracking-wider">THỜI GIAN ĐĂNG KÝ</span>
-                  </div>
-                  {event.registrationStartDate && (
-                    <div className="flex justify-between items-baseline">
-                      <span className="t-body-sm text-mute">Bắt đầu</span>
-                      <span className="t-body-strong text-ink">{formatDateTime(event.registrationStartDate)}</span>
-                    </div>
-                  )}
-                  {event.registrationEndDate && (
-                    <div className="flex justify-between items-baseline border-t border-hairline pt-3">
-                      <span className="t-body-sm text-mute">Kết thúc</span>
-                      <span className="t-body-strong text-ink">{formatDateTime(event.registrationEndDate)}</span>
-                    </div>
-                  )}
-                </>
-              )}
-              <div className="pt-3 pb-1 mt-1 border-t border-hairline">
-                 <span className="t-caption-xs text-primary font-bold tracking-wider">THÔNG TIN KHÁC</span>
-              </div>
-              <div className="flex justify-between items-baseline">
-                <span className="t-body-sm text-mute">Trạng thái</span>
-                <span
-                  className={`inline-block px-3 py-1 rounded-sm t-caption-sm font-bold uppercase ${event.status === 'open' ? 'bg-primary text-on-primary' : 'bg-stone text-on-dark'
-                    }`}
-                >
-                  {event.status === 'open' ? 'Mở' : 'Đóng'}
-                </span>
-              </div>
+      <Card className="border-transparent">
+        <div className="space-y-4">
+          {event.photoEventUrl && (
+            <div className="w-full aspect-[2.35/1] rounded-sm overflow-hidden relative">
+              <img src={event.photoEventUrl} alt={event.title} className="w-full h-full object-cover" />
             </div>
-          </div>
-        </Card>
+          )}
+          <h1 className="text-ink text-center font-bold m-0 leading-tight text-4xl md:text-5xl">
+            {event.title}
+          </h1>
+          <p className="text-body whitespace-pre-line leading-relaxed max-w-2xl mx-auto text-center font-normal text-base md:text-lg">
+            {event.description || 'Chưa có mô tả.'}
+          </p>
+        </div>
+      </Card>
 
-        <Card title="Thống kê" className="lg:col-span-1">
-          <div className="space-y-3">
-            {stats.map((s) => (
-              <div
-                key={s.label}
-                className="flex justify-between items-center bg-surface-soft border border-hairline rounded-sm px-4 py-3"
-              >
-                <span className="t-body-sm text-mute">{s.label}</span>
-                <span className="t-heading-md text-primary font-bold">{s.value}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
+      <div className="w-full max-w-7xl mx-auto">
+        <EventTimeline eventId={eventId} variant="admin" />
       </div>
 
-      <EventStructureView eventId={eventId} />
-
-      <div className="pt-2 flex gap-3">
+      {/* Canh thẳng với vạch spine chính của timeline: cùng cột max-w-7xl,
+          thụt trái = padding card (p-4/p-6) + vị trí spine (12px). */}
+      <div className="w-full max-w-7xl mx-auto pt-2 flex gap-3 pl-7 md:pl-9">
         {canEdit && (
-          <Button variant="secondary" size="md" onClick={() => setIsEditing(true)}>
+          <Button variant="primary" size="md" onClick={() => setIsEditing(true)}>
             Chỉnh sửa sự kiện
           </Button>
         )}
         <Button
-          variant="outline"
+          variant="danger"
           size="md"
           onClick={handleDelete}
           isLoading={deleteMutation.isPending}
-          className="border-error text-error hover:bg-error/10"
         >
           Xóa sự kiện
         </Button>

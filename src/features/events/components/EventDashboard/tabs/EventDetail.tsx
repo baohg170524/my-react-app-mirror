@@ -4,16 +4,9 @@ import React from 'react';
 import { useEvent } from '@/features/events/hooks/useEvents';
 import { Card } from '../Card';
 import { CardSkeleton } from '../SkeletonLoaders';
-import { EventStructureView } from '../../AdminEventDashboard/EventStructureView';
-import { formatDateTime } from '@/lib/date';
+import { EventTimeline } from '../EventTimeline';
 
 interface Props { eventId: string; userId: string; }
-
-const STATUS = {
-  open:   { label: 'Đang diễn ra', cls: 'bg-primary text-on-primary' },
-  hidden: { label: 'Ẩn',          cls: 'bg-stone text-on-dark' },
-  closed: { label: 'Đã kết thúc', cls: 'bg-stone text-on-dark' },
-} as const;
 
 /**
  * Participant view of an event: same read-only structure the admin sees
@@ -38,67 +31,25 @@ export function EventDetailTab({ eventId }: Props) {
     );
   }
 
-  const status = STATUS[event.status] ?? STATUS.hidden;
-
   return (
     <div className="flex flex-col gap-4 md:gap-6">
-      <Card title="Chi tiết sự kiện">
+      <Card className="border-transparent">
         <div className="space-y-4">
           {event.photoEventUrl && (
-            <div className="w-full h-64 md:h-80 rounded-sm overflow-hidden border border-hairline mb-4 relative">
+            <div className="w-full aspect-[2.35/1] rounded-sm overflow-hidden relative">
               <img src={event.photoEventUrl} alt={event.title} className="w-full h-full object-cover" />
             </div>
           )}
-          <p className="t-body-md text-body whitespace-pre-line">
+          <h1 className="text-ink text-center font-bold m-0 leading-tight text-4xl md:text-5xl">{event.title}</h1>
+          <p className="text-body whitespace-pre-line leading-relaxed max-w-2xl mx-auto text-center font-normal text-base md:text-lg">
             {event.description || 'Chưa có mô tả.'}
           </p>
-          <div className="space-y-3">
-            <div className="pb-1">
-               <span className="t-caption-xs text-primary font-bold tracking-wider">THỜI GIAN SỰ KIỆN</span>
-            </div>
-            <div className="flex justify-between items-baseline">
-              <span className="t-body-sm text-mute">Bắt đầu</span>
-              <span className="t-body-strong text-ink">{formatDateTime(event.startDate)}</span>
-            </div>
-            <div className="flex justify-between items-baseline border-t border-hairline pt-3">
-              <span className="t-body-sm text-mute">Kết thúc</span>
-              <span className="t-body-strong text-ink">{formatDateTime(event.endDate)}</span>
-            </div>
-
-            {(event.registrationStartDate || event.registrationEndDate) && (
-              <>
-                <div className="pt-3 pb-1 mt-1 border-t border-hairline">
-                   <span className="t-caption-xs text-primary font-bold tracking-wider">THỜI GIAN ĐĂNG KÝ</span>
-                </div>
-                {event.registrationStartDate && (
-                  <div className="flex justify-between items-baseline">
-                    <span className="t-body-sm text-mute">Bắt đầu</span>
-                    <span className="t-body-strong text-ink">{formatDateTime(event.registrationStartDate)}</span>
-                  </div>
-                )}
-                {event.registrationEndDate && (
-                  <div className="flex justify-between items-baseline border-t border-hairline pt-3">
-                    <span className="t-body-sm text-mute">Kết thúc</span>
-                    <span className="t-body-strong text-ink">{formatDateTime(event.registrationEndDate)}</span>
-                  </div>
-                )}
-              </>
-            )}
-
-            <div className="pt-3 pb-1 mt-1 border-t border-hairline">
-               <span className="t-caption-xs text-primary font-bold tracking-wider">THÔNG TIN KHÁC</span>
-            </div>
-            <div className="flex justify-between items-baseline">
-              <span className="t-body-sm text-mute">Trạng thái</span>
-              <span className={`inline-block px-3 py-1 rounded-sm t-caption-sm font-bold uppercase ${status.cls}`}>
-                {status.label}
-              </span>
-            </div>
-          </div>
         </div>
       </Card>
 
-      <EventStructureView eventId={eventId} />
+      <div className="w-full max-w-4xl mx-auto">
+        <EventTimeline eventId={eventId} />
+      </div>
     </div>
   );
 }
