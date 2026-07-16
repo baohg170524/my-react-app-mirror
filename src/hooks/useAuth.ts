@@ -17,9 +17,11 @@ import { getErrorMessage } from "@/lib/apiError";
 export const AUTH_KEYS = {
   all: ["auth"] as const,
   me: ["auth", "me"] as const,
+  mustChangePassword: ["auth", "mustChangePassword"] as const,
 } as const;
 
 const USER_STORAGE_KEY = "currentUser";
+const MUST_CHANGE_KEY = "mustChangePassword";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -32,6 +34,19 @@ function clearTokens() {
   localStorage.removeItem("accessToken");
   localStorage.removeItem("refreshToken");
   localStorage.removeItem(USER_STORAGE_KEY);
+  localStorage.removeItem(MUST_CHANGE_KEY);
+}
+
+/** Cờ "bắt buộc đổi mật khẩu" (tài khoản tạm) — lưu localStorage để còn hiệu lực sau khi F5. */
+function setMustChangePassword(value: boolean) {
+  if (typeof window === "undefined") return;
+  if (value) localStorage.setItem(MUST_CHANGE_KEY, "1");
+  else localStorage.removeItem(MUST_CHANGE_KEY);
+}
+
+function readMustChangePassword(): boolean {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(MUST_CHANGE_KEY) === "1";
 }
 
 function persistUser(user: UserProfile) {
@@ -101,6 +116,13 @@ export function useLogin() {
       const profile = loginResponseToProfile(data);
       persistUser(profile);
       queryClient.setQueryData(AUTH_KEYS.me, profile);
+
+      // Tài khoản tạm (được mời vào đội): bật cờ bắt buộc đổi mật khẩu -> cổng chặn
+      // toàn màn hình (ForcePasswordChangeGate) sẽ hiện form đổi mật khẩu ngay.
+      const mustChange = data.mustChangePassword === true;
+      setMustChangePassword(mustChange);
+      queryClient.setQueryData(AUTH_KEYS.mustChangePassword, mustChange);
+
       notify.success(`Đăng nhập thành công. Chào mừng ${profile.fullName}!`);
       // Nếu người dùng đến từ một liên kết cần đăng nhập (vd: link phản hồi lời
       // mời trong email), quay lại đúng trang đó; nếu không thì về trang chủ.
@@ -149,13 +171,49 @@ export function useLogout() {
     onSuccess: () => {
       clearTokens();
       queryClient.clear();
+      // Sau clear() phải set lại cờ = false để cổng bắt-buộc-đổi-MK re-render và ẩn ngay
+      // (nếu không, overlay còn treo trên trang /auth cho tới khi F5).
+      queryClient.setQueryData(AUTH_KEYS.mustChangePassword, false);
       notify.success("Đã đăng xuất.");
       router.push("/auth");
     },
     onError: () => {
       clearTokens();
       queryClient.clear();
+      queryClient.setQueryData(AUTH_KEYS.mustChangePassword, false);
       router.push("/auth");
     },
+  });
+}
+
+/** true khi tài khoản đang đăng nhập là tài khoản tạm bắt buộc đổi mật khẩu. Còn hiệu lực sau F5. */
+export function useMustChangePassword(): boolean {
+  const { data } = useQuery({
+    queryKey: AUTH_KEYS.mustChangePassword,
+    queryFn: () => readMustChangePassword(),
+    staleTime: Infinity,
+    retry: false,
+  });
+  return data === true;
+}
+
+/** Đổi mật khẩu — dùng cho cổng bắt buộc đổi mật khẩu của tài khoản tạm. */
+export function useChangePassword() {
+  const queryClient = useQueryClient();
+  const notify = useNotify();
+
+  return useMutation({
+    mutationFn: (payload: {
+      oldPassword: string;
+      newPassword: string;
+      confirmNewPassword: string;
+    }) => authApi.changePassword(payload),
+    onSuccess: () => {
+      // Đổi xong -> BE đã gỡ IsTemporary; tắt cờ để cổng chặn biến mất.
+      setMustChangePassword(false);
+      queryClient.setQueryData(AUTH_KEYS.mustChangePassword, false);
+      notify.success("Đổi mật khẩu thành công! Bạn có thể cập nhật hồ sơ và chấp nhận lời mời.");
+    },
+    onError: (e) => notify.error(getErrorMessage(e, "Đổi mật khẩu thất bại. Vui lòng thử lại.")),
   });
 }

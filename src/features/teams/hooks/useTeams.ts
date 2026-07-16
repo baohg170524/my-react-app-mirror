@@ -98,3 +98,18 @@ export const useLeaveTeam = (teamId: string, eventId: string, userId: string) =>
     },
   });
 };
+
+/** Leader mời một thành viên rời đội (kèm lý do tuỳ chọn — BE gửi email cho người bị mời rời). */
+export const useRemoveMember = (teamId: string, eventId: string, userId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ memberUserId, reason }: { memberUserId: string; reason?: string }) =>
+      teamsApi.removeMember(teamId, memberUserId, reason),
+    onSuccess: () => {
+      // Làm mới danh sách thành viên + lời mời (dòng của người vừa rời sẽ hiện "Đã rời đội")
+      qc.invalidateQueries({ queryKey: TEAM_KEYS.myTeam(eventId, userId) });
+      qc.invalidateQueries({ queryKey: TEAM_KEYS.detail(teamId) });
+      qc.invalidateQueries({ queryKey: TEAM_KEYS.invitations(teamId) });
+    },
+  });
+};
