@@ -92,7 +92,6 @@ export function useIsAuthenticated(): boolean {
 /** Login mutation — persists tokens + user, navigates home. */
 export function useLogin() {
   const queryClient = useQueryClient();
-  const router = useRouter();
   const notify = useNotify();
 
   return useMutation({
@@ -113,8 +112,12 @@ export function useLogin() {
           redirectTo = saved;
         }
       }
-      // replace (not push) so Back doesn't return to the login screen
-      router.replace(redirectTo);
+      // ĐIỀU HƯỚNG CỨNG (không dùng router.replace): tải lại trang để mọi dữ liệu
+      // đọc mới hoàn toàn theo tài khoản vừa đăng nhập. Điều hướng mềm giữ nguyên
+      // cache React Query của tài khoản TRƯỚC (đội, sự kiện, thông báo... còn
+      // staleTime) khiến hiển thị sai tài khoản/dữ liệu cũ cho tới khi người dùng F5.
+      // (replace: Back không quay lại màn đăng nhập.)
+      window.location.replace(redirectTo);
     },
     onError: (e) =>
       notify.error(getErrorMessage(e, "Đăng nhập thất bại. Vui lòng kiểm tra email và mật khẩu.")),

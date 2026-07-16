@@ -141,9 +141,15 @@ export function MyTeamTab({ eventId, userId }: Props) {
           ) : (
             <ul className="divide-y divide-hairline">
               {sentInvitations.map((inv) => {
-                const badge = INVITE_BADGE[inv.status] ?? { label: inv.status, cls: 'bg-gray-100 text-gray-500 border border-gray-200' };
+                // Danh sách này đã LỌC BỎ thành viên hiện tại (xem filter ở trên), nên một lời mời
+                // "Accepted" còn xuất hiện ở đây nghĩa là người đó đã tham gia rồi RỜI ĐỘI
+                // -> hiển thị "Đã rời đội" thay vì "Đã tham gia" gây hiểu nhầm.
+                const hasLeft = inv.status === 'Accepted';
+                const badge = hasLeft
+                  ? { label: 'Đã rời đội', cls: 'bg-gray-100 text-gray-600 border border-gray-300' }
+                  : (INVITE_BADGE[inv.status] ?? { label: inv.status, cls: 'bg-gray-100 text-gray-500 border border-gray-200' });
                 // Ưu tiên nhãn tiếng Việt từ BE; fallback về map cục bộ nếu BE cũ chưa trả.
-                const statusText = inv.statusLabel || badge.label;
+                const statusText = hasLeft ? 'Đã rời đội' : (inv.statusLabel || badge.label);
                 return (
                   <li key={inv.invitationId} className="py-2 flex items-center justify-between gap-3">
                     <span className="t-body-sm">
