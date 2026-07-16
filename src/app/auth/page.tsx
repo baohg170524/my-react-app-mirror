@@ -7,10 +7,13 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from "react";
-import { useLogin, useRegister } from "@/hooks/useAuth";
+import { useLogin, useRegister, useGoogleLogin } from "@/hooks/useAuth";
 import { getErrorMessage } from "@/lib/apiError";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
+
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -101,6 +104,7 @@ export default function AuthPage() {
   const switchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loginMutation = useLogin();
+  const googleMutation = useGoogleLogin();
   const registerMutation = useRegister();
 
   const isPending = loginMutation.isPending || registerMutation.isPending;
@@ -123,7 +127,7 @@ export default function AuthPage() {
   const formTransform = isRegister
     ? `translateX(calc(-100% - ${SPINE}px))`
     : "translateX(0)";
-  const EASE = "transform 0.68s cubic-bezier(0.76, 0, 0.24, 1)";
+  const EASE = "transform 0.55s cubic-bezier(0.76, 0, 0.24, 1)";
 
   // ── handlers ──────────────────────────────────────────────────────────────
 
@@ -142,8 +146,8 @@ export default function AuthPage() {
       setMode((m) => (m === "login" ? "register" : "login"));
     }, 100);
 
-    // hide spinner after slide animation completes (680ms) + fade buffer
-    setTimeout(() => setIsSwitching(false), 720);
+    // hide spinner after slide animation completes (550ms) + fade buffer
+    setTimeout(() => setIsSwitching(false), 600);
   }
 
   async function handleLogin(e: FormEvent) {
@@ -230,13 +234,18 @@ export default function AuthPage() {
           left: 0;
           width: calc(50% - ${SPINE / 2}px);
           height: 100%;
-          background: var(--color-surface-dark);
+          /* nền đen + ambient glow xanh (2 nguồn sáng) cho chiều sâu, hiện đại hơn nền phẳng */
+          background:
+            radial-gradient(115% 80% at 12% 0%, rgba(118, 185, 0, 0.14), transparent 52%),
+            radial-gradient(90% 60% at 100% 100%, rgba(118, 185, 0, 0.07), transparent 55%),
+            var(--color-surface-dark);
           display: flex;
           flex-direction: column;
           justify-content: center;
           padding: 64px 56px;
           z-index: 15;
           transition: ${EASE};
+          will-change: transform;
           overflow: hidden;
         }
 
@@ -347,6 +356,7 @@ export default function AuthPage() {
           justify-content: center;
           z-index: 10;
           transition: ${EASE};
+          will-change: transform;
           /* allow scrolling when the (taller) register form overflows … */
           overflow-y: auto;
           /* … but hide the scrollbar */
@@ -409,9 +419,10 @@ export default function AuthPage() {
         }
 
         .auth-brand-name {
-          font-size: 32px;
+          font-size: 34px;
           font-weight: 700;
-          line-height: 1.15;
+          line-height: 1.12;
+          letter-spacing: -0.02em;
           color: var(--color-on-dark);
           margin: 0 0 16px 0;
         }
@@ -456,6 +467,7 @@ export default function AuthPage() {
           font-size: 32px;
           font-weight: 700;
           line-height: 1.2;
+          letter-spacing: -0.02em;
           color: var(--color-ink);
           margin: 0;
         }
@@ -479,7 +491,7 @@ export default function AuthPage() {
         /* ── submit button override ───────────────────────────────────────── */
         .auth-submit {
           width: 100%;
-          height: 44px;
+          height: 46px;
           background: var(--color-primary);
           color: #fff;
           border: none;
@@ -489,16 +501,73 @@ export default function AuthPage() {
           letter-spacing: 0.06em;
           text-transform: uppercase;
           cursor: pointer;
-          transition: background 80ms linear;
+          /* colored shadow (tinted theo accent) + press feedback cho cảm giác vật lý */
+          box-shadow: 0 2px 10px rgba(118, 185, 0, 0.25);
+          transition: background 140ms ease, box-shadow 140ms ease, transform 90ms ease;
           margin-top: 4px;
         }
         .auth-submit:hover:not(:disabled) {
           background: var(--color-primary-dark);
+          box-shadow: 0 4px 16px rgba(118, 185, 0, 0.34);
+        }
+        .auth-submit:active:not(:disabled) {
+          transform: translateY(1px);
+          box-shadow: 0 1px 5px rgba(118, 185, 0, 0.22);
         }
         .auth-submit:disabled {
           background: var(--color-surface-soft);
           color: var(--color-ash);
+          box-shadow: none;
           cursor: not-allowed;
+        }
+
+        /* ── inputs: focus ring + autofill fix (chỉ trong form auth) ───────── */
+        .auth-form-inner .text-input {
+          transition: border-color 140ms ease, box-shadow 140ms ease;
+        }
+        .auth-form-inner .text-input:hover:not(:focus) {
+          border-color: var(--color-hairline-strong);
+        }
+        .auth-form-inner .text-input:focus {
+          box-shadow: 0 0 0 3px rgba(118, 185, 0, 0.14);
+        }
+        /* autofill: giữ nền trắng + chữ đen thay vì nền xanh mặc định của browser */
+        .auth-form-inner .text-input:-webkit-autofill,
+        .auth-form-inner .text-input:-webkit-autofill:hover,
+        .auth-form-inner .text-input:-webkit-autofill:focus {
+          -webkit-text-fill-color: var(--color-ink);
+          -webkit-box-shadow: 0 0 0 1000px var(--color-canvas) inset;
+          caret-color: var(--color-ink);
+        }
+
+        /* ── divider "hoặc" có 2 đường kẻ ─────────────────────────────────── */
+        .auth-divider {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          width: 100%;
+        }
+        .auth-divider::before,
+        .auth-divider::after {
+          content: "";
+          flex: 1;
+          height: 1px;
+          background: var(--color-hairline);
+        }
+        .auth-divider span {
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          color: var(--color-ash);
+        }
+
+        /* ── link hover ───────────────────────────────────────────────────── */
+        .auth-link {
+          transition: color 120ms ease;
+        }
+        .auth-link:hover {
+          text-decoration: underline;
         }
 
         /* ── form content fade when mode changes ──────────────────────────── */
@@ -767,8 +836,10 @@ export default function AuthPage() {
                 >
                   <a
                     href="/auth/forgot-password"
+                    className="auth-link"
                     style={{
                       fontSize: 13,
+                      fontWeight: 500,
                       color: "var(--color-primary)",
                       textDecoration: "none",
                     }}
@@ -785,6 +856,39 @@ export default function AuthPage() {
                   {loginMutation.isPending ? "Đang đăng nhập…" : "Đăng nhập"}
                 </button>
               </form>
+            )}
+
+            {/* ── Đăng nhập bằng Google ──────────────────────────────────── */}
+            {!isRegister && GOOGLE_CLIENT_ID && (
+              <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 16 }}>
+                <div className="auth-divider">
+                  <span>hoặc</span>
+                </div>
+                {/* min-height giữ sẵn chỗ: iframe nút Google load chậm nên phải reserve
+                    không gian, tránh layout nhảy (pop-in) khi nút xuất hiện. */}
+                <div
+                  style={{
+                    minHeight: 44,
+                    width: "100%",
+                    display: "flex",
+                    justifyContent: "center",
+                  }}
+                >
+                  <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+                    <GoogleLogin
+                      onSuccess={(cred) => {
+                        if (cred.credential) googleMutation.mutate(cred.credential);
+                      }}
+                      onError={() => {}}
+                      size="large"
+                      width="316"
+                      shape="rectangular"
+                      text="signin_with"
+                      logo_alignment="center"
+                    />
+                  </GoogleOAuthProvider>
+                </div>
+              </div>
             )}
 
             {/* ── Register form ──────────────────────────────────────────── */}
