@@ -9,6 +9,7 @@ import { useCurrentUser } from '@/hooks/useAuth';
 import { isJudgeRole, isMentorRole } from '@/features/events/api/manage';
 import { eventsApi } from '@/features/events/api/events';
 import { useNotify } from '@/components/NotificationProvider';
+import { useDialog } from '@/components/ConfirmDialogProvider';
 import { getErrorMessage } from '@/lib/apiError';
 import { Card } from '../../EventDashboard/Card';
 import { Button } from '../../EventDashboard/Button';
@@ -32,6 +33,7 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const notify = useNotify();
+  const dialog = useDialog();
 
   const teamCount = new Set(roles.map((r) => r.teamId).filter(Boolean)).size;
   const judgeCount = new Set(
@@ -53,7 +55,7 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
     }
   });
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!event) return;
 
     if (event.status === 'open') {
@@ -65,9 +67,13 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
       return;
     }
 
-    if (window.confirm("Bạn có chắc chắn muốn xóa sự kiện này không? Hành động này không thể hoàn tác.")) {
-      deleteMutation.mutate();
-    }
+    const ok = await dialog.confirm({
+      title: 'Xóa sự kiện',
+      message: 'Bạn có chắc chắn muốn xóa sự kiện này không?\nHành động này không thể hoàn tác.',
+      confirmText: 'Xóa sự kiện',
+      danger: true,
+    });
+    if (ok) deleteMutation.mutate();
   };
 
   if (error) {

@@ -15,6 +15,7 @@ import { useIsAuthenticated, useCurrentUser } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useAllEvents } from "@/features/events/hooks/useEvents";
 import { useNotify } from "@/components/NotificationProvider";
+import { useDialog } from "@/components/ConfirmDialogProvider";
 import { getErrorMessage } from "@/lib/apiError";
 
 const PAGE_SIZE = 20;
@@ -243,6 +244,7 @@ export function UsersList() {
   const { data: currentUser } = useCurrentUser();
   const queryClient = useQueryClient();
   const notify = useNotify();
+  const dialog = useDialog();
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
   const [filter, setFilter] = useState<"all" | "pending">("all");
@@ -299,10 +301,15 @@ export function UsersList() {
     },
   });
 
-  function handleToggle(u: UserSummary) {
-    if (u.isApproved && typeof window !== "undefined" &&
-      !window.confirm(`Thu hồi duyệt tài khoản ${u.fullName || u.email}? Tài khoản sẽ trở về trạng thái "Chờ duyệt" và không thể tham gia cho đến khi được duyệt lại.`)) {
-      return;
+  async function handleToggle(u: UserSummary) {
+    if (u.isApproved) {
+      const ok = await dialog.confirm({
+        title: "Thu hồi duyệt tài khoản",
+        message: `Thu hồi duyệt tài khoản ${u.fullName || u.email}?\nTài khoản sẽ trở về trạng thái "Chờ duyệt" và không thể tham gia cho đến khi được duyệt lại.`,
+        confirmText: "Thu hồi duyệt",
+        danger: true,
+      });
+      if (!ok) return;
     }
     setActionError(null);
     toggleMutation.mutate(u);
@@ -338,19 +345,20 @@ export function UsersList() {
     },
   });
 
-  function handleReject(u: UserSummary) {
-    if (typeof window === "undefined") return;
-    const reason = window.prompt(
-      `Lý do từ chối đăng ký của ${u.fullName || u.email || "tài khoản này"}:`,
-      "",
-    );
+  async function handleReject(u: UserSummary) {
+    const reason = await dialog.prompt({
+      title: "Từ chối hồ sơ",
+      message: `Từ chối đăng ký của ${u.fullName || u.email || "tài khoản này"}? Lý do sẽ được gửi cho người đăng ký.`,
+      label: "Lý do từ chối",
+      placeholder: "VD: Ảnh thẻ sinh viên không hợp lệ…",
+      required: true,
+      multiline: true,
+      danger: true,
+      confirmText: "Từ chối",
+    });
     if (reason === null) return; // hủy
-    if (!reason.trim()) {
-      setActionError("Vui lòng nhập lý do từ chối.");
-      return;
-    }
     setActionError(null);
-    rejectMutation.mutate({ u, reason: reason.trim() });
+    rejectMutation.mutate({ u, reason });
   }
 
   // Xoá tài khoản = soft delete (DELETE /Users/{id}) — chặn truy cập hệ thống.
@@ -368,11 +376,14 @@ export function UsersList() {
     },
   });
 
-  function handleDelete(u: UserSummary) {
-    if (typeof window !== "undefined" &&
-      !window.confirm(`Xoá tài khoản ${u.fullName || u.email || "này"}? Tài khoản sẽ bị chặn truy cập hệ thống.`)) {
-      return;
-    }
+  async function handleDelete(u: UserSummary) {
+    const ok = await dialog.confirm({
+      title: "Xoá tài khoản",
+      message: `Xoá tài khoản ${u.fullName || u.email || "này"}?\nTài khoản sẽ bị chặn truy cập hệ thống.`,
+      confirmText: "Xoá tài khoản",
+      danger: true,
+    });
+    if (!ok) return;
     setActionError(null);
     deleteMutation.mutate(u);
   }

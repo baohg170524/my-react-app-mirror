@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { usersApi, schoolsApi, type UserSummary } from '@/services/api';
 import { Navbar } from '@/components/Navbar';
 import Notif from '@/components/Notif';
+import { useDialog } from '@/components/ConfirmDialogProvider';
 import { getErrorMessage } from '@/lib/apiError';
 
 const PAGE_SIZE = 20;
@@ -14,6 +15,7 @@ const errMsg = getErrorMessage;
 
 export default function ApprovalRoute() {
   const queryClient = useQueryClient();
+  const dialog = useDialog();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -197,19 +199,20 @@ export default function ApprovalRoute() {
                                 <button
                                   type="button"
                                   disabled={busy}
-                                  onClick={() => {
-                                    if (typeof window === 'undefined') return;
-                                    const reason = window.prompt(
-                                      `Lý do từ chối đăng ký của ${r.fullName || r.email}:`,
-                                      '',
-                                    );
+                                  onClick={async () => {
+                                    const reason = await dialog.prompt({
+                                      title: 'Từ chối hồ sơ',
+                                      message: `Từ chối đăng ký của ${r.fullName || r.email}? Lý do sẽ được gửi cho người đăng ký.`,
+                                      label: 'Lý do từ chối',
+                                      placeholder: 'VD: Ảnh thẻ sinh viên không hợp lệ…',
+                                      required: true,
+                                      multiline: true,
+                                      danger: true,
+                                      confirmText: 'Từ chối',
+                                    });
                                     if (reason === null) return; // hủy
-                                    if (!reason.trim()) {
-                                      setActionError('Vui lòng nhập lý do từ chối.');
-                                      return;
-                                    }
                                     setActionError(null);
-                                    rejectMutation.mutate({ userId: r.id, reason: reason.trim() });
+                                    rejectMutation.mutate({ userId: r.id, reason });
                                   }}
                                   className="t-caption-sm font-bold text-error disabled:opacity-50 btn-hover"
                                   style={{ background: 'var(--color-error-soft)', border: '1px solid var(--color-error-soft)', borderRadius: 'var(--radius-sm)', padding: '6px 14px', cursor: busy ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}

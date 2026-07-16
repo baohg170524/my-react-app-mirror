@@ -7,6 +7,7 @@ import { useEventRoles, useEventTracks } from '@/features/events/hooks/useEvents
 import { isEventCoordinatorRole, isJudgeRole, isMentorRole, manageApi, EVENT_ROLE } from '@/features/events/api/manage';
 import { usersApi, type UserSummary } from '@/services/api';
 import { useNotify } from '@/components/NotificationProvider';
+import { useDialog } from '@/components/ConfirmDialogProvider';
 import { getErrorMessage } from '@/lib/apiError';
 import { Card } from '../../EventDashboard/Card';
 import { Button } from '../../EventDashboard/Button';
@@ -29,6 +30,7 @@ export function RoleAssignmentTab({ eventId }: RoleAssignmentTabProps) {
   const isLoading = rolesLoading || tracksLoading;
   const queryClient = useQueryClient();
   const notify = useNotify();
+  const dialog = useDialog();
   const [adding, setAdding] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [activeKey, setActiveKey] = useState<'coordinator' | 'judge' | 'mentor'>('coordinator');
@@ -87,10 +89,14 @@ export function RoleAssignmentTab({ eventId }: RoleAssignmentTabProps) {
   ];
   const activeGroup = groups.find((g) => g.key === activeKey) ?? groups[0];
 
-  function handleRemove(roleId: string, name: string, roleLabel: string) {
-    if (typeof window !== 'undefined' && !window.confirm(`Gỡ vai trò "${roleLabel}" của ${name}?`)) {
-      return;
-    }
+  async function handleRemove(roleId: string, name: string, roleLabel: string) {
+    const ok = await dialog.confirm({
+      title: 'Gỡ vai trò',
+      message: `Gỡ vai trò "${roleLabel}" của ${name}?`,
+      confirmText: 'Gỡ vai trò',
+      danger: true,
+    });
+    if (!ok) return;
     removeMutation.mutate(roleId);
   }
 

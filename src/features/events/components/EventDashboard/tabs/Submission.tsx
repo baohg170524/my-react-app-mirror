@@ -5,6 +5,7 @@ import type { AxiosError } from 'axios';
 import { useEventRounds, useEventTracks } from '@/features/events/hooks/useEvents';
 import { useTeamSubmissions, useCreateSubmission, useUpdateSubmission } from '@/features/submissions/hooks/useSubmissions';
 import type { SubmissionModel } from '@/features/submissions/api/submissions';
+import { useNotify } from '@/components/NotificationProvider';
 
 /** Surface the backend's message (e.g. "Đã hết hạn nộp bài cho vòng thi này.")
  *  instead of a generic failure. */
@@ -23,6 +24,7 @@ interface RoundInfo { id: string; roundName: string | null; startDate: string; e
 interface Props { teamId: string; eventId: string; }
 
 export function SubmissionTab({ teamId, eventId }: Props) {
+  const notify = useNotify();
   const { data: rounds = [] } = useEventRounds(eventId);
   const { data: tracks = [] } = useEventTracks(eventId);
 
@@ -205,27 +207,73 @@ export function SubmissionTab({ teamId, eventId }: Props) {
         ) : existing.length === 0 ? (
           <p className="t-body-sm text-mute">Chưa có bài nộp nào.</p>
         ) : (
-          <ul className="divide-y divide-hairline">
+          <ul className="space-y-3">
             {existing.map((s) => {
               const r = roundOfTrack(s.trackId);
               const canEdit = isRoundOpen(r);
               return (
-                <li key={s.id} className="py-2 flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <a href={s.submissionUrl} target="_blank" rel="noreferrer" className="t-body-md text-primary underline break-all">
+                <li key={s.id} className="border border-hairline rounded-sm bg-canvas p-4 space-y-2">
+                  {/* Dòng 1: trạng thái + hạng mục / vòng + nút Sửa */}
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-2 flex-wrap min-w-0">
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-sm bg-green-50 text-green-700 border border-green-200 whitespace-nowrap">
+                        ✓ Đã nộp
+                      </span>
+                      <span className="t-body-md font-bold">{trackName(s.trackId)}</span>
+                      {r && <span className="t-body-sm text-mute">· {r.roundName ?? 'Vòng thi'}</span>}
+                    </div>
+                    {canEdit ? (
+                      <button type="button" onClick={() => startEdit(s)} className="btn btn-primary shrink-0 text-xs px-3 py-1">
+                        Sửa bài
+                      </button>
+                    ) : (
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-sm bg-gray-100 text-gray-500 border border-gray-200 shrink-0 whitespace-nowrap">
+                        🔒 Đã khóa
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Dòng 2: link bài nộp + copy */}
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span aria-hidden className="shrink-0">🔗</span>
+                    <a
+                      href={s.submissionUrl} target="_blank" rel="noreferrer"
+                      className="t-body-sm text-primary underline truncate"
+                      title={s.submissionUrl}
+                    >
                       {s.submissionUrl}
                     </a>
-                    <p className="t-body-sm text-mute">
-                      Track: {trackName(s.trackId)}
-                      {r ? ` · Hạn sửa: ${fmt(r.endDate)}` : ''}
-                      {s.description ? ` · ${s.description}` : ''}
-                    </p>
-                  </div>
-                  {canEdit && (
-                    <button type="button" onClick={() => startEdit(s)} className="btn shrink-0 text-xs px-3 py-1">
-                      Sửa
+                    <button
+                      type="button"
+                      className="btn shrink-0 text-xs px-2 py-0.5"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(s.submissionUrl)
+                          .then(() => notify.success('Đã copy link bài nộp.'))
+                          .catch(() => notify.error('Không copy được, hãy copy thủ công.'));
+                      }}
+                    >
+                      Copy
                     </button>
-                  )}
+                  </div>
+
+                  {/* Mô tả (nếu có) */}
+                  {s.description ? (
+                    <p className="t-body-sm text-mute m-0">
+                      <b className="text-ink">Mô tả:</b> {s.description}
+                    </p>
+                  ) : null}
+
+                  {/* Meta: thời gian nộp + hạn sửa */}
+                  <div className="flex items-center gap-4 flex-wrap t-body-sm text-mute">
+                    <span>🕒 Nộp lúc: {fmt(s.createdTime)}</span>
+                    {r && (canEdit ? (
+                      <span className="font-bold" style={{ color: '#5a8d00' }}>
+                        ⏰ Còn sửa được đến {fmt(r.endDate)}
+                      </span>
+                    ) : (
+                      <span>⏰ Hết hạn sửa: {fmt(r.endDate)}</span>
+                    ))}
+                  </div>
                 </li>
               );
             })}
