@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useMyTeamForEvent, useInviteToTeam, useLeaveTeam, useTeamInvitations, useTransferLeader, useConfirmRegistration } from '@/features/teams/hooks/useTeams';
+import { useMyTeamForEvent, useInviteToTeam, useLeaveTeam, useTeamInvitations, useTransferLeader, useConfirmRegistration, useRemoveMember } from '@/features/teams/hooks/useTeams';
 import { useEventDashboard } from '@/features/events/contexts/EventDashboardContext';
 import { useNotify } from '@/components/NotificationProvider';
 
@@ -24,6 +24,7 @@ export function MyTeamTab({ eventId, userId }: Props) {
   const leave  = useLeaveTeam(teamId, eventId, userId);
   const transfer = useTransferLeader(teamId, eventId, userId);
   const confirm  = useConfirmRegistration(teamId, eventId, userId);
+  const removeMember = useRemoveMember(teamId, eventId, userId);
 
   const isRegistered = team?.status === 'Registered';
   const [email, setEmail] = useState('');
@@ -88,6 +89,25 @@ export function MyTeamTab({ eventId, userId }: Props) {
                         Chuyển quyền
                       </button>
                     )}
+                    {isLeader && !m.isLeader && !isRegistered && (
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        disabled={removeMember.isPending}
+                        onClick={() => {
+                          // Lý do KHÔNG bắt buộc — được gửi kèm trong email thông báo cho người bị mời rời.
+                          const reason = window.prompt(`Lý do mời ${m.fullName} rời đội (có thể để trống):`);
+                          if (reason === null) return; // bấm Hủy
+                          if (!window.confirm(`Xác nhận mời ${m.fullName} rời đội? Hệ thống sẽ gửi email thông báo cho họ.`)) return;
+                          removeMember.mutate({ memberUserId: m.userId, reason: reason.trim() || undefined }, {
+                            onSuccess: () => notify.success(`${m.fullName} đã rời đội. Đã gửi email thông báo${reason.trim() ? ' kèm lý do' : ''}.`),
+                            onError: (err: any) => notify.error(err?.response?.data?.message || 'Không thể mời thành viên rời đội.'),
+                          });
+                        }}
+                      >
+                        Mời rời đội
+                      </button>
+                    )}
                     <span className="text-xs font-bold whitespace-nowrap">{m.isLeader ? 'Trưởng nhóm' : 'Thành viên'}</span>
                   </span>
                 </li>
@@ -141,9 +161,15 @@ export function MyTeamTab({ eventId, userId }: Props) {
           ) : (
             <ul className="divide-y divide-hairline">
               {sentInvitations.map((inv) => {
-                const badge = INVITE_BADGE[inv.status] ?? { label: inv.status, cls: 'bg-gray-100 text-gray-500 border border-gray-200' };
+                // Danh sách này đã LỌC BỎ thành viên hiện tại (xem filter ở trên), nên một lời mời
+                // "Accepted" còn xuất hiện ở đây nghĩa là người đó đã tham gia rồi RỜI ĐỘI
+                // -> hiển thị "Đã rời đội" thay vì "Đã tham gia" gây hiểu nhầm.
+                const hasLeft = inv.status === 'Accepted';
+                const badge = hasLeft
+                  ? { label: 'Đã rời đội', cls: 'bg-gray-100 text-gray-600 border border-gray-300' }
+                  : (INVITE_BADGE[inv.status] ?? { label: inv.status, cls: 'bg-gray-100 text-gray-500 border border-gray-200' });
                 // Ưu tiên nhãn tiếng Việt từ BE; fallback về map cục bộ nếu BE cũ chưa trả.
-                const statusText = inv.statusLabel || badge.label;
+                const statusText = hasLeft ? 'Đã rời đội' : (inv.statusLabel || badge.label);
                 return (
                   <li key={inv.invitationId} className="py-2 flex items-center justify-between gap-3">
                     <span className="t-body-sm">
@@ -152,8 +178,27 @@ export function MyTeamTab({ eventId, userId }: Props) {
                         <span className="text-mute"> ({inv.invitedUserEmail})</span>
                       ) : null}
                     </span>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-sm whitespace-nowrap ${badge.cls}`}>
-                      {statusText}
+                    <span className="flex items-center gap-2">
+                      {/* Mời lại: chỉ với người đã rời / lời mời hết hạn / đã từ chối, khi đội chưa chốt */}
+                      {!isRegistered && !!inv.invitedUserEmail
+                        && (hasLeft || inv.status === 'Expired' || inv.status === 'Declined') && (
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          disabled={invite.isPending}
+                          onClick={() => {
+                            invite.mutate({ email: inv.invitedUserEmail }, {
+                              onSuccess: () => notify.success(`Đã gửi lại lời mời tới ${inv.invitedUserEmail}.`),
+                              onError: (err: any) => notify.error(err?.response?.data?.message || 'Mời lại thất bại.'),
+                            });
+                          }}
+                        >
+                          Mời lại
+                        </button>
+                      )}
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-sm whitespace-nowrap ${badge.cls}`}>
+                        {statusText}
+                      </span>
                     </span>
                   </li>
                 );

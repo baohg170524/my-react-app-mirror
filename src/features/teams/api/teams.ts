@@ -108,8 +108,12 @@ export const teamsApi = {
     await apiClient.post(`/Teams/${encodeURIComponent(teamId)}/members`, { userId });
   },
 
-  removeMember: async (teamId: string, userId: string): Promise<void> => {
-    await apiClient.delete(`/Teams/${encodeURIComponent(teamId)}/members/${encodeURIComponent(userId)}`);
+  /** DELETE /api/Teams/{teamId}/members/{userId}?reason=... — leader mời thành viên rời đội.
+   *  `reason` (tuỳ chọn) được BE gửi kèm trong email thông báo cho người bị mời rời. */
+  removeMember: async (teamId: string, userId: string, reason?: string): Promise<void> => {
+    await apiClient.delete(`/Teams/${encodeURIComponent(teamId)}/members/${encodeURIComponent(userId)}`, {
+      params: reason && reason.trim() ? { reason: reason.trim() } : {},
+    });
   },
 
   leave: async (teamId: string): Promise<void> => {
