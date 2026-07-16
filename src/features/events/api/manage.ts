@@ -52,6 +52,8 @@ export interface TrackItem {
   trackName: string | null;
   templateId: string | null;
   description: string | null;
+  /** Cấu hình các loại link phải nộp (mỗi dòng 1 yêu cầu) — FE dùng để sinh form nộp bài động. */
+  submissionRuleDescription?: string | null;
   judges: EventRoleUser[] | null;
   mentors: EventRoleUser[] | null;
 }

@@ -6,6 +6,12 @@ import { useEventRounds, useEventTracks } from '@/features/events/hooks/useEvent
 import { useTeamSubmissions, useCreateSubmission, useUpdateSubmission } from '@/features/submissions/hooks/useSubmissions';
 import type { SubmissionModel } from '@/features/submissions/api/submissions';
 import { useNotify } from '@/components/NotificationProvider';
+import {
+  parseRuleLabels,
+  parseSubmissionLinks,
+  DEFAULT_LINK_LABEL,
+  type SubmissionLink,
+} from '@/features/submissions/utils/submissionLinks';
 
 /** Surface the backend's message (e.g. "Đã hết hạn nộp bài cho vòng thi này.")
  *  instead of a generic failure. */
@@ -30,7 +36,9 @@ export function SubmissionTab({ teamId, eventId }: Props) {
 
   const [roundId, setRoundId] = useState('');
   const [trackId, setTrackId] = useState('');
-  const [submissionUrl, setUrl] = useState('');
+  // FORM ĐỘNG: mỗi phần tử = 1 ô nhập link theo cấu hình của Track (submissionRuleDescription).
+  // Track không cấu hình -> 1 ô "Link nộp bài" như cũ.
+  const [links, setLinks] = useState<SubmissionLink[]>([]);
   const [description, setDesc] = useState('');
   // Bài đang sửa (null = đang ở chế độ nộp mới). Chỉ sửa được link + mô tả, trong thời gian vòng còn mở.
   const [editing, setEditing] = useState<SubmissionModel | null>(null);
@@ -46,7 +54,22 @@ export function SubmissionTab({ teamId, eventId }: Props) {
   const update = useUpdateSubmission(teamId);
 
   const allRounds = rounds as RoundInfo[];
-  const allTracks = tracks as Array<{ id: string; roundId: string; trackName: string | null }>;
+  const allTracks = tracks as Array<{
+    id: string;
+    roundId: string;
+    trackName: string | null;
+    submissionRuleDescription?: string | null;
+  }>;
+
+  // Sinh danh sách ô nhập link theo cấu hình của Track đang chọn:
+  // mỗi dòng trong submissionRuleDescription = 1 loại link phải nộp.
+  const buildLinksForTrack = (tid: string): SubmissionLink[] => {
+    const t = allTracks.find((x) => x.id === tid);
+    const labels = parseRuleLabels(t?.submissionRuleDescription);
+    return labels.length > 0
+      ? labels.map((label) => ({ label, url: '' }))
+      : [{ label: DEFAULT_LINK_LABEL, url: '' }];
+  };
 
   // Vòng đang diễn ra (dùng để hiện banner + highlight trong dropdown).
   const activeRound = useMemo(
@@ -75,28 +98,39 @@ export function SubmissionTab({ teamId, eventId }: Props) {
   const selectedRound = allRounds.find((r) => r.id === roundId);
   const selectedClosed = !!selectedRound && !isRoundOpen(selectedRound);
 
+  // Gộp danh sách link thành giá trị gửi lên BE (trường submissionUrl):
+  // - Track có cấu hình nhiều loại link -> JSON.stringify([{label,url},...])
+  // - 1 ô mặc định (track không cấu hình) -> gửi chuỗi URL thường như cũ (tương thích ngược)
+  const linksToSubmissionUrl = (list: SubmissionLink[]): string => {
+    const cleaned = list.map((l) => ({ label: l.label, url: l.url.trim() }));
+    const isConfigured = cleaned.length > 1 || (cleaned.length === 1 && cleaned[0].label !== DEFAULT_LINK_LABEL);
+    return isConfigured ? JSON.stringify(cleaned) : (cleaned[0]?.url ?? '');
+  };
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    const submissionUrl = linksToSubmissionUrl(links);
     if (editing) {
       // isActive gửi đúng giá trị hiện tại — chỉ Event Coordinator được đổi (BE chặn nếu đổi).
       update.mutate(
         { id: editing.id, submissionUrl, description, isActive: editing.isActive },
-        { onSuccess: () => { setEditing(null); setUrl(''); setDesc(''); } },
+        { onSuccess: () => { setEditing(null); setLinks(trackId ? buildLinksForTrack(trackId) : []); setDesc(''); } },
       );
       return;
     }
     create.mutate(
       { teamId, trackId, submissionUrl, description },
-      { onSuccess: () => { setUrl(''); setDesc(''); } },
+      { onSuccess: () => { setLinks(buildLinksForTrack(trackId)); setDesc(''); } },
     );
   };
 
   const startEdit = (s: SubmissionModel) => {
     setEditing(s);
-    setUrl(s.submissionUrl);
+    // Hiện lại đúng các link đã nộp (JSON -> danh sách; chuỗi cũ -> 1 link mặc định).
+    setLinks(parseSubmissionLinks(s.submissionUrl));
     setDesc(s.description ?? '');
   };
-  const cancelEdit = () => { setEditing(null); setUrl(''); setDesc(''); };
+  const cancelEdit = () => { setEditing(null); setLinks(trackId ? buildLinksForTrack(trackId) : []); setDesc(''); };
 
   const mutError = editing ? update.error : create.error;
   const pending = editing ? update.isPending : create.isPending;
@@ -143,7 +177,7 @@ export function SubmissionTab({ teamId, eventId }: Props) {
           <>
             <label className="block">
               <span className="t-body-sm font-bold">Vòng</span>
-              <select required value={roundId} onChange={(e) => { setRoundId(e.target.value); setTrackId(''); }} className="input w-full mt-1">
+              <select required value={roundId} onChange={(e) => { setRoundId(e.target.value); setTrackId(''); setLinks([]); }} className="input w-full mt-1">
                 <option value="">— Chọn vòng —</option>
                 {allRounds.map((r) => {
                   const isActive = isRoundOpen(r);
@@ -166,7 +200,16 @@ export function SubmissionTab({ teamId, eventId }: Props) {
 
             <label className="block">
               <span className="t-body-sm font-bold">Hạng mục thi đấu</span>
-              <select required value={trackId} onChange={(e) => setTrackId(e.target.value)} className="input w-full mt-1" disabled={!roundId}>
+              <select
+                required value={trackId}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setTrackId(v);
+                  // Đọc cấu hình của track vừa chọn -> sinh đúng số ô nhập link
+                  setLinks(v ? buildLinksForTrack(v) : []);
+                }}
+                className="input w-full mt-1" disabled={!roundId}
+              >
                 <option value="">— Chọn track —</option>
                 {tracksForRound.map((t) => <option key={t.id} value={t.id}>{t.trackName ?? 'Track ' + t.id.slice(0, 4)}</option>)}
               </select>
@@ -174,10 +217,23 @@ export function SubmissionTab({ teamId, eventId }: Props) {
           </>
         )}
 
-        <label className="block">
-          <span className="t-body-sm font-bold">Link nộp bài</span>
-          <input required type="url" value={submissionUrl} onChange={(e) => setUrl(e.target.value)} className="input w-full mt-1" />
-        </label>
+        {/* FORM ĐỘNG: mỗi loại link trong cấu hình track = 1 ô nhập riêng */}
+        {links.length === 0 ? (
+          <p className="t-body-sm text-mute">Chọn vòng và hạng mục để hiện các link cần nộp.</p>
+        ) : (
+          links.map((lnk, idx) => (
+            <label key={idx} className="block">
+              <span className="t-body-sm font-bold">{lnk.label}</span>
+              <input
+                required type="url" value={lnk.url} placeholder="https://…"
+                onChange={(e) =>
+                  setLinks((prev) => prev.map((x, i) => (i === idx ? { ...x, url: e.target.value } : x)))
+                }
+                className="input w-full mt-1"
+              />
+            </label>
+          ))
+        )}
 
         <label className="block">
           <span className="t-body-sm font-bold">Mô tả</span>
@@ -233,28 +289,32 @@ export function SubmissionTab({ teamId, eventId }: Props) {
                     )}
                   </div>
 
-                  {/* Dòng 2: link bài nộp + copy */}
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span aria-hidden className="shrink-0">🔗</span>
-                    <a
-                      href={s.submissionUrl} target="_blank" rel="noreferrer"
-                      className="t-body-sm text-primary underline truncate"
-                      title={s.submissionUrl}
-                    >
-                      {s.submissionUrl}
-                    </a>
-                    <button
-                      type="button"
-                      className="btn shrink-0 text-xs px-2 py-0.5"
-                      onClick={() => {
-                        navigator.clipboard?.writeText(s.submissionUrl)
-                          .then(() => notify.success('Đã copy link bài nộp.'))
-                          .catch(() => notify.error('Không copy được, hãy copy thủ công.'));
-                      }}
-                    >
-                      Copy
-                    </button>
-                  </div>
+                  {/* Danh sách link đã nộp: JSON [{label,url}] -> từng dòng theo nhãn;
+                      dữ liệu cũ (1 URL thường) -> 1 dòng như trước (tương thích ngược). */}
+                  {parseSubmissionLinks(s.submissionUrl).map((lnk, i) => (
+                    <div key={i} className="flex items-center gap-2 min-w-0">
+                      <span aria-hidden className="shrink-0">🔗</span>
+                      <span className="t-body-sm font-bold shrink-0">{lnk.label}:</span>
+                      <a
+                        href={lnk.url} target="_blank" rel="noreferrer"
+                        className="t-body-sm text-primary underline truncate"
+                        title={lnk.url}
+                      >
+                        {lnk.url}
+                      </a>
+                      <button
+                        type="button"
+                        className="btn shrink-0 text-xs px-2 py-0.5"
+                        onClick={() => {
+                          navigator.clipboard?.writeText(lnk.url)
+                            .then(() => notify.success(`Đã copy ${lnk.label}.`))
+                            .catch(() => notify.error('Không copy được, hãy copy thủ công.'));
+                        }}
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  ))}
 
                   {/* Mô tả (nếu có) */}
                   {s.description ? (
