@@ -1,7 +1,8 @@
-// Hệ 10: mỗi tiêu chí chấm 0-10, quy đổi theo trọng số (%) rồi cộng lại.
+// Hệ 100: tổng weight tất cả tiêu chí = 100, mỗi tiêu chí chấm 0-maxScore,
+// quy đổi theo trọng số (weight/100) rồi cộng lại → tổng tối đa luôn = 10.
 export const calcScore = (scores, criteria) => {
   if (!scores || !criteria || scores.length === 0) return 0;
-  const total = criteria.reduce((sum, c, i) => sum + (scores[i] || 0) * (c.weight / 10), 0);
+  const total = criteria.reduce((sum, c, i) => sum + (scores[i] || 0) * (c.weight / 100), 0);
   return Math.round(total * 100) / 100;
 };
 

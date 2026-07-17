@@ -76,4 +76,12 @@ export const authApi = {
   /** POST /api/Auth/reset-password — đặt lại mật khẩu bằng token từ email. */
   resetPassword: (token: string, newPassword: string): Promise<void> =>
     apiClient.post("/Auth/reset-password", { token, newPassword }).then(() => undefined),
+
+  /** PUT /api/Auth/change-password — đổi mật khẩu (cần đăng nhập). Dùng cho tài khoản tạm bắt buộc đổi MK. */
+  changePassword: (payload: {
+    oldPassword: string;
+    newPassword: string;
+    confirmNewPassword: string;
+  }): Promise<void> =>
+    apiClient.put("/Auth/change-password", payload).then(() => undefined),
 };

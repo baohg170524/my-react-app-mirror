@@ -44,11 +44,17 @@ export default function SubmissionPage({ submissions, teams }) {
               </div>
             ))}
           </div>
-          <div className="p-3 flex items-center gap-2.5" style={{ background: '#f7f7f7', borderRadius: 2 }}>
-            <div className="text-[10px] tracking-widest shrink-0 font-bold uppercase" style={{ color: '#757575', minWidth: 50 }}>REPO</div>
-            <a href={s.repo} target="_blank" rel="noreferrer" className="text-xs break-all"
-              style={{ color: '#76b900', textDecoration: 'none' }}>{s.repo}</a>
-          </div>
+          {/* Bài nộp nhiều link (form động): render từng link theo nhãn.
+              s.links do SubmissionsPanel parse sẵn; không có thì fallback 1 link repo như cũ. */}
+          {(s.links && s.links.length > 0 ? s.links : [{ label: 'REPO', url: s.repo }]).map((lnk, li) => (
+            <div key={li} className="p-3 flex items-center gap-2.5 mb-1" style={{ background: '#f7f7f7', borderRadius: 2 }}>
+              <div className="text-[10px] tracking-widest shrink-0 font-bold uppercase" style={{ color: '#757575', minWidth: 50 }}>
+                {lnk.label}
+              </div>
+              <a href={lnk.url} target="_blank" rel="noreferrer" className="text-xs break-all"
+                style={{ color: '#76b900', textDecoration: 'none' }}>{lnk.url}</a>
+            </div>
+          ))}
         </div>
       ))}
 

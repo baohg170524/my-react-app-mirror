@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { usersApi, schoolsApi, type UserSummary } from '@/services/api';
 import { useNotify } from '@/components/NotificationProvider';
+import { useDialog } from '@/components/ConfirmDialogProvider';
 import { getErrorMessage } from '@/lib/apiError';
 import { Card } from '../../EventDashboard/Card';
 import { CardSkeleton } from '../../EventDashboard/SkeletonLoaders';
@@ -18,6 +19,7 @@ interface AccountApprovalTabProps {
 export function AccountApprovalTab({ eventId }: AccountApprovalTabProps) {
   const queryClient = useQueryClient();
   const notify = useNotify();
+  const dialog = useDialog();
   const [page, setPage] = useState(1);
   const [actionError, setActionError] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ url: string; name: string } | null>(null);
@@ -167,19 +169,20 @@ export function AccountApprovalTab({ eventId }: AccountApprovalTabProps) {
                             <button
                               type="button"
                               disabled={busy}
-                              onClick={() => {
-                                if (typeof window === 'undefined') return;
-                                const reason = window.prompt(
-                                  `Lý do từ chối đăng ký của ${u.fullName || u.email || 'tài khoản này'}:`,
-                                  '',
-                                );
+                              onClick={async () => {
+                                const reason = await dialog.prompt({
+                                  title: 'Từ chối hồ sơ',
+                                  message: `Từ chối đăng ký của ${u.fullName || u.email || 'tài khoản này'}? Lý do sẽ được gửi cho người đăng ký.`,
+                                  label: 'Lý do từ chối',
+                                  placeholder: 'VD: Ảnh thẻ sinh viên không hợp lệ…',
+                                  required: true,
+                                  multiline: true,
+                                  danger: true,
+                                  confirmText: 'Từ chối',
+                                });
                                 if (reason === null) return; // hủy
-                                if (!reason.trim()) {
-                                  setActionError('Vui lòng nhập lý do từ chối.');
-                                  return;
-                                }
                                 setActionError(null);
-                                rejectMutation.mutate({ u, reason: reason.trim() });
+                                rejectMutation.mutate({ u, reason });
                               }}
                               className="t-caption-sm font-bold text-error disabled:opacity-50"
                               style={{ background: 'none', border: '1px solid var(--color-error)', borderRadius: 'var(--radius-sm)', padding: '4px 10px', cursor: busy ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}

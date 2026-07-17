@@ -37,7 +37,7 @@ export interface SaveScorePayload {
   eventRoleId: string;
   submitResultId: string;
   comment?: string;
-  details: { criteriaId: string; value: number }[];
+  details: { criteriaId: string; value: number; templateId?: string }[];
 }
 
 export interface CreateScoreDetailPayload {
