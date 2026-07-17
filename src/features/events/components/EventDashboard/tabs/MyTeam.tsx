@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useMyTeamForEvent, useInviteToTeam, useLeaveTeam, useTeamInvitations, useTransferLeader, useConfirmRegistration, useRemoveMember, useContactMentor } from '@/features/teams/hooks/useTeams';
-import { useEventTracks } from '@/features/events/hooks/useEvents';
+import { useMyTeamForEvent, useInviteToTeam, useLeaveTeam, useTeamInvitations, useTransferLeader, useConfirmRegistration, useRemoveMember } from '@/features/teams/hooks/useTeams';
 import { useEventDashboard } from '@/features/events/contexts/EventDashboardContext';
 import { useNotify } from '@/components/NotificationProvider';
 import { useDialog } from '@/components/ConfirmDialogProvider';
@@ -27,22 +26,6 @@ export function MyTeamTab({ eventId, userId }: Props) {
   const transfer = useTransferLeader(teamId, eventId, userId);
   const confirm  = useConfirmRegistration(teamId, eventId, userId);
   const removeMember = useRemoveMember(teamId, eventId, userId);
-  const contactMentor = useContactMentor(teamId);
-  const { data: eventTracks = [] } = useEventTracks(eventId);
-
-  // Gom danh sách cố vấn (mentor) của sự kiện — mỗi email 1 lần (mentor có thể phụ trách nhiều track).
-  const mentors = React.useMemo(() => {
-    const seen = new Map<string, { fullName: string; email: string }>();
-    for (const t of eventTracks) {
-      for (const m of t.mentors ?? []) {
-        const email = (m.email ?? '').trim().toLowerCase();
-        if (email && !seen.has(email)) {
-          seen.set(email, { fullName: m.fullName || m.email || 'Cố vấn', email: m.email || '' });
-        }
-      }
-    }
-    return Array.from(seen.values());
-  }, [eventTracks]);
 
   const isRegistered = team?.status === 'Registered';
   const [email, setEmail] = useState('');
@@ -238,52 +221,6 @@ export function MyTeamTab({ eventId, userId }: Props) {
           )}
         </div>
       )}
-
-      {/* Khối CỐ VẤN — mọi thành viên đội đều thấy. Hiển thị mentor của sự kiện + gửi câu hỏi qua email. */}
-      <div className="border border-hairline rounded-sm bg-canvas p-4 md:p-6 space-y-3">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <h3 className="t-body-md font-bold">Cố vấn (Mentor)</h3>
-          {mentors.length > 0 && (
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              disabled={contactMentor.isPending}
-              onClick={async () => {
-                const msg = await dialog.prompt({
-                  title: 'Gửi câu hỏi cho cố vấn',
-                  message: 'Câu hỏi sẽ được gửi qua email tới các cố vấn của sự kiện. Họ trả lời trực tiếp về email của bạn.',
-                  label: 'Nội dung câu hỏi',
-                  placeholder: 'VD: Đội em nên tập trung vào tiêu chí nào cho vòng này?',
-                  required: true,
-                  multiline: true,
-                  confirmText: 'Gửi câu hỏi',
-                });
-                if (msg === null) return;
-                contactMentor.mutate(msg, {
-                  onSuccess: (count: number) => notify.success(`Đã gửi câu hỏi tới ${count} cố vấn. Vui lòng đợi phản hồi qua email.`),
-                  onError: (err: any) => notify.error(err?.response?.data?.message || 'Gửi câu hỏi thất bại.'),
-                });
-              }}
-            >
-              {contactMentor.isPending ? 'Đang gửi…' : 'Gửi câu hỏi'}
-            </button>
-          )}
-        </div>
-        {mentors.length === 0 ? (
-          <p className="t-body-sm text-mute">Sự kiện chưa có cố vấn nào.</p>
-        ) : (
-          <ul className="divide-y divide-hairline">
-            {mentors.map((m) => (
-              <li key={m.email} className="py-2 flex items-center justify-between gap-3">
-                <span className="t-body-sm">
-                  {m.fullName} <span className="text-mute">({m.email})</span>
-                </span>
-                <a href={`mailto:${m.email}`} className="btn btn-secondary btn-sm shrink-0">Email</a>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
 
       <div className="flex flex-wrap gap-3">
 

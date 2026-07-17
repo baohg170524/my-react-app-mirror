@@ -138,16 +138,6 @@ export const teamsApi = {
     await apiClient.post(`/Teams/invitations/${encodeURIComponent(invitationId)}/respond?isAccepted=${accept}`);
   },
 
-  /** POST /api/Teams/{teamId}/contact-mentor — gửi câu hỏi tới các cố vấn (mentor) của sự kiện qua email.
-   *  Trả về số mentor đã gửi được. */
-  contactMentor: async (teamId: string, message: string): Promise<number> => {
-    const { data } = await apiClient.post<number>(
-      `/Teams/${encodeURIComponent(teamId)}/contact-mentor`,
-      { message },
-    );
-    return typeof data === 'number' ? data : 0;
-  },
-
   /** POST /api/Teams/{teamId}/transfer-leader — chuyển quyền trưởng nhóm cho 1 thành viên khác. */
   transferLeader: async (teamId: string, newLeaderUserId: string): Promise<void> => {
     await apiClient.post(`/Teams/${encodeURIComponent(teamId)}/transfer-leader`, { newLeaderUserId });

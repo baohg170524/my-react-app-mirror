@@ -99,12 +99,6 @@ export const useLeaveTeam = (teamId: string, eventId: string, userId: string) =>
   });
 };
 
-/** Gửi câu hỏi tới các cố vấn (mentor) của sự kiện qua email (không lưu lịch sử). */
-export const useContactMentor = (teamId: string) =>
-  useMutation({
-    mutationFn: (message: string) => teamsApi.contactMentor(teamId, message),
-  });
-
 /** Leader mời một thành viên rời đội (kèm lý do tuỳ chọn — BE gửi email cho người bị mời rời). */
 export const useRemoveMember = (teamId: string, eventId: string, userId: string) => {
   const qc = useQueryClient();
