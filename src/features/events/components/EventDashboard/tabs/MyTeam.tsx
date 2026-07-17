@@ -260,9 +260,7 @@ export function MyTeamTab({ eventId, userId }: Props) {
                 });
                 if (msg === null) return;
                 contactMentor.mutate(msg, {
-                  onSuccess: (count: number) => count > 0
-                    ? notify.success(`Đã gửi câu hỏi tới ${count} cố vấn. Vui lòng đợi phản hồi qua email.`)
-                    : notify.error('Chưa gửi được câu hỏi tới cố vấn nào, vui lòng thử lại sau.'),
+                  onSuccess: (count: number) => notify.success(`Đã gửi câu hỏi tới ${count} cố vấn. Vui lòng đợi phản hồi qua email.`),
                   onError: (err: any) => notify.error(err?.response?.data?.message || 'Gửi câu hỏi thất bại.'),
                 });
               }}
