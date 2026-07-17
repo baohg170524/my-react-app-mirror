@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useMyTeamForEvent, useInviteToTeam, useLeaveTeam, useTeamInvitations, useTransferLeader, useConfirmRegistration, useRemoveMember } from '@/features/teams/hooks/useTeams';
 import { useEventDashboard } from '@/features/events/contexts/EventDashboardContext';
 import { useNotify } from '@/components/NotificationProvider';
+import { useDialog } from '@/components/ConfirmDialogProvider';
 
 interface Props { eventId: string; userId: string; }
 
@@ -29,6 +30,7 @@ export function MyTeamTab({ eventId, userId }: Props) {
   const isRegistered = team?.status === 'Registered';
   const [email, setEmail] = useState('');
   const notify = useNotify();
+  const dialog = useDialog();
 
   // Chỉ trưởng nhóm mới xem được danh sách lời mời đã gửi (BE 403 với thành viên thường).
   const isLeader = team?.members.find((m) => m.userId === userId)?.isLeader ?? false;
@@ -78,8 +80,13 @@ export function MyTeamTab({ eventId, userId }: Props) {
                         type="button"
                         className="btn btn-secondary btn-sm"
                         disabled={transfer.isPending}
-                        onClick={() => {
-                          if (!window.confirm(`Gửi yêu cầu chuyển quyền trưởng nhóm cho ${m.fullName}? ${m.fullName} cần xác nhận ở chuông thông báo thì mới thành trưởng nhóm.`)) return;
+                        onClick={async () => {
+                          const ok = await dialog.confirm({
+                            title: 'Chuyển quyền trưởng nhóm',
+                            message: `Gửi yêu cầu chuyển quyền trưởng nhóm cho ${m.fullName}?\n${m.fullName} cần xác nhận ở chuông thông báo thì mới thành trưởng nhóm.`,
+                            confirmText: 'Gửi yêu cầu',
+                          });
+                          if (!ok) return;
                           transfer.mutate(m.userId, {
                             onSuccess: () => notify.success(`Đã gửi yêu cầu chuyển quyền trưởng nhóm, chờ ${m.fullName} xác nhận.`),
                             onError: (err: any) => notify.error(err?.response?.data?.message || 'Gửi yêu cầu chuyển quyền thất bại.'),
@@ -94,13 +101,20 @@ export function MyTeamTab({ eventId, userId }: Props) {
                         type="button"
                         className="btn btn-secondary btn-sm"
                         disabled={removeMember.isPending}
-                        onClick={() => {
+                        onClick={async () => {
                           // Lý do KHÔNG bắt buộc — được gửi kèm trong email thông báo cho người bị mời rời.
-                          const reason = window.prompt(`Lý do mời ${m.fullName} rời đội (có thể để trống):`);
+                          const reason = await dialog.prompt({
+                            title: `Mời ${m.fullName} rời đội`,
+                            message: 'Hệ thống sẽ gửi email thông báo cho thành viên này.',
+                            label: 'Lý do (có thể để trống)',
+                            placeholder: 'VD: Không tham gia hoạt động của đội…',
+                            multiline: true,
+                            danger: true,
+                            confirmText: 'Mời rời đội',
+                          });
                           if (reason === null) return; // bấm Hủy
-                          if (!window.confirm(`Xác nhận mời ${m.fullName} rời đội? Hệ thống sẽ gửi email thông báo cho họ.`)) return;
-                          removeMember.mutate({ memberUserId: m.userId, reason: reason.trim() || undefined }, {
-                            onSuccess: () => notify.success(`${m.fullName} đã rời đội. Đã gửi email thông báo${reason.trim() ? ' kèm lý do' : ''}.`),
+                          removeMember.mutate({ memberUserId: m.userId, reason: reason || undefined }, {
+                            onSuccess: () => notify.success(`${m.fullName} đã rời đội. Đã gửi email thông báo${reason ? ' kèm lý do' : ''}.`),
                             onError: (err: any) => notify.error(err?.response?.data?.message || 'Không thể mời thành viên rời đội.'),
                           });
                         }}
@@ -215,15 +229,18 @@ export function MyTeamTab({ eventId, userId }: Props) {
           <button
             type="button"
             disabled={confirm.isPending}
-            onClick={() => {
-              if (!window.confirm(
-                'Chốt danh sách đội?\n\n' +
-                '⚠ Sau khi chốt:\n' +
-                '• Không thể thêm hoặc xóa thành viên\n' +
-                '• Thành viên không thể tự rời đội\n' +
-                '• Yêu cầu đủ 3–5 thành viên đã được duyệt\n\n' +
-                'Xác nhận tiếp tục?'
-              )) return;
+            onClick={async () => {
+              const ok = await dialog.confirm({
+                title: 'Chốt danh sách đội?',
+                message:
+                  'Sau khi chốt:\n' +
+                  '• Không thể thêm hoặc xóa thành viên\n' +
+                  '• Thành viên không thể tự rời đội\n' +
+                  '• Yêu cầu đủ 3–5 thành viên đã được duyệt',
+                confirmText: 'Chốt danh sách',
+                danger: true,
+              });
+              if (!ok) return;
               confirm.mutate(undefined, {
                 onSuccess: () => notify.success('Đã chốt danh sách đội thành công!'),
                 onError: (err: any) => notify.error(
@@ -242,9 +259,14 @@ export function MyTeamTab({ eventId, userId }: Props) {
         {!isRegistered && (
           <button
             type="button"
-            onClick={() => {
-              if (window.confirm('Bạn chắc chắn rời đội?'))
-                leave.mutate(undefined, { onSuccess: () => setActiveTab('createTeam') });
+            onClick={async () => {
+              const ok = await dialog.confirm({
+                title: 'Rời đội',
+                message: 'Bạn chắc chắn muốn rời đội này? Trưởng nhóm sẽ nhận được email thông báo.',
+                confirmText: 'Rời đội',
+                danger: true,
+              });
+              if (ok) leave.mutate(undefined, { onSuccess: () => setActiveTab('createTeam') });
             }}
             disabled={leave.isPending}
             className="btn btn-outline-danger"

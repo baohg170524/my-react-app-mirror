@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import SubmissionView from '@/views/SubmissionPage';
 import { submitResultsApi } from '@/features/events/api/submitResults';
 import { getErrorMessage } from '@/lib/apiError';
+import { parseSubmissionLinks } from '@/features/submissions/utils/submissionLinks';
 
 /**
  * Danh sách bài nộp — nhúng vào tab dashboard.
@@ -43,6 +44,9 @@ export default function SubmissionsPanel({ eventId = null, trackId = null }) {
           teamName:    item.teamName ?? '—',
           projectName: item.teamId?.slice(0, 8).toUpperCase() ?? '—',
           repo:        item.submissionUrl ?? item.repoUrl ?? '',
+          // Bài nộp nhiều link (JSON [{label,url}]) -> parse thành danh sách;
+          // dữ liệu cũ 1 URL vẫn ra 1 phần tử (tương thích ngược).
+          links:       parseSubmissionLinks(item.submissionUrl ?? item.repoUrl ?? ''),
           submittedAt: item.createdTime
           ? new Date(item.createdTime.replace('+00:00', 'Z')).toLocaleString('vi-VN', {
               day: '2-digit', month: '2-digit', year: 'numeric',

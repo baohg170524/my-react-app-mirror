@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { AuthProvider } from "@/context/AuthContext";
 import { NotificationProvider } from "@/components/NotificationProvider";
+import { ConfirmDialogProvider } from "@/components/ConfirmDialogProvider";
 import { ForcePasswordChangeGate } from "@/components/ForcePasswordChangeGate";
 import "./globals.css";
 
@@ -27,8 +28,10 @@ export default function RootLayout({
         <AuthProvider>
           <QueryProvider>
             <NotificationProvider>
-              {children}
-              <ForcePasswordChangeGate />
+              <ConfirmDialogProvider>
+                {children}
+                <ForcePasswordChangeGate />
+              </ConfirmDialogProvider>
             </NotificationProvider>
           </QueryProvider>
         </AuthProvider>

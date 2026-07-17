@@ -8,6 +8,7 @@ import { manageApi, EVENT_ROLE } from '@/features/events/api/manage';
 import type { TrackItem } from '@/features/events/api/manage';
 import { usersApi, type UserSummary } from '@/services/api';
 import { useNotify } from '@/components/NotificationProvider';
+import { useDialog } from '@/components/ConfirmDialogProvider';
 import { getErrorMessage } from '@/lib/apiError';
 import { Card } from '../../EventDashboard/Card';
 import { Button } from '../../EventDashboard/Button';
@@ -55,6 +56,7 @@ export function RoleListTab({ eventId }: RoleListTabProps) {
   
   const queryClient = useQueryClient();
   const notify = useNotify();
+  const dialog = useDialog();
   const [adding, setAdding] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -111,11 +113,15 @@ export function RoleListTab({ eventId }: RoleListTabProps) {
     return rows;
   }, [roles, trackMap]);
 
-  function handleRemoveRole(row: RoleRow) {
+  async function handleRemoveRole(row: RoleRow) {
     const roleLabel = ROLE_LABELS[row.roleName] ?? row.roleName;
-    if (typeof window !== 'undefined' && !window.confirm(`Xóa vai trò ${roleLabel} của ${row.name}?`)) {
-      return;
-    }
+    const ok = await dialog.confirm({
+      title: 'Xóa vai trò',
+      message: `Xóa vai trò ${roleLabel} của ${row.name}?`,
+      confirmText: 'Xóa vai trò',
+      danger: true,
+    });
+    if (!ok) return;
     removeRoleMutation.mutate(row.roleId);
   }
 

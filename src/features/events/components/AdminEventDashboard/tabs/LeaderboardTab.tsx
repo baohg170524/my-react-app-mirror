@@ -9,6 +9,7 @@ import {
   useTeams,
 } from '@/features/events/hooks/useEvents';
 import { useNotify } from '@/components/NotificationProvider';
+import { useDialog } from '@/components/ConfirmDialogProvider';
 import { getErrorMessage } from '@/lib/apiError';
 import { Card } from '../../EventDashboard/Card';
 import { CardSkeleton } from '../../EventDashboard/SkeletonLoaders';
@@ -19,6 +20,7 @@ interface LeaderboardTabProps {
 
 export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
   const notify = useNotify();
+  const dialog = useDialog();
   const { data: rounds = [], isLoading: roundsLoading } = useEventRounds(eventId);
   // Rounds sorted newest-first; default selection = latest round.
   const sortedRounds = useMemo(
@@ -68,7 +70,7 @@ export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
   // ─── FE-01: Tính kết quả ───
   // Vòng có advancementRule → không gửi topN (BE tự quyết). Vòng chưa có rule →
   // gửi topN EC nhập (nếu bỏ trống, BE dùng mặc định của nó).
-  const handleCalculate = () => {
+  const handleCalculate = async () => {
     if (!roundId || !roundEnded || busy) return;
     let parsedTopN: number | undefined;
     if (!hasRule) {
@@ -81,8 +83,12 @@ export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
         }
       }
     }
-    const msg = `Tính kết quả cho "${selectedRound?.roundName ?? 'vòng thi'}"?`;
-    if (typeof window !== 'undefined' && !window.confirm(msg)) return;
+    const ok = await dialog.confirm({
+      title: 'Công bố kết quả',
+      message: `Tính và công bố kết quả cho "${selectedRound?.roundName ?? 'vòng thi'}"?`,
+      confirmText: 'Công bố',
+    });
+    if (!ok) return;
 
     calculate.mutate(parsedTopN, {
       onSuccess: (rows) => {
@@ -94,13 +100,18 @@ export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
   };
 
   // ─── FE-02: Hủy công bố ───
-  const handleCancel = () => {
+  const handleCancel = async () => {
     if (!roundId || !isPublished || busy) return;
-    const msg =
-      `Hủy công bố kết quả của "${selectedRound?.roundName ?? 'vòng thi'}"?\n\n` +
-      'Toàn bộ bảng xếp hạng sẽ bị xóa và form chấm điểm được mở lại. ' +
-      'Chỉ hủy được khi vòng sau chưa có bài nộp/kết quả.';
-    if (typeof window !== 'undefined' && !window.confirm(msg)) return;
+    const ok = await dialog.confirm({
+      title: 'Hủy công bố kết quả',
+      message:
+        `Hủy công bố kết quả của "${selectedRound?.roundName ?? 'vòng thi'}"?\n\n` +
+        'Toàn bộ bảng xếp hạng sẽ bị xóa và form chấm điểm được mở lại.\n' +
+        'Chỉ hủy được khi vòng sau chưa có bài nộp/kết quả.',
+      confirmText: 'Hủy công bố',
+      danger: true,
+    });
+    if (!ok) return;
 
     cancel.mutate(undefined, {
       onSuccess: () => notify.success('Đã hủy công bố. Vòng thi quay lại trạng thái chờ chốt.'),
