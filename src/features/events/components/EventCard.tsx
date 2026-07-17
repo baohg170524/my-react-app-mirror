@@ -28,9 +28,9 @@ function roleLabel(roleName?: string | null): string | null {
     case "eventcoordinator":
       return "EC";
     case "judge":
-      return "Judge";
+      return "Giám khảo";
     case "mentor":
-      return "Mentor";
+      return "Người hướng dẫn";
     case "teamleader":
       return "Team Leader";
     case "teammember":
@@ -41,6 +41,40 @@ function roleLabel(roleName?: string | null): string | null {
   }
 }
 
+/** Giai đoạn sự kiện theo thời gian (đồng bộ với AdminEventDashboard/Header). */
+type EventPhase = "active" | "upcoming" | "ended";
+
+function eventPhase(event: Event): EventPhase {
+  const now = Date.now();
+  const start = new Date(event.startDate).getTime();
+  const end = new Date(event.endDate).getTime();
+  if (!Number.isNaN(start) && now < start) return "upcoming";
+  if (event.status === "closed" || (!Number.isNaN(end) && now > end)) return "ended";
+  return "active";
+}
+
+/** Nhãn + màu badge cho từng giai đoạn (inline style theo phong cách card). */
+const PHASE_BADGE: Record<EventPhase, { label: string; bg: string; color: string; border: string }> = {
+  active: {
+    label: "Đang diễn ra",
+    bg: "rgba(255,255,255,0.95)",
+    color: "var(--color-primary)",
+    border: "var(--color-primary)",
+  },
+  upcoming: {
+    label: "Sắp tới",
+    bg: "rgba(255,255,255,0.95)",
+    color: "var(--color-ink)",
+    border: "var(--color-hairline)",
+  },
+  ended: {
+    label: "Đã kết thúc",
+    bg: "rgba(255,255,255,0.95)",
+    color: "var(--color-stone)",
+    border: "var(--color-hairline)",
+  },
+};
+
 export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
   const isAdmin = useUserRole() === "admin";
   const isOpen = event.status === "open";
@@ -49,25 +83,40 @@ export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
   const joinDisabled = !isAdmin && isLoggedIn && (!isOpen || isJoining);
   // Nhãn vai trò — chỉ có ở danh sách "Của tôi" (event.myRole); admin không hiển thị.
   const myRoleLabel = isAdmin ? null : roleLabel(event.myRole);
+  // Giai đoạn theo thời gian → nhãn badge (Sắp tới / Đang diễn ra / Đã kết thúc).
+  const phase = eventPhase(event);
 
   return (
     <article
       className="card"
       style={{ padding: "var(--space-xl)", gap: "var(--space-sm)", cursor: "default", position: "relative", minHeight: 200 }}
     >
-      {/* Corner square — monogreen signature */}
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: 10,
-          height: 10,
-          background: event.status === "open" ? "var(--color-primary)" : "var(--color-ash)",
-        }}
-      />
-      {/* Event Photo */}
-      <div style={{ width: "100%", height: 160, borderRadius: "var(--radius-sm)", overflow: "hidden", position: "relative", flexShrink: 0, marginTop: "var(--space-xs)" }}>
+      {/* Event Photo — bấm vào ảnh cũng vào chi tiết sự kiện */}
+      <Link
+        href={`/events/${event.id}`}
+        aria-label={`Xem chi tiết: ${event.title}`}
+        style={{ display: "block", width: "100%", height: 160, borderRadius: "var(--radius-sm)", overflow: "hidden", position: "relative", flexShrink: 0, marginTop: "var(--space-xs)", cursor: "pointer" }}
+      >
+        {/* Status badge — góc trên trái ảnh: Sắp tới / Đang diễn ra / Đã kết thúc */}
+        <span
+          style={{
+            position: "absolute",
+            top: 8,
+            left: 8,
+            zIndex: 2,
+            background: PHASE_BADGE[phase].bg,
+            color: PHASE_BADGE[phase].color,
+            border: `1px solid ${PHASE_BADGE[phase].border}`,
+            fontSize: "var(--fs-caption-sm)",
+            fontWeight: 700,
+            letterSpacing: "0.4px",
+            padding: "3px 10px",
+            borderRadius: 0,
+            boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
+          }}
+        >
+          {PHASE_BADGE[phase].label}
+        </span>
         {myRoleLabel && (
           <span
             style={{
@@ -101,37 +150,24 @@ export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
             <span style={{ fontSize: 40, opacity: 0.2 }}>📸</span>
           </div>
         )}
-      </div>
+      </Link>
 
-      {/* Status badge */}
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        <span
-          className="badge-tag"
+      {/* Title — bấm vào tên cũng vào chi tiết sự kiện */}
+      <Link href={`/events/${event.id}`} style={{ textDecoration: "none" }}>
+        <h3
+          className="card__title"
           style={{
-            background: event.status === "open" ? "rgba(118,185,0,0.1)" : "var(--color-surface-soft)",
-            color: event.status === "open" ? "var(--color-primary)" : "var(--color-stone)",
-            border: `1px solid ${event.status === "open" ? "var(--color-primary)" : "var(--color-hairline)"}`,
+            margin: 0,
+            color: "var(--color-ink)",
+            transition: "color 150ms",
+            cursor: "pointer",
           }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-primary)")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-ink)")}
         >
-          {event.status === "open" ? "Mở" : "Đã đóng"}
-        </span>
-      </div>
-
-      {/* Title — the only link on card */}
-
-      <h3
-        className="card__title"
-        style={{
-          margin: 0,
-          color: "var(--color-ink)",
-          transition: "color 150ms",
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-primary)")}
-        onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-ink)")}
-      >
-        {event.title}
-      </h3>
-
+          {event.title}
+        </h3>
+      </Link>
 
       {/* Start Date */}
       <p style={{ margin: 0, fontSize: "var(--fs-caption-md)", color: "var(--color-mute)", display: "flex", alignItems: "center", gap: 6 }}>

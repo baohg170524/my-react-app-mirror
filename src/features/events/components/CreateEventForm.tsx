@@ -58,6 +58,24 @@ interface TrackForm {
    * "đã lưu trước đó" reference. `undefined` in create mode (no reference shown).
    */
   savedSubmissionRule?: string;
+  // ── Thời gian các bước của hạng mục (chuỗi cho DateTimePicker). ──
+  /** Nộp bài: mở → hạn nộp — BE: startDate/endDate. */
+  startDate: string;
+  endDate: string;
+  /** Khung tổng của hạng mục (hiển thị cạnh tên) — BE chưa hỗ trợ (chỉ FE, chưa lưu). */
+  windowStartDate: string;
+  windowEndDate: string;
+  /** Bắt đầu thi (khung thi) — BE chưa hỗ trợ (chỉ FE, chưa lưu). */
+  competeStartDate: string;
+  competeEndDate: string;
+  /** Chấm điểm — BE: scoringStartDate/scoringEndDate. */
+  scoringStartDate: string;
+  scoringEndDate: string;
+  /** Phúc khảo — BE chưa hỗ trợ (chỉ giữ ở FE, chưa lưu). */
+  appealStartDate: string;
+  appealEndDate: string;
+  /** Công bố kết quả — BE chưa hỗ trợ (chỉ giữ ở FE, chưa lưu). */
+  resultPublishDate: string;
 }
 
 /** Fixed URL-based submission options shown as checkboxes, in display order. */
@@ -142,6 +160,9 @@ interface EventForm {
   description: string;
   status: boolean;
   photoEventUrl: string | null;
+  /** Khung công bố kết quả chung cuộc — BE chưa hỗ trợ (chỉ FE, chưa lưu). */
+  announceStartDate: string;
+  announceEndDate: string;
   rounds: RoundForm[];
 }
 
@@ -152,6 +173,17 @@ const emptyTrack = (): TrackForm => ({
   description: "",
   templateId: "",
   submissionRequirements: emptySubmissionRequirements(),
+  startDate: "",
+  endDate: "",
+  windowStartDate: "",
+  windowEndDate: "",
+  competeStartDate: "",
+  competeEndDate: "",
+  scoringStartDate: "",
+  scoringEndDate: "",
+  appealStartDate: "",
+  appealEndDate: "",
+  resultPublishDate: "",
 });
 
 const emptyRound = (): RoundForm => ({
@@ -174,6 +206,8 @@ const emptyEvent = (): EventForm => ({
   description: "",
   status: true,
   photoEventUrl: null,
+  announceStartDate: "",
+  announceEndDate: "",
   rounds: [emptyRound()],
 });
 
@@ -288,6 +322,31 @@ function TextArea({
         onChange={(e: ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value)}
       />
     </Field>
+  );
+}
+
+/** Cặp ngày giờ gọn trên một hàng: [bắt đầu] → [kết thúc]. */
+function DateRangeInput({
+  start,
+  end,
+  onStart,
+  onEnd,
+}: {
+  start: string;
+  end: string;
+  onStart: (v: string) => void;
+  onEnd: (v: string) => void;
+}) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <DateTimePicker value={start} onChange={onStart} placeholder="Bắt đầu" />
+      </div>
+      <span className="t-body-sm" style={{ color: "var(--color-mute)", flexShrink: 0 }}>→</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <DateTimePicker value={end} onChange={onEnd} placeholder="Kết thúc" />
+      </div>
+    </div>
   );
 }
 
@@ -601,11 +660,11 @@ function EventPhotoUpload({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <span className="t-caption-xs" style={{ color: "var(--color-mute)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+      <span className="t-body-strong" style={{ color: "var(--color-ink)", letterSpacing: "0.05em" }}>
         Ảnh đại diện sự kiện
       </span>
       {value ? (
-        <div style={{ position: "relative", width: "100%", height: 240, borderRadius: "var(--radius-sm)", overflow: "hidden", border: "1px solid var(--color-hairline)" }}>
+        <div style={{ position: "relative", width: "100%", aspectRatio: "2.35 / 1", borderRadius: "var(--radius-sm)", overflow: "hidden", border: "1px solid var(--color-hairline)" }}>
           <img src={value} alt="Event Photo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           <div style={{ position: "absolute", top: 8, right: 8, display: "flex", gap: 8 }}>
             <button
@@ -639,24 +698,23 @@ function EventPhotoUpload({
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
           style={{
-            border: "2px dashed var(--color-primary)",
+            border: "1px dashed var(--color-hairline)",
             borderRadius: "var(--radius-sm)",
-            padding: "var(--space-xxl)",
+            padding: "var(--space-lg)",
+            aspectRatio: "2.35 / 1",
             textAlign: "center",
             cursor: isUploading ? "not-allowed" : "pointer",
-            background: "linear-gradient(135deg, rgba(118, 185, 0, 0.05) 0%, rgba(118, 185, 0, 0.01) 100%)",
+            background: "transparent",
             transition: "all 0.2s ease",
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
+            justifyContent: "center",
             gap: 8,
             opacity: isUploading ? 0.7 : 1,
           }}
         >
-          <div style={{ fontSize: 32, color: "var(--color-mute)", marginBottom: 8 }}>
-            {isUploading ? "⏳" : "📸"}
-          </div>
-          <span className="t-body-strong" style={{ color: "var(--color-primary)" }}>
+          <span className="t-body-strong" style={{ color: "var(--color-mute)" }}>
             {isUploading ? "Đang tải ảnh lên..." : "Nhấn để chọn hoặc kéo thả ảnh vào đây"}
           </span>
           <span className="t-caption-sm" style={{ color: "var(--color-mute)" }}>
@@ -788,6 +846,103 @@ function SubmissionRequirementsField({
   );
 }
 
+// ─── Timeline rail primitives (form dạng timeline) ─────────────────────────────
+
+/** Chấm trên rail. `phase` = mốc lớn (đăng ký/vòng/kết quả), `sub` = hạng mục,
+ *  `step` = 5 bước (mờ, không nhập). */
+function RailDot({ level }: { level: "phase" | "sub" | "step" }) {
+  const size = level === "phase" ? "w-3.5 h-3.5" : level === "sub" ? "w-2.5 h-2.5" : "w-2 h-2";
+  const fill =
+    level === "step"
+      ? "bg-canvas border-dashed border-mute"
+      : "bg-primary border-primary";
+  return <span className={`relative z-10 shrink-0 rounded-full border-2 ${size} ${fill}`} />;
+}
+
+/** Một node trên rail: chấm + đường nối dọc + nội dung. `last` bỏ đường nối. */
+function RailNode({
+  level,
+  last,
+  children,
+}: {
+  level: "phase" | "sub" | "step";
+  last?: boolean;
+  children: React.ReactNode;
+}) {
+  const top = level === "phase" ? "top-4" : "top-3";
+  return (
+    <div className="relative flex gap-3 md:gap-4 pb-6 last:pb-0">
+      <div className="relative flex flex-col items-center shrink-0">
+        <RailDot level={level} />
+        {!last && <span className={`absolute ${top} bottom-0 w-px bg-hairline`} />}
+      </div>
+      <div className="flex-1 min-w-0">{children}</div>
+    </div>
+  );
+}
+
+/** Một bước quy trình của hạng mục: chấm + nhãn + ô nhập thời gian. */
+function StepRow({
+  label,
+  note,
+  children,
+}: {
+  label: string;
+  note?: string;
+  children: ReactNode;
+}) {
+  return (
+    /* Ô nhập bên trái, nhãn bên phải — giống hàng [thời gian] [title] ở display */
+    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+      <div className="shrink-0 w-full sm:w-[22rem]">{children}</div>
+      <div className="min-w-0">
+        <span className="t-body-sm text-ink">{label}</span>
+        {note && <span className="t-caption-xs text-mute italic"> ({note})</span>}
+      </div>
+    </div>
+  );
+}
+
+/** 5 bước quy trình của hạng mục — nhập thời gian trực tiếp. Phúc khảo & Công bố
+ *  kết quả BE chưa hỗ trợ nên đánh dấu "chưa lưu". */
+function TrackSteps({
+  track,
+  onChange,
+}: {
+  track: TrackForm;
+  onChange: (patch: Partial<TrackForm>) => void;
+}) {
+  return (
+    <div className="mt-3 border-l border-hairline pl-4 flex flex-col gap-3">
+      <StepRow label="Bắt đầu thi">
+        <DateTimePicker value={track.startDate} onChange={(v) => onChange({ startDate: v })} placeholder="Chọn thời gian" />
+      </StepRow>
+      <StepRow label="Nộp bài">
+        <DateTimePicker value={track.endDate} onChange={(v) => onChange({ endDate: v })} placeholder="Chọn thời gian" />
+      </StepRow>
+      <StepRow label="Chấm điểm">
+        <DateRangeInput
+          start={track.scoringStartDate}
+          end={track.scoringEndDate}
+          onStart={(v) => onChange({ scoringStartDate: v })}
+          onEnd={(v) => onChange({ scoringEndDate: v })}
+        />
+      </StepRow>
+      <StepRow label="Phúc khảo" note="chưa lưu">
+        <DateRangeInput
+          start={track.appealStartDate}
+          end={track.appealEndDate}
+          onStart={(v) => onChange({ appealStartDate: v })}
+          onEnd={(v) => onChange({ appealEndDate: v })}
+        />
+      </StepRow>
+      <StepRow label="Công bố kết quả" note="chưa lưu">
+        <DateTimePicker value={track.resultPublishDate} onChange={(v) => onChange({ resultPublishDate: v })} placeholder="Chọn thời gian" />
+      </StepRow>
+    </div>
+  );
+}
+
 // ─── Track editor ─────────────────────────────────────────────────────────────
 
 function TrackCard({
@@ -808,17 +963,8 @@ function TrackCard({
   onRemove: () => void;
 }) {
   return (
-    <div
-      style={{
-        background: "var(--color-canvas)",
-        border: "var(--border-hairline)",
-        borderRadius: "var(--radius-sm)",
-        padding: "var(--space-md)",
-        display: "flex",
-        flexDirection: "column",
-        gap: "var(--space-md)",
-      }}
-    >
+    <RailNode level="sub">
+      <div className="flex flex-col gap-3">
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span className="t-body-strong">
           Hạng mục {index + 1}
@@ -865,7 +1011,9 @@ function TrackCard({
         onChange={(next) => onChange({ submissionRequirements: next })}
         savedReference={track.savedSubmissionRule}
       />
-    </div>
+      </div>
+      <TrackSteps track={track} onChange={onChange} />
+    </RailNode>
   );
 }
 
@@ -925,19 +1073,10 @@ function RoundCard({
   };
 
   return (
-    <div
-      style={{
-        background: "var(--color-surface-soft)",
-        border: "var(--border-hairline)",
-        borderRadius: "var(--radius-sm)",
-        padding: "var(--space-lg)",
-        display: "flex",
-        flexDirection: "column",
-        gap: "var(--space-md)",
-      }}
-    >
+    <RailNode level="phase">
+      <div className="flex flex-col gap-3">
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span className="t-body-strong">Vòng {index + 1}</span>
+        <span className="t-heading-sm">Vòng {index + 1}</span>
         {canRemove && (
           <button
             type="button"
@@ -951,62 +1090,14 @@ function RoundCard({
       </div>
 
       <TextField label="Tên vòng" value={round.roundName} onChange={(v) => onChange("roundName", v)} />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-md)" }}>
-        <Field label="Mở cổng nộp bài">
-          <DateTimePicker
-            value={round.startDate}
-            onChange={(v) => onChange("startDate", v)}
-          />
-        </Field>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <Field label="Hạn chót nộp bài (Deadline)">
-            <DateTimePicker
-              value={round.endDate}
-              onChange={(v) => onChange("endDate", v)}
-            />
-          </Field>
-          {round.startDate && (
-            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              <span className="t-caption-xs" style={{ color: "var(--color-mute)" }}>Đặt nhanh:</span>
-              {[2, 24, 48, 72].map((hours) => (
-                <button
-                  key={hours}
-                  type="button"
-                  onClick={() => {
-                    const date = new Date(round.startDate);
-                    date.setHours(date.getHours() + hours);
-                    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-                    onChange("endDate", local.toISOString().slice(0, 16));
-                  }}
-                  style={{
-                    padding: "3px 8px",
-                    background: "var(--color-canvas)",
-                    border: "1px solid var(--color-hairline)",
-                    borderRadius: 2,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: "var(--color-mute)",
-                    cursor: "pointer",
-                    transition: "all 100ms ease",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "var(--color-primary)";
-                    e.currentTarget.style.color = "var(--color-primary)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "var(--color-hairline)";
-                    e.currentTarget.style.color = "var(--color-mute)";
-                  }}
-                >
-                  +{hours}h
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+      <DateRangeInput
+        start={round.startDate}
+        end={round.endDate}
+        onStart={(v) => onChange("startDate", v)}
+        onEnd={(v) => onChange("endDate", v)}
+      />
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <span className="t-caption-xs" style={{ color: "var(--color-mute)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+        <span className="t-body-strong" style={{ color: "var(--color-ink)", letterSpacing: "0.05em" }}>
           Quy tắc thăng vòng (Advancement Rule)
         </span>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-md)" }}>
@@ -1016,9 +1107,9 @@ function RoundCard({
             onChange={(e) => handleRuleTypeChange(e.target.value)}
             style={{ cursor: "pointer" }}
           >
-            <option value="top">🏆 Lấy Top số lượng đội (top:N)</option>
-            <option value="percent">📈 Lấy theo phần trăm (percent:P)</option>
-            <option value="minScore">🎯 Điểm số tối thiểu (minScore:X)</option>
+            <option value="top">Lấy Top số lượng đội (top:N)</option>
+            <option value="percent">Lấy theo phần trăm (percent:P)</option>
+            <option value="minScore">Điểm số tối thiểu (minScore:X)</option>
           </select>
 
           <input
@@ -1038,7 +1129,7 @@ function RoundCard({
         </div>
         <Hint>
           <div style={{ fontSize: 11, lineHeight: "1.4em", marginTop: 2 }}>
-            💡 Cú pháp được cấu hình tự động: <code style={{ background: "var(--color-surface-elevated)", padding: "1px 4px", borderRadius: 2, fontWeight: 700, color: "var(--color-primary)" }}>{round.advancementRule || "(Để trống)"}</code>
+            Cú pháp được cấu hình tự động: <code style={{ background: "var(--color-surface-elevated)", padding: "1px 4px", borderRadius: 2, fontWeight: 700, color: "var(--color-primary)" }}>{round.advancementRule || "(Để trống)"}</code>
           </div>
         </Hint>
       </div>
@@ -1066,7 +1157,8 @@ function RoundCard({
           + Thêm hạng mục
         </button>
       </div>
-    </div>
+      </div>
+    </RailNode>
   );
 }
 
@@ -1155,6 +1247,8 @@ function EditEventLoader({
     description: event.description ?? "",
     status: event.status ?? false,
     photoEventUrl: event.photoEventUrl ?? null,
+    announceStartDate: "",
+    announceEndDate: "",
     rounds: orderedRounds.map((r) => ({
       id: r.id,
       roundName: r.roundName ?? "",
@@ -1164,18 +1258,38 @@ function EditEventLoader({
       advancementRule: r.advancementRule ?? "",
       tracks: tracks
         .filter((t) => t.roundId === r.id)
-        .map((t) => ({
-          id: t.id,
-          trackName: t.trackName ?? "",
-          description: t.description ?? "",
-          templateId: t.templateId ?? "",
-          // Pre-fill the requirement checkboxes from the saved rule (joined via id).
-          submissionRequirements: parseSubmissionRequirements(
-            submissionRuleByTrackId.get(t.id),
-          ),
-          // Keep the raw saved string to show as a read-only reference in edit mode.
-          savedSubmissionRule: submissionRuleByTrackId.get(t.id) ?? "",
-        })),
+        .map((t) => {
+          const td = t as {
+            startDate?: string | null;
+            endDate?: string | null;
+            scoringStartDate?: string | null;
+            scoringEndDate?: string | null;
+          };
+          return {
+            id: t.id,
+            trackName: t.trackName ?? "",
+            description: t.description ?? "",
+            templateId: t.templateId ?? "",
+            // Pre-fill the requirement checkboxes from the saved rule (joined via id).
+            submissionRequirements: parseSubmissionRequirements(
+              submissionRuleByTrackId.get(t.id),
+            ),
+            // Keep the raw saved string to show as a read-only reference in edit mode.
+            savedSubmissionRule: submissionRuleByTrackId.get(t.id) ?? "",
+            // Thời gian bước (BE hỗ trợ start/end/scoring; phúc khảo & công bố chưa có).
+            startDate: isoToLocalInput(td.startDate ?? ""),
+            endDate: isoToLocalInput(td.endDate ?? ""),
+            windowStartDate: "",
+            windowEndDate: "",
+            competeStartDate: "",
+            competeEndDate: "",
+            scoringStartDate: isoToLocalInput(td.scoringStartDate ?? ""),
+            scoringEndDate: isoToLocalInput(td.scoringEndDate ?? ""),
+            appealStartDate: "",
+            appealEndDate: "",
+            resultPublishDate: "",
+          };
+        }),
     })),
   };
 
@@ -1187,6 +1301,60 @@ function EditEventLoader({
       initialRoundIds={rounds.map((r) => r.id).filter(Boolean)}
       initialTrackIds={tracks.map((t) => t.id).filter(Boolean)}
     />
+  );
+}
+
+// ─── Timeline nhập liệu (copy UI từ EventTimeline hiển thị) ─────────────────────
+
+// Hình học rail — copy y hệt EventTimeline để form giống display.
+const TL_DOT_X = [12, 42, 72];
+const TL_DOT_Y = 11;
+const TL_DOT_SIZE = ["w-3.5 h-3.5", "w-2.5 h-2.5", "w-2 h-2"];
+const TL_CONTENT_PL = ["sm:pl-[32px]", "sm:pl-[62px]", "sm:pl-[92px]"];
+const TL_TIME_W = ["sm:w-[428px]", "sm:w-[398px]", "sm:w-[368px]"];
+
+function TLSegment({ x, from, to }: { x: number; from: number; to: number | "bottom" }) {
+  return (
+    <span
+      className="absolute w-0.5 -translate-x-1/2 bg-hairline"
+      style={{ left: x, top: from, height: to === "bottom" ? undefined : to - from, bottom: to === "bottom" ? 0 : undefined }}
+    />
+  );
+}
+
+interface FormRowProps {
+  depth: number;
+  isFirst: boolean;   // đầu nhóm anh-em cùng cấp
+  isLast: boolean;    // cuối nhóm anh-em cùng cấp
+  isFirstRow: boolean;
+  isLastRow: boolean;
+  extraGap?: boolean;
+  timeSlot?: ReactNode;
+  titleSlot: ReactNode;
+}
+
+/** Một hàng timeline nhập: rail (spine + chấm) + [cột thời gian | cột title]. */
+function FormRow({ depth, isFirst, isLast, isFirstRow, isLastRow, extraGap, timeSlot, titleSlot }: FormRowProps) {
+  const contentPl = TL_CONTENT_PL[depth] ?? TL_CONTENT_PL[2];
+  const timeW = TL_TIME_W[depth] ?? TL_TIME_W[2];
+  const pb = isLastRow ? "" : extraGap ? "pb-14" : depth === 2 ? "pb-5" : "pb-10";
+  return (
+    <div className="relative flex">
+      <div className="absolute inset-0 pointer-events-none">
+        {!isFirstRow && <TLSegment x={TL_DOT_X[0]} from={0} to={TL_DOT_Y} />}
+        {!isLastRow && <TLSegment x={TL_DOT_X[0]} from={TL_DOT_Y} to="bottom" />}
+        {depth === 2 && !isFirst && <TLSegment x={TL_DOT_X[2]} from={0} to={TL_DOT_Y} />}
+        {depth === 2 && !isLast && <TLSegment x={TL_DOT_X[2]} from={TL_DOT_Y} to="bottom" />}
+        <span
+          className={`absolute rounded-full bg-primary border-2 border-primary ${TL_DOT_SIZE[depth]}`}
+          style={{ left: TL_DOT_X[depth], top: TL_DOT_Y, transform: "translate(-50%, -50%)" }}
+        />
+      </div>
+      <div className={`flex-1 min-w-0 pl-24 ${contentPl} flex flex-col sm:flex-row sm:items-baseline sm:gap-x-3 ${pb}`}>
+        <div className={`shrink-0 ${timeW}`}>{timeSlot}</div>
+        <div className="flex flex-1 min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">{titleSlot}</div>
+      </div>
+    </div>
   );
 }
 
@@ -1295,10 +1463,22 @@ function EventFormBody({
             templateId: t.templateId.trim() || null,
             description: t.description.trim(),
             submissionRuleDescription: serializeSubmissionRequirements(t.submissionRequirements),
+            startDate: toIso(t.startDate) || null,
+            endDate: toIso(t.endDate) || null,
+            scoringStartDate: toIso(t.scoringStartDate) || null,
+            scoringEndDate: toIso(t.scoringEndDate) || null,
           };
-          let trackId = t.id;
-          if (trackId) await tracksApi.update(trackId, trackPayload);
-          else await tracksApi.create(trackPayload);
+          const trackId = t.id;
+          if (trackId) {
+            await tracksApi.update(trackId, trackPayload);
+          } else {
+            // POST /Tracks (CreateTrackRequestModel) chưa nhận submissionRuleDescription
+            // → tạo xong update ngay để lưu yêu cầu nộp bài cho hạng mục mới thêm khi sửa.
+            const createdId = (await tracksApi.create(trackPayload)).id;
+            if (trackPayload.submissionRuleDescription.trim()) {
+              await tracksApi.update(createdId, trackPayload);
+            }
+          }
         }
       }
 
@@ -1334,7 +1514,7 @@ function EventFormBody({
 
   const activeMutation = isEdit ? editMutation : createMutation;
 
-  type EventStringKey = "eventName" | "season" | "year" | "startDate" | "endDate" | "registrationStartDate" | "registrationEndDate" | "description";
+  type EventStringKey = "eventName" | "season" | "year" | "startDate" | "endDate" | "registrationStartDate" | "registrationEndDate" | "description" | "announceStartDate" | "announceEndDate";
   const setField = (key: EventStringKey, value: string) =>
     setForm((f) => {
       const updated = { ...f, [key]: value };
@@ -1447,6 +1627,10 @@ function EventFormBody({
           description: t.description.trim(),
           templateId: t.templateId.trim() || null,
           submissionRuleDescription: serializeSubmissionRequirements(t.submissionRequirements),
+          startDate: toIso(t.startDate) || null,
+          endDate: toIso(t.endDate) || null,
+          scoringStartDate: toIso(t.scoringStartDate) || null,
+          scoringEndDate: toIso(t.scoringEndDate) || null,
         })),
       })),
     };
@@ -1563,157 +1747,42 @@ function EventFormBody({
     <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "var(--space-xl)" }}>
       {/* Event-level fields */}
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-md)" }}>
-        <TextField label="Tên sự kiện" value={form.eventName} onChange={(v) => setField("eventName", v)} />
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <span className="t-caption-xs" style={{ color: "var(--color-primary)", fontWeight: 700, letterSpacing: "0.05em" }}>
-            THỜI GIAN SỰ KIỆN
-          </span>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-md)" }}>
-            <Field label="Bắt đầu">
-              <DateTimePicker
-                value={form.startDate}
-                onChange={(v) => setField("startDate", v)}
-              />
-            </Field>
-            <Field label="Kết thúc">
-              <DateTimePicker
-                value={form.endDate}
-                onChange={(v) => setField("endDate", v)}
-              />
-            </Field>
-          </div>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <span className="t-caption-xs" style={{ color: "var(--color-primary)", fontWeight: 700, letterSpacing: "0.05em" }}>
-            THỜI GIAN ĐĂNG KÝ
-          </span>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-md)" }}>
-            <Field label="Bắt đầu">
-              <DateTimePicker
-                value={form.registrationStartDate}
-                onChange={(v) => setField("registrationStartDate", v)}
-              />
-            </Field>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <Field label="Kết thúc">
-                <DateTimePicker
-                  value={form.registrationEndDate}
-                  onChange={(v) => setField("registrationEndDate", v)}
-                />
-              </Field>
-              {form.registrationStartDate && (
-                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  <span className="t-caption-xs" style={{ color: "var(--color-mute)" }}>Đặt nhanh:</span>
-                  {[2, 24, 48, 72].map((hours) => (
-                    <button
-                      key={hours}
-                      type="button"
-                      onClick={() => {
-                        const date = new Date(form.registrationStartDate);
-                        date.setHours(date.getHours() + hours);
-                        const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-                        setField("registrationEndDate", local.toISOString().slice(0, 16));
-                      }}
-                      style={{
-                        padding: "3px 8px",
-                        background: "var(--color-canvas)",
-                        border: "1px solid var(--color-hairline)",
-                        borderRadius: 2,
-                        fontSize: 11,
-                        fontWeight: 700,
-                        color: "var(--color-mute)",
-                        cursor: "pointer",
-                        transition: "all 100ms ease",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = "var(--color-primary)";
-                        e.currentTarget.style.color = "var(--color-primary)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = "var(--color-hairline)";
-                        e.currentTarget.style.color = "var(--color-mute)";
-                      }}
-                    >
-                      +{hours}h
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Thông tin tự động nhận diện */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "var(--space-md)",
-          padding: "16px",
-          background: "linear-gradient(135deg, rgba(118, 185, 0, 0.08) 0%, rgba(118, 185, 0, 0.02) 100%)",
-          border: "2px dashed var(--color-primary)",
-          borderRadius: "var(--radius-sm)",
-          marginTop: "4px"
-        }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <span className="t-caption-xs" style={{ color: "var(--color-primary)", fontWeight: 700, letterSpacing: "0.05em" }}>
-              MÙA (SEASON)
-            </span>
-            <div style={{
-              padding: "10px 14px",
-              background: "var(--color-canvas)",
-              border: "1px solid var(--color-hairline)",
-              borderRadius: "var(--radius-sm)",
-              fontSize: "var(--fs-body-sm)",
-              fontWeight: 700,
-              color: form.season ? "var(--color-primary)" : "var(--color-mute)",
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              minHeight: 40
-            }}>
-              {form.season ? (
-                form.season === "Spring" ? "🌸 Kỳ Spring (Mùa Xuân)" :
-                  form.season === "Summer" ? "☀️ Kỳ Summer (Mùa Hè)" :
-                    "🍂 Kỳ Fall (Mùa Thu)"
-              ) : (
-                "Chờ ngày bắt đầu..."
-              )}
-            </div>
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <span className="t-caption-xs" style={{ color: "var(--color-primary)", fontWeight: 700, letterSpacing: "0.05em" }}>
-              NĂM
-            </span>
-            <div style={{
-              padding: "10px 14px",
-              background: "var(--color-canvas)",
-              border: "1px solid var(--color-hairline)",
-              borderRadius: "var(--radius-sm)",
-              fontSize: "var(--fs-body-sm)",
-              fontWeight: 700,
-              color: form.year ? "var(--color-primary)" : "var(--color-mute)",
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              minHeight: 40
-            }}>
-              {form.year ? `📅 Năm ${form.year}` : "Chờ ngày bắt đầu..."}
-            </div>
-          </div>
-          <span className="t-caption-xs" style={{ gridColumn: "span 2", color: "var(--color-mute)", fontStyle: "italic", marginTop: 4 }}>
-            💡 Hệ thống tự động xác định Mùa và Năm dựa vào ngày bắt đầu của sự kiện.
-          </span>
-        </div>
-
+        {/* Thứ tự khớp trang chi tiết: ảnh → tên → mô tả → thời gian */}
         <EventPhotoUpload
           value={form.photoEventUrl}
           onChange={(url) => setForm(f => ({ ...f, photoEventUrl: url }))}
         />
 
-        <TextArea label="Mô tả" value={form.description} onChange={(v) => setField("description", v)} />
+        {/* Tên & mô tả căn giữa, không nhãn — vị trí giống title/desc ở trang chi tiết */}
+        <input
+          className="text-input"
+          value={form.eventName}
+          placeholder="Tên sự kiện"
+          onChange={(e) => setField("eventName", e.target.value)}
+          style={{ textAlign: "center", fontSize: "1.75rem", fontWeight: 700 }}
+        />
+        <textarea
+          className="text-input"
+          rows={2}
+          value={form.description}
+          placeholder="Mô tả sự kiện"
+          onChange={(e) => setField("description", e.target.value)}
+          style={{ textAlign: "center", height: "auto", resize: "vertical", fontFamily: "inherit", width: "100%" }}
+        />
+
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <span className="t-caption-xs" style={{ color: "var(--color-mute)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+          <span className="t-body-strong" style={{ color: "var(--color-ink)", letterSpacing: "0.05em" }}>
+            Thời gian sự kiện
+          </span>
+          <DateRangeInput
+            start={form.startDate}
+            end={form.endDate}
+            onStart={(v) => setField("startDate", v)}
+            onEnd={(v) => setField("endDate", v)}
+          />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <span className="t-body-strong" style={{ color: "var(--color-ink)", letterSpacing: "0.05em" }}>
             Trạng thái hiển thị
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
@@ -1754,34 +1823,123 @@ function EventFormBody({
         {/* <Hint>Sự kiện tự chuyển sang “Đã kết thúc” (vẫn hiện cho mọi người) sau ngày kết thúc.</Hint> */}
       </div>
 
-      {/* Rounds */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-lg)" }}>
+      {/* Timeline nhập liệu: Mở đăng ký → Vòng → Kết quả chung cuộc */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-md)" }}>
         <h3 className="t-heading-sm" style={{ margin: 0 }}>
-          Các vòng thi
+          Lịch trình sự kiện
         </h3>
-        {form.rounds.map((round, ri) => (
-          <RoundCard
-            key={ri}
-            round={round}
-            index={ri}
-            canRemove={form.rounds.length > 1}
-            templates={templates}
-            templatesLoading={templatesQuery.isLoading}
-            onChange={(key, value) => updateRound(ri, key, value)}
-            onRemove={() => removeRound(ri)}
-            onTrackChange={(ti, patch) => updateTrack(ri, ti, patch)}
-            onAddTrack={() => addTrack(ri)}
-            onRemoveTrack={(ti) => removeTrack(ri, ti)}
-          />
-        ))}
-        <button
-          type="button"
-          className="btn btn-outline btn-sm"
-          onClick={addRound}
-          style={{ alignSelf: "flex-start", cursor: "pointer" }}
-        >
-          + Thêm vòng
-        </button>
+        <div className="relative flex flex-col">
+          {(() => {
+            type Spec = { key: string; depth: number; isFirst: boolean; isLast: boolean; timeSlot?: ReactNode; titleSlot: ReactNode };
+            const specs: Spec[] = [];
+
+            // 1) Mở đăng ký
+            specs.push({
+              key: "reg", depth: 0, isFirst: true, isLast: false,
+              timeSlot: (
+                <DateRangeInput
+                  start={form.registrationStartDate} end={form.registrationEndDate}
+                  onStart={(v) => setField("registrationStartDate", v)} onEnd={(v) => setField("registrationEndDate", v)}
+                />
+              ),
+              titleSlot: <span className="t-body-strong text-ink">Mở đăng ký</span>,
+            });
+
+            // 2) Vòng → hạng mục → 5 bước
+            form.rounds.forEach((round, ri) => {
+              const { type, value } = parseAdvancementRule(round.advancementRule);
+              specs.push({
+                key: `round-${ri}`, depth: 0, isFirst: false, isLast: false,
+                timeSlot: (
+                  <DateRangeInput
+                    start={round.startDate} end={round.endDate}
+                    onStart={(v) => updateRound(ri, "startDate", v)} onEnd={(v) => updateRound(ri, "endDate", v)}
+                  />
+                ),
+                titleSlot: (
+                  <>
+                    <input className="text-input" style={{ width: 320, maxWidth: "100%", fontWeight: 700 }} value={round.roundName}
+                      placeholder={`Tên vòng ${ri + 1}`} onChange={(e) => updateRound(ri, "roundName", e.target.value)} />
+                    {form.rounds.length > 1 && (
+                      <button type="button" className="btn btn-outline btn-sm" style={{ cursor: "pointer" }} onClick={() => removeRound(ri)}>Xóa vòng</button>
+                    )}
+                    <div className="basis-full flex flex-wrap items-center gap-2">
+                      <span className="t-caption-xs text-mute shrink-0">Lên vòng:</span>
+                      <select className="text-input shrink-0" style={{ width: 160 }} value={type}
+                        onChange={(e) => { const nt = e.target.value; const dv = nt === "minScore" ? "7.5" : nt === "percent" ? "50" : "10"; updateRound(ri, "advancementRule", `${nt}:${dv}`); }}>
+                        <option value="top">Top số đội</option>
+                        <option value="percent">Phần trăm</option>
+                        <option value="minScore">Điểm tối thiểu</option>
+                      </select>
+                      <input className="text-input shrink-0" style={{ width: 90 }} type="number" value={value}
+                        onChange={(e) => updateRound(ri, "advancementRule", `${type}:${e.target.value}`)} />
+                    </div>
+                  </>
+                ),
+              });
+
+              round.tracks.forEach((track, ti) => {
+                specs.push({
+                  key: `track-${ri}-${ti}`, depth: 1, isFirst: ti === 0, isLast: ti === round.tracks.length - 1,
+                  timeSlot: (
+                    <DateRangeInput
+                      start={track.windowStartDate} end={track.windowEndDate}
+                      onStart={(v) => updateTrack(ri, ti, { windowStartDate: v })} onEnd={(v) => updateTrack(ri, ti, { windowEndDate: v })}
+                    />
+                  ),
+                  titleSlot: (
+                    <>
+                      <input className="text-input" style={{ maxWidth: 320, fontWeight: 700 }} value={track.trackName}
+                        placeholder="Tên hạng mục" onChange={(e) => updateTrack(ri, ti, { trackName: e.target.value })} />
+                      {round.tracks.length > 1 && (
+                        <button type="button" className="btn btn-outline btn-sm" style={{ cursor: "pointer" }} onClick={() => removeTrack(ri, ti)}>Xóa</button>
+                      )}
+                      <div className="basis-full flex flex-col gap-2">
+                        <textarea className="text-input" rows={2} value={track.description} placeholder="Mô tả hạng mục"
+                          style={{ height: "auto", resize: "vertical", fontFamily: "inherit" }}
+                          onChange={(e) => updateTrack(ri, ti, { description: e.target.value })} />
+                        <select className="text-input" value={track.templateId} disabled={templatesQuery.isLoading}
+                          onChange={(e) => updateTrack(ri, ti, { templateId: e.target.value })}>
+                          <option value="">{templatesQuery.isLoading ? "Đang tải template…" : "— Chọn template chấm điểm —"}</option>
+                          {templates.map((t) => (<option key={t.id} value={t.id}>{t.templateName}</option>))}
+                        </select>
+                        <SubmissionRequirementsField value={track.submissionRequirements}
+                          onChange={(next) => updateTrack(ri, ti, { submissionRequirements: next })} savedReference={track.savedSubmissionRule} />
+                      </div>
+                    </>
+                  ),
+                });
+
+                const stepLabel = (label: string, note?: string) => (
+                  <span className="t-body-strong text-ink">{label}{note && <span className="t-caption-xs text-mute italic"> ({note})</span>}</span>
+                );
+                specs.push({ key: `s1-${ri}-${ti}`, depth: 2, isFirst: true, isLast: false, timeSlot: <DateRangeInput start={track.competeStartDate} end={track.competeEndDate} onStart={(v) => updateTrack(ri, ti, { competeStartDate: v })} onEnd={(v) => updateTrack(ri, ti, { competeEndDate: v })} />, titleSlot: stepLabel("Bắt đầu thi") });
+                specs.push({ key: `s2-${ri}-${ti}`, depth: 2, isFirst: false, isLast: false, timeSlot: <DateRangeInput start={track.startDate} end={track.endDate} onStart={(v) => updateTrack(ri, ti, { startDate: v })} onEnd={(v) => updateTrack(ri, ti, { endDate: v })} />, titleSlot: stepLabel("Nộp bài") });
+                specs.push({ key: `s3-${ri}-${ti}`, depth: 2, isFirst: false, isLast: false, timeSlot: <DateRangeInput start={track.scoringStartDate} end={track.scoringEndDate} onStart={(v) => updateTrack(ri, ti, { scoringStartDate: v })} onEnd={(v) => updateTrack(ri, ti, { scoringEndDate: v })} />, titleSlot: stepLabel("Chấm điểm") });
+                specs.push({ key: `s4-${ri}-${ti}`, depth: 2, isFirst: false, isLast: false, timeSlot: <DateRangeInput start={track.appealStartDate} end={track.appealEndDate} onStart={(v) => updateTrack(ri, ti, { appealStartDate: v })} onEnd={(v) => updateTrack(ri, ti, { appealEndDate: v })} />, titleSlot: stepLabel("Phúc khảo") });
+                specs.push({ key: `s5-${ri}-${ti}`, depth: 2, isFirst: false, isLast: true, timeSlot: <DateTimePicker value={track.resultPublishDate} onChange={(v) => updateTrack(ri, ti, { resultPublishDate: v })} placeholder="Chọn thời gian" />, titleSlot: stepLabel("Công bố kết quả") });
+              });
+
+              specs.push({ key: `addtrack-${ri}`, depth: 1, isFirst: false, isLast: true, titleSlot: (<button type="button" className="btn btn-outline btn-sm" style={{ cursor: "pointer" }} onClick={() => addTrack(ri)}>+ Thêm hạng mục</button>) });
+            });
+
+            specs.push({ key: "addround", depth: 0, isFirst: false, isLast: false, titleSlot: (<button type="button" className="btn btn-outline btn-sm" style={{ cursor: "pointer" }} onClick={addRound}>+ Thêm vòng</button>) });
+            specs.push({
+              key: "final", depth: 0, isFirst: false, isLast: true,
+              timeSlot: (
+                <DateTimePicker value={form.announceStartDate} onChange={(v) => setField("announceStartDate", v)} placeholder="Chọn thời gian" />
+              ),
+              titleSlot: (<span className="t-body-strong text-ink">Công bố kết quả chung cuộc</span>),
+            });
+
+            return specs.map((s, i) => (
+              <FormRow key={s.key} depth={s.depth} isFirst={s.isFirst} isLast={s.isLast}
+                isFirstRow={i === 0} isLastRow={i === specs.length - 1}
+                extraGap={i < specs.length - 1 && specs[i + 1].depth === 0}
+                timeSlot={s.timeSlot} titleSlot={s.titleSlot} />
+            ));
+          })()}
+        </div>
       </div>
 
       {/* Actions */}

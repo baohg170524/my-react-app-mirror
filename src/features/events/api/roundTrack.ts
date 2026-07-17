@@ -24,6 +24,15 @@ export interface TrackUpsertPayload {
    * adds the field there too.
    */
   submissionRuleDescription: string;
+  // ── Mốc thời gian riêng của hạng mục. BE CHƯA hỗ trợ (Create/UpdateTrackRequestModel
+  //    chưa có các field này) → gửi sẵn, BE bỏ qua, sẽ lưu khi BE cập nhật schema. ──
+  /** Mở nộp bài (Bắt đầu thi). */
+  startDate?: string | null;
+  /** Hạn chót nộp bài (Nộp bài). */
+  endDate?: string | null;
+  /** Cửa sổ chấm điểm. */
+  scoringStartDate?: string | null;
+  scoringEndDate?: string | null;
 }
 
 /** Full round model returned by GET /Rounds/{id}. */
@@ -46,6 +55,10 @@ export interface TrackModel {
   templateId: string | null;
   description: string | null;
   isActive: boolean;
+  startDate?: string | null;
+  endDate?: string | null;
+  scoringStartDate?: string | null;
+  scoringEndDate?: string | null;
 }
 
 export const roundsApi = {

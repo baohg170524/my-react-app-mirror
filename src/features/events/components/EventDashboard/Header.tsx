@@ -4,20 +4,23 @@ import React from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
+type EventPhase = 'active' | 'upcoming' | 'ended';
+
+const PHASE: Record<EventPhase, { label: string; cls: string }> = {
+  active: { label: 'Đang diễn ra', cls: 'bg-primary text-on-primary' },
+  upcoming: { label: 'Sắp tới', cls: 'bg-surface-soft text-ink' },
+  ended: { label: 'Đã kết thúc', cls: 'bg-stone text-on-dark' },
+};
+
 interface HeaderProps {
   title: string;
   subtitle?: string;
-  status?: 'open' | 'closed';
+  status?: EventPhase;
   submissionType?: string;
 }
 
 export function Header({ title, subtitle, status, submissionType }: HeaderProps) {
   const router = useRouter();
-  const getStatusColor = (status?: string) => {
-    if (status === 'open') return 'bg-primary text-on-primary';
-    if (status === 'closed') return 'bg-stone text-on-dark';
-    return '';
-  };
 
   return (
     <header className="fixed top-0 left-0 right-0 h-auto md:h-20 bg-canvas border-b border-hairline flex items-center px-4 md:px-6 gap-3 md:gap-4 lg:left-60 z-40 py-4 md:py-0">
@@ -36,11 +39,9 @@ export function Header({ title, subtitle, status, submissionType }: HeaderProps)
       <div className="flex items-center gap-2 md:gap-3 ml-auto flex-shrink-0">
         {status && (
           <span
-            className={`inline-block px-2 md:px-3 py-1 rounded-sm text-xs md:text-body-sm font-bold uppercase whitespace-nowrap ${getStatusColor(
-              status
-            )}`}
+            className={`inline-block px-2 md:px-3 py-1 rounded-sm text-xs md:text-body-sm font-bold uppercase whitespace-nowrap ${PHASE[status].cls}`}
           >
-            {status === 'open' ? 'Open' : 'Closed'}
+            {PHASE[status].label}
           </span>
         )}
 
@@ -49,6 +50,7 @@ export function Header({ title, subtitle, status, submissionType }: HeaderProps)
             {submissionType}
           </span>
         )}
+
       </div>
     </header>
   );

@@ -20,6 +20,26 @@ interface AdminEventDashboardProps {
   role?: string;
 }
 
+/** Trạng thái sự kiện hiển thị ở header (đồng bộ với view participant). */
+const PHASE = {
+  active: { label: 'Đang diễn ra', cls: 'bg-primary text-on-primary' },
+  upcoming: { label: 'Sắp tới', cls: 'bg-surface-soft text-ink' },
+  ended: { label: 'Đã kết thúc', cls: 'bg-stone text-on-dark' },
+} as const;
+
+function eventPhase(event: {
+  startDate: string;
+  endDate: string;
+  status: 'open' | 'closed';
+}): keyof typeof PHASE {
+  const now = Date.now();
+  const start = new Date(event.startDate).getTime();
+  const end = new Date(event.endDate).getTime();
+  if (!Number.isNaN(start) && now < start) return 'upcoming';
+  if (event.status === 'closed' || (!Number.isNaN(end) && now > end)) return 'ended';
+  return 'active';
+}
+
 export function AdminEventDashboard({ eventId, role = 'Admin' }: AdminEventDashboardProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<AdminTab>('detail');
@@ -81,10 +101,11 @@ export function AdminEventDashboard({ eventId, role = 'Admin' }: AdminEventDashb
         </button>
         <div className="flex flex-col gap-1 min-w-0 flex-1">
           <h1 className="t-heading-md text-ink m-0 truncate text-sm md:text-lg lg:text-xl">{event.title}</h1>
-          <p className="t-body-sm text-mute m-0 hidden md:block text-xs md:text-body-sm">Quản lý sự kiện</p>
         </div>
-        <span className="inline-block bg-surface-soft text-ink px-2 md:px-3 py-1 rounded-sm text-caption-xs md:text-caption-sm font-bold uppercase whitespace-nowrap flex-shrink-0">
-          {role.toLowerCase() === 'eventcoordinator' ? 'Ban tổ chức sự kiện' : role}
+        <span
+          className={`inline-block px-2 md:px-3 py-1 rounded-sm text-xs md:text-body-sm font-bold uppercase whitespace-nowrap flex-shrink-0 ${PHASE[eventPhase(event)].cls}`}
+        >
+          {PHASE[eventPhase(event)].label}
         </span>
       </header>
 
