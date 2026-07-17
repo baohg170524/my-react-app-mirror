@@ -125,6 +125,7 @@ export default function ScoringPanel({ eventId, trackId = null }) {
         // 6) Bài nộp → "teams" (ẩn danh khi hiển thị; id = submitResultId dùng để lưu điểm).
         const mapped = subsRes.items.map(s => ({
           id: s.id,
+          teamId: s.teamId, // Thêm teamId thật để đồng bộ mã ẩn danh với SubmissionsPanel
           name: s.teamName ?? s.projectName ?? '—',
           scores: prefill[s.id] ?? crit.map(() => 0),
           comments: crit.map(() => ''),
