@@ -877,9 +877,14 @@ export default function AuthPage() {
                   <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
                     <GoogleLogin
                       onSuccess={(cred) => {
+                        setClientError("");
                         if (cred.credential) googleMutation.mutate(cred.credential);
                       }}
-                      onError={() => {}}
+                      onError={() =>
+                        setClientError(
+                          "Đăng nhập Google thất bại. Nếu trình duyệt đang chặn cửa sổ popup, vui lòng cho phép popup cho trang này rồi thử lại.",
+                        )
+                      }
                       size="large"
                       width="316"
                       shape="rectangular"
