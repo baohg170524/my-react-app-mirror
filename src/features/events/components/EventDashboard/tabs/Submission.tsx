@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import type { AxiosError } from 'axios';
 import { useEventRounds, useEventTracks } from '@/features/events/hooks/useEvents';
+import { eventsApi } from '@/features/events/api/events';
 import { useTeamSubmissions, useCreateSubmission, useUpdateSubmission } from '@/features/submissions/hooks/useSubmissions';
 import type { SubmissionModel } from '@/features/submissions/api/submissions';
 import { useNotify } from '@/components/NotificationProvider';
@@ -34,6 +36,13 @@ export function SubmissionTab({ teamId, eventId }: Props) {
   const { data: rounds = [] } = useEventRounds(eventId);
   const { data: tracks = [] } = useEventTracks(eventId);
 
+  // Yêu cầu nộp bài chỉ có trong model lồng của GET /Events/{id} (rounds[].tracks[])
+  const { data: eventModel } = useQuery({
+    queryKey: ['eventModel', eventId],
+    queryFn: () => eventsApi.getModelById(eventId),
+    staleTime: 5 * 60 * 1000,
+  });
+
   const [roundId, setRoundId] = useState('');
   const [trackId, setTrackId] = useState('');
   // FORM ĐỘNG: mỗi phần tử = 1 ô nhập link theo cấu hình của Track (submissionRuleDescription).
@@ -64,8 +73,18 @@ export function SubmissionTab({ teamId, eventId }: Props) {
   // Sinh danh sách ô nhập link theo cấu hình của Track đang chọn:
   // mỗi dòng trong submissionRuleDescription = 1 loại link phải nộp.
   const buildLinksForTrack = (tid: string): SubmissionLink[] => {
-    const t = allTracks.find((x) => x.id === tid);
-    const labels = parseRuleLabels(t?.submissionRuleDescription);
+    // Tìm rules từ nested model thay vì flat model (do BE không trả field này ở flat list)
+    let ruleDesc: string | null | undefined = null;
+    const nestedRounds = (eventModel as any)?.rounds ?? [];
+    for (const r of nestedRounds) {
+      const track = (r.tracks ?? []).find((x: any) => x.id === tid);
+      if (track) {
+        ruleDesc = track.submissionRuleDescription;
+        break;
+      }
+    }
+
+    const labels = parseRuleLabels(ruleDesc);
     return labels.length > 0
       ? labels.map((label) => ({ label, url: '' }))
       : [{ label: DEFAULT_LINK_LABEL, url: '' }];
