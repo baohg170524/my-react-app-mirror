@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useUserRole } from "@/hooks/useUserRole";
 import type { Event } from "../types/event.types";
 
@@ -76,6 +77,7 @@ const PHASE_BADGE: Record<EventPhase, { label: string; bg: string; color: string
 };
 
 export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
+  const [imgError, setImgError] = useState(false);
   const isAdmin = useUserRole() === "admin";
   const isOpen = event.status === "open";
   const isLoggedIn = typeof window !== "undefined" && !!localStorage.getItem("accessToken");
@@ -137,11 +139,12 @@ export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
             {myRoleLabel}
           </span>
         )}
-        {event.photoEventUrl ? (
+        {event.photoEventUrl && !imgError ? (
           <img
             src={event.photoEventUrl}
             alt={event.title}
             style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.4s ease" }}
+            onError={() => setImgError(true)}
             onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
             onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
           />

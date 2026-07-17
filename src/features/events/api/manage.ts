@@ -43,15 +43,9 @@ export interface EventRound {
   startDate: string;
   endDate: string;
   advancementRule: string | null;
-  // ── Mốc quy trình trong vòng (BE bổ sung sau; hiện chưa cấp → timeline hiện "Chưa cập nhật"). ──
-  /** Cửa sổ chấm điểm. */
+  /** Cửa sổ chấm điểm của vòng (BE: EventRoundModel/RoundModel). */
   scoringStartDate?: string | null;
   scoringEndDate?: string | null;
-  /** Cửa sổ phúc khảo. */
-  appealStartDate?: string | null;
-  appealEndDate?: string | null;
-  /** Thời điểm công bố điểm vòng. */
-  resultPublishDate?: string | null;
 }
 
 /** Matches backend TrackModel (a track belongs to a round). */
@@ -65,9 +59,14 @@ export interface TrackItem {
   submissionRuleDescription?: string | null;
   judges: EventRoleUser[] | null;
   mentors: EventRoleUser[] | null;
-  // ── Mốc thời gian riêng của hạng mục (BE bổ sung sau). ──
+  // ── Hai khoảng thời gian thực của hạng mục (chỉ có trong model lồng của
+  //    GET /Events/{id} → EventTrackModel; danh sách phẳng /Tracks/event không trả). ──
+  /** Nộp bài: mở → hạn nộp. */
   startDate?: string | null;
   endDate?: string | null;
+  /** Chấm điểm: mở → đóng cửa sổ chấm. */
+  scoringStartDate?: string | null;
+  scoringEndDate?: string | null;
 }
 
 /** Matches backend FinalResultModel. */

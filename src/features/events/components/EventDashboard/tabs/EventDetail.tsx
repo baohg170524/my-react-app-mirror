@@ -5,6 +5,7 @@ import { useEvent } from '@/features/events/hooks/useEvents';
 import { Card } from '../Card';
 import { CardSkeleton } from '../SkeletonLoaders';
 import { EventTimeline } from '../EventTimeline';
+import { EventPhoto } from '../../EventPhoto';
 
 interface Props { eventId: string; userId: string; }
 
@@ -35,11 +36,7 @@ export function EventDetailTab({ eventId }: Props) {
     <div className="flex flex-col gap-4 md:gap-6">
       <Card className="border-transparent">
         <div className="space-y-4">
-          {event.photoEventUrl && (
-            <div className="w-full aspect-[2.35/1] rounded-sm overflow-hidden relative">
-              <img src={event.photoEventUrl} alt={event.title} className="w-full h-full object-cover" />
-            </div>
-          )}
+          <EventPhoto url={event.photoEventUrl} alt={event.title} />
           <h1 className="text-ink text-center font-bold m-0 leading-tight text-4xl md:text-5xl">{event.title}</h1>
           <p className="text-body whitespace-pre-line leading-relaxed max-w-2xl mx-auto text-center font-normal text-base md:text-lg">
             {event.description || 'Chưa có mô tả.'}

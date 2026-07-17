@@ -47,6 +47,13 @@ export interface CreateTrackPayload {
   /** Template GUID, or null when no template is selected (avoids a 500). */
   templateId: string | null;
   submissionRuleDescription: string;
+  // ── Hai khoảng thời gian thực của hạng mục (BE: TrackRequestDto). ──
+  /** Nộp bài: mở → hạn nộp. */
+  startDate?: string | null;
+  endDate?: string | null;
+  /** Chấm điểm: mở → đóng cửa sổ chấm. */
+  scoringStartDate?: string | null;
+  scoringEndDate?: string | null;
 }
 
 /** Round inside an event — matches RoundRequestDto. */
