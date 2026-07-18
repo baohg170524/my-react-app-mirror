@@ -247,7 +247,7 @@ export function UsersList() {
   const dialog = useDialog();
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
-  const [filter, setFilter] = useState<"all" | "pending">("all");
+  const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
   const [eventId, setEventId] = useState("");
   const [accountType, setAccountType] = useState<"all" | "non_student" | "student_fpt" | "student_other">("all");
   const [page, setPage] = useState(1);
@@ -266,8 +266,11 @@ export function UsersList() {
         search: debounced,
         pageNumber: page,
         pageSize: PAGE_SIZE,
-        isApproved: filter === "pending" ? false : undefined,
-        hasSubmittedProfile: filter === "pending" ? true : undefined,
+        // BE chỉ lọc được IsApproved. "Chờ duyệt" và "Bị từ chối" đều là chưa duyệt +
+        // đã nộp hồ sơ → lấy chung rồi tách phía FE theo cờ isRejected (xem `users`).
+        isApproved:
+          filter === "approved" ? true : filter === "pending" || filter === "rejected" ? false : undefined,
+        hasSubmittedProfile: filter === "pending" || filter === "rejected" ? true : undefined,
         eventId: eventId || undefined,
         isStudent: accountType === "non_student" ? false : (accountType.startsWith("student_") ? true : undefined),
         isFpt: accountType === "student_fpt" ? true : (accountType === "student_other" ? false : undefined),
@@ -455,8 +458,17 @@ export function UsersList() {
     },
   });
 
-  const users = usersQuery.data?.data ?? [];
-  const total = usersQuery.data?.totalItems ?? users.length;
+  const rawUsers = usersQuery.data?.data ?? [];
+  // Tách "Chờ duyệt" / "Bị từ chối" phía FE (BE không lọc được isRejected).
+  const users =
+    filter === "rejected"
+      ? rawUsers.filter((u) => u.isRejected)
+      : filter === "pending"
+        ? rawUsers.filter((u) => !u.isRejected)
+        : rawUsers;
+  // Với 2 tab tách phía FE, số đếm/ phân trang dựa trên tập của trang hiện tại.
+  const clientSplit = filter === "pending" || filter === "rejected";
+  const total = clientSplit ? users.length : usersQuery.data?.totalItems ?? users.length;
   const totalPages = Math.max(1, usersQuery.data?.totalPages ?? 1);
   const currentPage = Math.min(page, totalPages);
   const schoolName = (id: string | null) =>
@@ -485,7 +497,11 @@ export function UsersList() {
                   ? "Danh sách tài khoản trong hệ thống"
                   : filter === "pending"
                     ? `${total} tài khoản chờ duyệt`
-                    : `${total} người dùng`}
+                    : filter === "approved"
+                      ? `${total} tài khoản đã duyệt`
+                      : filter === "rejected"
+                        ? `${total} tài khoản bị từ chối`
+                        : `${total} người dùng`}
               </p>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "var(--space-sm)", flexWrap: "wrap" }}>
@@ -557,6 +573,8 @@ export function UsersList() {
               {([
                 { id: "all", label: "Tất cả" },
                 { id: "pending", label: "Chờ duyệt" },
+                { id: "approved", label: "Đã duyệt" },
+                { id: "rejected", label: "Bị từ chối" },
               ] as const).map(({ id, label }) => (
                 <button
                   key={id}
@@ -587,7 +605,13 @@ export function UsersList() {
             </p>
           ) : users.length === 0 ? (
             <p className="t-body-sm" style={{ color: "var(--color-mute)", textAlign: "center", padding: "var(--space-xl)" }}>
-              {filter === "pending" ? "Không có tài khoản chờ duyệt." : "Không có người dùng nào."}
+              {filter === "pending"
+                ? "Không có tài khoản chờ duyệt."
+                : filter === "approved"
+                  ? "Không có tài khoản đã duyệt."
+                  : filter === "rejected"
+                    ? "Không có tài khoản bị từ chối."
+                    : "Không có người dùng nào."}
             </p>
           ) : (
             <>
@@ -604,7 +628,7 @@ export function UsersList() {
                       <th style={th}>MSSV</th>
                       <th style={th}>Trường</th>
                       <th style={th}>Vai trò</th>
-                      {filter === "pending" && <th style={th}>Trạng thái</th>}
+                      {filter !== "all" && <th style={th}>Trạng thái</th>}
                       <th style={{ ...th, textAlign: "right" }}>Thao tác</th>
                     </tr>
                   </thead>
@@ -634,6 +658,15 @@ export function UsersList() {
                         menuItems.push({
                           label: "Xem chi tiết",
                           onClick: () => { setActionError(null); setViewUser(u); },
+                        });
+                      }
+                      // Tài khoản bị từ chối → cho phép admin duyệt lại.
+                      if (isAdmin && !u.isApproved && u.isRejected && !isInvited) {
+                        menuItems.push({
+                          label: approveBusy ? "Đang lưu…" : "Duyệt lại",
+                          tone: "primary",
+                          disabled: approveBusy,
+                          onClick: () => { setActionError(null); approveMutation.mutate(u); },
                         });
                       }
                       if (u.isApproved && !isSelf) {
@@ -696,7 +729,7 @@ export function UsersList() {
                               </Badge>
                             )}
                           </td>
-                          {filter === "pending" && (
+                          {filter !== "all" && (
                             <td style={td}>
                               {isInvited ? (
                                 <Badge tone="neutral">Được mời</Badge>
