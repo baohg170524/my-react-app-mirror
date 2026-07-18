@@ -10,8 +10,7 @@ import { SubmissionTab } from './tabs/Submission';
 import { ResultsTab } from './tabs/Results';
 import { LeaderboardTab } from './tabs/Leaderboard';
 import { JudgeAssignedTeamsTab } from './tabs/JudgeAssignedTeams';
-import ScoringPanel from '../shared/ScoringPanel';
-import SubmissionsPanel from '../shared/SubmissionsPanel';
+import SubmissionsScoringPanel from '../shared/SubmissionsScoringPanel';
 import { CompetitionRegistrationTab } from '@/features/registration/components/CompetitionRegistrationTab';
 import { useEventDashboard } from '@/features/events/contexts/EventDashboardContext';
 import { useEvent, useUserEventRole } from '@/features/events/hooks/useEvents';
@@ -87,8 +86,7 @@ export function EventDashboard({ eventId, userId }: EventDashboardProps) {
         : <div className="t-body-md text-mute p-6">Chưa có kết quả.</div>;
       case 'leaderboard':   return <LeaderboardTab        eventId={eventId} userId={userId} />;
       case 'judgeAssigned': return <JudgeAssignedTeamsTab eventId={eventId} userId={userId} />;
-      case 'scoring':          return <ScoringPanel eventId={eventId} trackId={eventRole?.trackId ?? null} />;
-      case 'reviewSubmission': return <SubmissionsPanel eventId={eventId} trackId={eventRole?.trackId ?? null} />;
+      case 'reviewSubmission': return <SubmissionsScoringPanel eventId={eventId} trackId={eventRole?.trackId ?? null} />;
       default: return null;
     }
   };

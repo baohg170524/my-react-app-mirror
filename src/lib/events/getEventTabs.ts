@@ -4,7 +4,7 @@ import type { RegistrationStatus } from '@/features/registration/types';
 export type EventTabId =
   | 'detail' | 'register' | 'createTeam' | 'myTeam' | 'submission'
   | 'results' | 'leaderboard' | 'judgeAssigned' | 'manage'
-  | 'scoring' | 'reviewSubmission';
+  | 'reviewSubmission';
 
 export interface EventTab { id: EventTabId; label: string; }
 
@@ -18,7 +18,8 @@ const TAB: Record<EventTabId, EventTab> = {
   leaderboard:      { id: 'leaderboard',       label: 'Bảng xếp hạng' },
   judgeAssigned:    { id: 'judgeAssigned',     label: 'Đội được phân công' },
   manage:           { id: 'manage',            label: 'Quản lý' },
-  scoring:          { id: 'scoring',           label: 'Chấm điểm' },
+  // Gộp "Chấm điểm" + "Bài nộp" thành 1 tab — Judge thấy nút chấm, Mentor chỉ xem
+  // (xem SubmissionsScoringPanel.jsx).
   reviewSubmission: { id: 'reviewSubmission',  label: 'Bài nộp' },
 };
 
@@ -38,7 +39,7 @@ export function getEventTabs(args: {
   // 2. Chỉ khi thực sự được phân làm Judge trong event này
   //    Chấm điểm & Bài nộp chỉ thấy của hạng mục (track) được giao.
   if (eventRoleName === 'Judge') {
-    return [TAB.detail, TAB.scoring, TAB.reviewSubmission, TAB.leaderboard];
+    return [TAB.detail, TAB.reviewSubmission, TAB.leaderboard];
   }
 
   // 3. Mentor trong event này — Bài nộp chỉ thấy của hạng mục được phân công.

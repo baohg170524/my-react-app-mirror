@@ -15,6 +15,7 @@ import { Button } from '../../EventDashboard/Button';
 import { CardSkeleton } from '../../EventDashboard/SkeletonLoaders';
 import { CreateEventForm } from '../../CreateEventForm';
 import { EventTimeline } from '../../EventDashboard/EventTimeline';
+import { EventPhoto } from '../../EventPhoto';
 
 interface EventDetailTabProps {
   eventId: string;
@@ -102,11 +103,7 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
     <div className="flex flex-col gap-4 md:gap-6">
       <Card className="border-transparent">
         <div className="space-y-4">
-          {event.photoEventUrl && (
-            <div className="w-full aspect-[2.35/1] rounded-sm overflow-hidden relative">
-              <img src={event.photoEventUrl} alt={event.title} className="w-full h-full object-cover" />
-            </div>
-          )}
+          <EventPhoto url={event.photoEventUrl} alt={event.title} />
           <h1 className="text-ink text-center font-bold m-0 leading-tight text-4xl md:text-5xl">
             {event.title}
           </h1>

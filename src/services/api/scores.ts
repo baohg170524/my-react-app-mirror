@@ -24,6 +24,45 @@ export interface ScoreWithDetails extends Score {
   details: ScoreDetail[];
 }
 
+// ─── Team score breakdown types (GET /Scores/team/{teamId}/breakdown) ─────────
+// Xác nhận qua Swagger — dùng cho chế độ xem read-only (Mentor/EC/Admin): xem điểm
+// của TẤT CẢ giám khảo cho mọi bài nộp của 1 đội, không phân theo eventRoleId như
+// listByEventRole (dành riêng cho Judge xem/sửa điểm của chính mình).
+
+/** 1 dòng điểm của 1 tiêu chí trong breakdown (không có criteriaId, chỉ có tên). */
+export interface CriterionScoreLine {
+  criteriaName: string | null;
+  value: number;
+  maxScore: number;
+  weight: number;
+}
+
+/** Điểm + nhận xét của 1 giám khảo cho 1 bài nộp. */
+export interface JudgeScoreBreakdown {
+  judgeName: string | null;
+  totalScore: number;
+  /** Nhận xét chung của giám khảo cho cả phiếu (không có nhận xét theo từng tiêu chí). */
+  comment: string | null;
+  criteria: CriterionScoreLine[] | null;
+}
+
+/** Điểm của 1 bài nộp (1 track/round), kèm điểm từ mọi giám khảo đã chấm. */
+export interface SubmissionScoreBreakdown {
+  submitResultId: string | null;
+  trackName: string | null;
+  roundId: string | null;
+  roundName: string | null;
+  roundPublished: boolean;
+  judgeScores: JudgeScoreBreakdown[] | null;
+}
+
+/** Toàn bộ điểm của 1 đội, gộp mọi bài nộp (mọi track/round). */
+export interface TeamScoreBreakdownModel {
+  teamId: string | null;
+  teamName: string | null;
+  submissions: SubmissionScoreBreakdown[] | null;
+}
+
 // ─── Request payload types ────────────────────────────────────────────────────
 
 export interface CreateScorePayload {
@@ -124,5 +163,15 @@ export const scoresApi = {
       `/Scores/event-role/${eventRoleId}`,
     );
     return data.data ?? [];
+  },
+
+  // GET /api/Scores/team/{teamId}/breakdown — điểm của TẤT CẢ giám khảo, mọi bài nộp
+  // của 1 đội. Dùng cho chế độ xem read-only (Mentor/EC/Admin) — không tự chấm được,
+  // chỉ xem lại điểm + nhận xét mà (các) giám khảo đã chấm.
+  getTeamBreakdown: async (teamId: string): Promise<TeamScoreBreakdownModel> => {
+    const { data } = await apiClient.get<TeamScoreBreakdownModel>(
+      `/Scores/team/${encodeURIComponent(teamId)}/breakdown`,
+    );
+    return data;
   },
 };

@@ -4,16 +4,16 @@ import { useState } from 'react';
 import { useRegistration } from '../hooks/useRegistration';
 import { RegistrationForm } from './RegistrationForm';
 import { RegistrationStatusCard } from './RegistrationStatusCard';
+import { ChangePasswordForm } from './ChangePasswordForm';
 import { useCurrentUser } from '@/hooks/useAuth';
-import { useEventDashboard } from '@/features/events/contexts/EventDashboardContext';
 
 interface Props { userId: string; }
 
 export function CompetitionRegistrationTab({ userId }: Props) {
   const { data: user } = useCurrentUser();
-  const { setActiveTab } = useEventDashboard();
   const { profile, status, reason, rejectionCount, isLoading, submit, clearRejections } = useRegistration(userId);
   const [editing, setEditing] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
 
   if (isLoading) return <div className="t-body-md text-mute p-6">Đang tải…</div>;
 
@@ -33,6 +33,19 @@ export function CompetitionRegistrationTab({ userId }: Props) {
             await submit(cmd);
             setEditing(false);
           }}
+          onBack={() => setEditing(false)}
+        />
+      </div>
+    );
+  }
+
+  if (changingPassword) {
+    return (
+      <div className="p-1 md:p-2">
+        <h2 className="t-heading-md mb-4">Đổi mật khẩu</h2>
+        <ChangePasswordForm
+          onSuccess={() => setChangingPassword(false)}
+          onBack={() => setChangingPassword(false)}
         />
       </div>
     );
@@ -45,7 +58,7 @@ export function CompetitionRegistrationTab({ userId }: Props) {
         reason={reason}
         profile={profile}
         rejectionCount={rejectionCount}
-        onRegisterTeam={() => setActiveTab('createTeam')}
+        onChangePassword={() => setChangingPassword(true)}
         onEdit={() => setEditing(true)}
         onResubmit={async () => {
           await clearRejections();

@@ -58,24 +58,13 @@ interface TrackForm {
    * "đã lưu trước đó" reference. `undefined` in create mode (no reference shown).
    */
   savedSubmissionRule?: string;
-  // ── Thời gian các bước của hạng mục (chuỗi cho DateTimePicker). ──
+  // ── Hai khoảng thời gian thực của hạng mục (BE quản lý đúng 2 phase). ──
   /** Nộp bài: mở → hạn nộp — BE: startDate/endDate. */
   startDate: string;
   endDate: string;
-  /** Khung tổng của hạng mục (hiển thị cạnh tên) — BE chưa hỗ trợ (chỉ FE, chưa lưu). */
-  windowStartDate: string;
-  windowEndDate: string;
-  /** Bắt đầu thi (khung thi) — BE chưa hỗ trợ (chỉ FE, chưa lưu). */
-  competeStartDate: string;
-  competeEndDate: string;
-  /** Chấm điểm — BE: scoringStartDate/scoringEndDate. */
+  /** Chấm điểm: mở → đóng — BE: scoringStartDate/scoringEndDate. */
   scoringStartDate: string;
   scoringEndDate: string;
-  /** Phúc khảo — BE chưa hỗ trợ (chỉ giữ ở FE, chưa lưu). */
-  appealStartDate: string;
-  appealEndDate: string;
-  /** Công bố kết quả — BE chưa hỗ trợ (chỉ giữ ở FE, chưa lưu). */
-  resultPublishDate: string;
 }
 
 /** Fixed URL-based submission options shown as checkboxes, in display order. */
@@ -160,9 +149,6 @@ interface EventForm {
   description: string;
   status: boolean;
   photoEventUrl: string | null;
-  /** Khung công bố kết quả chung cuộc — BE chưa hỗ trợ (chỉ FE, chưa lưu). */
-  announceStartDate: string;
-  announceEndDate: string;
   rounds: RoundForm[];
 }
 
@@ -175,15 +161,8 @@ const emptyTrack = (): TrackForm => ({
   submissionRequirements: emptySubmissionRequirements(),
   startDate: "",
   endDate: "",
-  windowStartDate: "",
-  windowEndDate: "",
-  competeStartDate: "",
-  competeEndDate: "",
   scoringStartDate: "",
   scoringEndDate: "",
-  appealStartDate: "",
-  appealEndDate: "",
-  resultPublishDate: "",
 });
 
 const emptyRound = (): RoundForm => ({
@@ -206,8 +185,6 @@ const emptyEvent = (): EventForm => ({
   description: "",
   status: true,
   photoEventUrl: null,
-  announceStartDate: "",
-  announceEndDate: "",
   rounds: [emptyRound()],
 });
 
@@ -256,74 +233,6 @@ function extractApiError(err: unknown): string {
 }
 
 // ─── Small field primitives ───────────────────────────────────────────────────
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
-  return (
-    <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <span className="t-caption-xs" style={{ color: "var(--color-mute)" }}>
-        {label}
-      </span>
-      {children}
-    </label>
-  );
-}
-
-function TextField({
-  label,
-  value,
-  onChange,
-  type = "text",
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  type?: string;
-  placeholder?: string;
-}) {
-  return (
-    <Field label={label}>
-      <input
-        className="text-input"
-        type={type}
-        value={value}
-        placeholder={placeholder}
-        onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
-      />
-    </Field>
-  );
-}
-
-function TextArea({
-  label,
-  value,
-  onChange,
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-}) {
-  return (
-    <Field label={label}>
-      <textarea
-        className="text-input"
-        rows={3}
-        value={value}
-        placeholder={placeholder}
-        style={{ height: "auto", resize: "vertical", fontFamily: "inherit" }}
-        onChange={(e: ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value)}
-      />
-    </Field>
-  );
-}
 
 /** Cặp ngày giờ gọn trên một hàng: [bắt đầu] → [kết thúc]. */
 function DateRangeInput({
@@ -612,6 +521,9 @@ function EventPhotoUpload({
 }) {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // URL bị lỗi tải — so với `value` để tự reset khi ảnh đổi (không cần effect).
+  const [erroredUrl, setErroredUrl] = useState<string | null>(null);
+  const imgError = value != null && value === erroredUrl;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -665,12 +577,18 @@ function EventPhotoUpload({
       </span>
       {value ? (
         <div style={{ position: "relative", width: "100%", aspectRatio: "2.35 / 1", borderRadius: "var(--radius-sm)", overflow: "hidden", border: "1px solid var(--color-hairline)" }}>
-          <img src={value} alt="Event Photo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          {imgError ? (
+            <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", background: "var(--color-surface-soft)" }}>
+              <span className="t-body-sm" style={{ color: "var(--color-mute)" }}>Không tải được ảnh</span>
+            </div>
+          ) : (
+            <img src={value} alt="Event Photo" onError={() => setErroredUrl(value)} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          )}
           <div style={{ position: "absolute", top: 8, right: 8, display: "flex", gap: 8 }}>
             <button
               type="button"
-              className="btn btn-sm"
-              style={{ background: "rgba(0,0,0,0.6)", color: "white", border: "none" }}
+              className="btn btn-sm btn-primary"
+              style={{ cursor: "pointer" }}
               onClick={() => fileInputRef.current?.click()}
             >
               Thay đổi
@@ -744,18 +662,10 @@ function EventPhotoUpload({
 function SubmissionRequirementsField({
   value,
   onChange,
-  savedReference,
 }: {
   value: SubmissionRequirements;
   onChange: (next: SubmissionRequirements) => void;
-  /** When defined (edit mode), shows the saved requirement as a read-only reference. */
-  savedReference?: string;
 }) {
-  const savedLines =
-    savedReference === undefined
-      ? null
-      : savedReference.split("\n").map((l) => l.trim()).filter(Boolean);
-
   const checkboxRow = (
     key: string,
     checked: boolean,
@@ -789,37 +699,6 @@ function SubmissionRequirementsField({
         Yêu cầu nộp bài
       </span>
 
-      {savedLines !== null && (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 4,
-            padding: "8px 10px",
-            background: "var(--color-surface-soft)",
-            border: "var(--border-hairline)",
-            borderRadius: "var(--radius-sm)",
-          }}
-        >
-          <span className="t-caption-xs" style={{ color: "var(--color-mute)", fontWeight: 700 }}>
-            Đã lưu trước đó
-          </span>
-          {savedLines.length === 0 ? (
-            <span className="t-caption-sm" style={{ color: "var(--color-mute)", fontStyle: "italic" }}>
-              Chưa có yêu cầu nào được lưu.
-            </span>
-          ) : (
-            <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 2 }}>
-              {savedLines.map((line, i) => (
-                <li key={i} className="t-caption-sm" style={{ color: "var(--color-ink)" }}>
-                  {line}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 2 }}>
         {SUBMISSION_URL_OPTIONS.map((opt) =>
           checkboxRow(opt.key, value[opt.key], opt.label, () =>
@@ -846,177 +725,6 @@ function SubmissionRequirementsField({
   );
 }
 
-// ─── Timeline rail primitives (form dạng timeline) ─────────────────────────────
-
-/** Chấm trên rail. `phase` = mốc lớn (đăng ký/vòng/kết quả), `sub` = hạng mục,
- *  `step` = 5 bước (mờ, không nhập). */
-function RailDot({ level }: { level: "phase" | "sub" | "step" }) {
-  const size = level === "phase" ? "w-3.5 h-3.5" : level === "sub" ? "w-2.5 h-2.5" : "w-2 h-2";
-  const fill =
-    level === "step"
-      ? "bg-canvas border-dashed border-mute"
-      : "bg-primary border-primary";
-  return <span className={`relative z-10 shrink-0 rounded-full border-2 ${size} ${fill}`} />;
-}
-
-/** Một node trên rail: chấm + đường nối dọc + nội dung. `last` bỏ đường nối. */
-function RailNode({
-  level,
-  last,
-  children,
-}: {
-  level: "phase" | "sub" | "step";
-  last?: boolean;
-  children: React.ReactNode;
-}) {
-  const top = level === "phase" ? "top-4" : "top-3";
-  return (
-    <div className="relative flex gap-3 md:gap-4 pb-6 last:pb-0">
-      <div className="relative flex flex-col items-center shrink-0">
-        <RailDot level={level} />
-        {!last && <span className={`absolute ${top} bottom-0 w-px bg-hairline`} />}
-      </div>
-      <div className="flex-1 min-w-0">{children}</div>
-    </div>
-  );
-}
-
-/** Một bước quy trình của hạng mục: chấm + nhãn + ô nhập thời gian. */
-function StepRow({
-  label,
-  note,
-  children,
-}: {
-  label: string;
-  note?: string;
-  children: ReactNode;
-}) {
-  return (
-    /* Ô nhập bên trái, nhãn bên phải — giống hàng [thời gian] [title] ở display */
-    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
-      <div className="shrink-0 w-full sm:w-[22rem]">{children}</div>
-      <div className="min-w-0">
-        <span className="t-body-sm text-ink">{label}</span>
-        {note && <span className="t-caption-xs text-mute italic"> ({note})</span>}
-      </div>
-    </div>
-  );
-}
-
-/** 5 bước quy trình của hạng mục — nhập thời gian trực tiếp. Phúc khảo & Công bố
- *  kết quả BE chưa hỗ trợ nên đánh dấu "chưa lưu". */
-function TrackSteps({
-  track,
-  onChange,
-}: {
-  track: TrackForm;
-  onChange: (patch: Partial<TrackForm>) => void;
-}) {
-  return (
-    <div className="mt-3 border-l border-hairline pl-4 flex flex-col gap-3">
-      <StepRow label="Bắt đầu thi">
-        <DateTimePicker value={track.startDate} onChange={(v) => onChange({ startDate: v })} placeholder="Chọn thời gian" />
-      </StepRow>
-      <StepRow label="Nộp bài">
-        <DateTimePicker value={track.endDate} onChange={(v) => onChange({ endDate: v })} placeholder="Chọn thời gian" />
-      </StepRow>
-      <StepRow label="Chấm điểm">
-        <DateRangeInput
-          start={track.scoringStartDate}
-          end={track.scoringEndDate}
-          onStart={(v) => onChange({ scoringStartDate: v })}
-          onEnd={(v) => onChange({ scoringEndDate: v })}
-        />
-      </StepRow>
-      <StepRow label="Phúc khảo" note="chưa lưu">
-        <DateRangeInput
-          start={track.appealStartDate}
-          end={track.appealEndDate}
-          onStart={(v) => onChange({ appealStartDate: v })}
-          onEnd={(v) => onChange({ appealEndDate: v })}
-        />
-      </StepRow>
-      <StepRow label="Công bố kết quả" note="chưa lưu">
-        <DateTimePicker value={track.resultPublishDate} onChange={(v) => onChange({ resultPublishDate: v })} placeholder="Chọn thời gian" />
-      </StepRow>
-    </div>
-  );
-}
-
-// ─── Track editor ─────────────────────────────────────────────────────────────
-
-function TrackCard({
-  track,
-  index,
-  canRemove,
-  templates,
-  templatesLoading,
-  onChange,
-  onRemove,
-}: {
-  track: TrackForm;
-  index: number;
-  canRemove: boolean;
-  templates: TemplateSummary[];
-  templatesLoading: boolean;
-  onChange: (patch: Partial<TrackForm>) => void;
-  onRemove: () => void;
-}) {
-  return (
-    <RailNode level="sub">
-      <div className="flex flex-col gap-3">
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span className="t-body-strong">
-          Hạng mục {index + 1}
-        </span>
-        {canRemove && (
-          <button
-            type="button"
-            className="btn btn-outline btn-sm"
-            onClick={onRemove}
-            style={{ cursor: "pointer" }}
-          >
-            Xóa hạng mục
-          </button>
-        )}
-      </div>
-
-      <TextField label="Tên hạng mục" value={track.trackName} onChange={(v) => onChange({ trackName: v })} />
-      <TextArea label="Mô tả" value={track.description} onChange={(v) => onChange({ description: v })} />
-      <Field label="Template chấm điểm">
-        <select
-          className="text-input"
-          value={track.templateId}
-          onChange={(e) => onChange({ templateId: e.target.value })}
-          disabled={templatesLoading}
-          style={{ cursor: templatesLoading ? "wait" : "pointer" }}
-        >
-          <option value="">
-            {templatesLoading
-              ? "Đang tải template…"
-              : templates.length === 0
-                ? "Chưa có template nào"
-                : "— Chọn template —"}
-          </option>
-          {templates.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.templateName}
-            </option>
-          ))}
-        </select>
-      </Field>
-
-      <SubmissionRequirementsField
-        value={track.submissionRequirements}
-        onChange={(next) => onChange({ submissionRequirements: next })}
-        savedReference={track.savedSubmissionRule}
-      />
-      </div>
-      <TrackSteps track={track} onChange={onChange} />
-    </RailNode>
-  );
-}
-
 // ─── Round editor ─────────────────────────────────────────────────────────────
 
 function parseAdvancementRule(rule: string) {
@@ -1034,131 +742,102 @@ function parseAdvancementRule(rule: string) {
   return { type: 'top', value: '' };
 }
 
-function RoundCard({
-  round,
+// ─── Track input card (cùng format thẻ với màn hiển thị timeline) ──────────────
+
+/** Nhãn + cặp ngày giờ cho một pha trong thẻ hạng mục. */
+function PhaseInput({
+  label,
+  start,
+  end,
+  onStart,
+  onEnd,
+}: {
+  label: string;
+  start: string;
+  end: string;
+  onStart: (v: string) => void;
+  onEnd: (v: string) => void;
+}) {
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+      <span className="t-body-sm text-ink shrink-0 sm:w-24">{label}</span>
+      <div className="flex-1 min-w-0">
+        <DateRangeInput start={start} end={end} onStart={onStart} onEnd={onEnd} />
+      </div>
+    </div>
+  );
+}
+
+/** Một hạng mục dạng thẻ nhập liệu — viền + border trái, chứa tên/mô tả/template/
+ *  yêu cầu nộp bài và đúng 2 pha thời gian (Nộp bài, Chấm điểm). */
+function TrackFormCard({
+  track,
   index,
   canRemove,
   templates,
   templatesLoading,
   onChange,
   onRemove,
-  onTrackChange,
-  onAddTrack,
-  onRemoveTrack,
 }: {
-  round: RoundForm;
+  track: TrackForm;
   index: number;
   canRemove: boolean;
   templates: TemplateSummary[];
   templatesLoading: boolean;
-  onChange: (key: keyof Omit<RoundForm, "tracks">, value: string) => void;
+  onChange: (patch: Partial<TrackForm>) => void;
   onRemove: () => void;
-  onTrackChange: (trackIndex: number, patch: Partial<TrackForm>) => void;
-  onAddTrack: () => void;
-  onRemoveTrack: (trackIndex: number) => void;
 }) {
-  const { type, value } = parseAdvancementRule(round.advancementRule);
-
-  const handleRuleTypeChange = (newType: string) => {
-    const defaultValue = newType === 'minScore' ? '7.5' : newType === 'percent' ? '50' : '10';
-    onChange('advancementRule', `${newType}:${defaultValue}`);
-  };
-
-  const handleRuleValueChange = (newValue: string) => {
-    if (type === 'manual') {
-      onChange('advancementRule', newValue);
-    } else {
-      onChange('advancementRule', `${type}:${newValue}`);
-    }
-  };
-
   return (
-    <RailNode level="phase">
-      <div className="flex flex-col gap-3">
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span className="t-heading-sm">Vòng {index + 1}</span>
+    <div className="rounded-md border border-hairline border-l-[3px] border-l-primary bg-canvas px-4 py-3 flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <input
+          className="text-input"
+          style={{ fontWeight: 700, flex: 1, minWidth: 0 }}
+          value={track.trackName}
+          placeholder={`Tên hạng mục ${index + 1}`}
+          onChange={(e) => onChange({ trackName: e.target.value })}
+        />
         {canRemove && (
-          <button
-            type="button"
-            className="btn btn-outline btn-sm"
-            onClick={onRemove}
-            style={{ cursor: "pointer" }}
-          >
-            Xóa vòng
+          <button type="button" className="btn btn-outline btn-sm shrink-0" style={{ cursor: "pointer" }} onClick={onRemove}>
+            Xóa
           </button>
         )}
       </div>
 
-      <TextField label="Tên vòng" value={round.roundName} onChange={(v) => onChange("roundName", v)} />
-      <DateRangeInput
-        start={round.startDate}
-        end={round.endDate}
-        onStart={(v) => onChange("startDate", v)}
-        onEnd={(v) => onChange("endDate", v)}
+      <textarea
+        className="text-input"
+        rows={2}
+        value={track.description}
+        placeholder="Mô tả hạng mục"
+        style={{ height: "auto", resize: "vertical", fontFamily: "inherit" }}
+        onChange={(e) => onChange({ description: e.target.value })}
       />
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <span className="t-body-strong" style={{ color: "var(--color-ink)", letterSpacing: "0.05em" }}>
-          Quy tắc thăng vòng (Advancement Rule)
-        </span>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-md)" }}>
-          <select
-            className="text-input"
-            value={type}
-            onChange={(e) => handleRuleTypeChange(e.target.value)}
-            style={{ cursor: "pointer" }}
-          >
-            <option value="top">Lấy Top số lượng đội (top:N)</option>
-            <option value="percent">Lấy theo phần trăm (percent:P)</option>
-            <option value="minScore">Điểm số tối thiểu (minScore:X)</option>
-          </select>
 
-          <input
-            className="text-input"
-            type="number"
-            step={type === 'minScore' ? '0.1' : '1'}
-            min="0"
-            max={type === 'percent' ? '100' : undefined}
-            value={value}
-            onChange={(e) => handleRuleValueChange(e.target.value)}
-            placeholder={
-              type === 'top' ? "Nhập số lượng đội (VD: 10)" :
-                type === 'percent' ? "Nhập phần trăm % (VD: 50)" :
-                  "Nhập điểm tối thiểu (VD: 7.5)"
-            }
-          />
-        </div>
-        <Hint>
-          <div style={{ fontSize: 11, lineHeight: "1.4em", marginTop: 2 }}>
-            Cú pháp được cấu hình tự động: <code style={{ background: "var(--color-surface-elevated)", padding: "1px 4px", borderRadius: 2, fontWeight: 700, color: "var(--color-primary)" }}>{round.advancementRule || "(Để trống)"}</code>
-          </div>
-        </Hint>
-      </div>
-
-      {/* Tracks */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-md)" }}>
-        {round.tracks.map((track, ti) => (
-          <TrackCard
-            key={ti}
-            track={track}
-            index={ti}
-            canRemove={round.tracks.length > 1}
-            templates={templates}
-            templatesLoading={templatesLoading}
-            onChange={(patch) => onTrackChange(ti, patch)}
-            onRemove={() => onRemoveTrack(ti)}
-          />
+      <select
+        className="text-input"
+        value={track.templateId}
+        disabled={templatesLoading}
+        onChange={(e) => onChange({ templateId: e.target.value })}
+      >
+        <option value="">{templatesLoading ? "Đang tải template…" : "— Chọn template chấm điểm —"}</option>
+        {templates.map((t) => (
+          <option key={t.id} value={t.id}>{t.templateName}</option>
         ))}
-        <button
-          type="button"
-          className="btn btn-outline btn-sm"
-          onClick={onAddTrack}
-          style={{ alignSelf: "flex-start", cursor: "pointer" }}
-        >
-          + Thêm hạng mục
-        </button>
+      </select>
+
+      <SubmissionRequirementsField
+        value={track.submissionRequirements}
+        onChange={(next) => onChange({ submissionRequirements: next })}
+      />
+
+      {/* Hai pha thời gian — cùng thứ tự với màn hiển thị. */}
+      <div className="flex flex-col gap-2 pt-2 border-t border-hairline">
+        <PhaseInput label="Nộp bài" start={track.startDate} end={track.endDate}
+          onStart={(v) => onChange({ startDate: v })} onEnd={(v) => onChange({ endDate: v })} />
+        <PhaseInput label="Chấm điểm" start={track.scoringStartDate} end={track.scoringEndDate}
+          onStart={(v) => onChange({ scoringStartDate: v })} onEnd={(v) => onChange({ scoringEndDate: v })} />
       </div>
-      </div>
-    </RailNode>
+    </div>
   );
 }
 
@@ -1222,16 +901,41 @@ function EditEventLoader({
 
   const { event, rounds, tracks } = editQuery.data;
 
-  // `submissionRuleDescription` is only returned nested inside GET /Events/{id}
-  // (EventModel.rounds[].tracks[]), not by the flat /Tracks/event list — build a
-  // trackId → rule lookup so the edit form can pre-fill the requirement checkboxes.
-  const submissionRuleByTrackId = new Map<string, string>();
+  // `submissionRuleDescription` AND the two per-track time windows are only
+  // returned nested inside GET /Events/{id} (EventModel.rounds[].tracks[]), not by
+  // the flat /Tracks/event list — build a trackId → {rule, dates} lookup so the
+  // edit form can pre-fill the requirement checkboxes and the Nộp bài/Chấm điểm times.
+  interface NestedTrackMeta {
+    submissionRule: string;
+    startDate: string;
+    endDate: string;
+    scoringStartDate: string;
+    scoringEndDate: string;
+  }
+  const trackMetaById = new Map<string, NestedTrackMeta>();
   const nestedRounds =
-    (event as { rounds?: Array<{ tracks?: Array<{ id?: string; submissionRuleDescription?: string | null }> }> })
-      .rounds ?? [];
+    (event as {
+      rounds?: Array<{
+        tracks?: Array<{
+          id?: string;
+          submissionRuleDescription?: string | null;
+          startDate?: string | null;
+          endDate?: string | null;
+          scoringStartDate?: string | null;
+          scoringEndDate?: string | null;
+        }>;
+      }>;
+    }).rounds ?? [];
   for (const r of nestedRounds) {
     for (const t of r.tracks ?? []) {
-      if (t.id) submissionRuleByTrackId.set(t.id, t.submissionRuleDescription ?? "");
+      if (!t.id) continue;
+      trackMetaById.set(t.id, {
+        submissionRule: t.submissionRuleDescription ?? "",
+        startDate: t.startDate ?? "",
+        endDate: t.endDate ?? "",
+        scoringStartDate: t.scoringStartDate ?? "",
+        scoringEndDate: t.scoringEndDate ?? "",
+      });
     }
   }
 
@@ -1247,8 +951,6 @@ function EditEventLoader({
     description: event.description ?? "",
     status: event.status ?? false,
     photoEventUrl: event.photoEventUrl ?? null,
-    announceStartDate: "",
-    announceEndDate: "",
     rounds: orderedRounds.map((r) => ({
       id: r.id,
       roundName: r.roundName ?? "",
@@ -1259,35 +961,21 @@ function EditEventLoader({
       tracks: tracks
         .filter((t) => t.roundId === r.id)
         .map((t) => {
-          const td = t as {
-            startDate?: string | null;
-            endDate?: string | null;
-            scoringStartDate?: string | null;
-            scoringEndDate?: string | null;
-          };
+          const meta = trackMetaById.get(t.id);
           return {
             id: t.id,
             trackName: t.trackName ?? "",
             description: t.description ?? "",
             templateId: t.templateId ?? "",
             // Pre-fill the requirement checkboxes from the saved rule (joined via id).
-            submissionRequirements: parseSubmissionRequirements(
-              submissionRuleByTrackId.get(t.id),
-            ),
+            submissionRequirements: parseSubmissionRequirements(meta?.submissionRule),
             // Keep the raw saved string to show as a read-only reference in edit mode.
-            savedSubmissionRule: submissionRuleByTrackId.get(t.id) ?? "",
-            // Thời gian bước (BE hỗ trợ start/end/scoring; phúc khảo & công bố chưa có).
-            startDate: isoToLocalInput(td.startDate ?? ""),
-            endDate: isoToLocalInput(td.endDate ?? ""),
-            windowStartDate: "",
-            windowEndDate: "",
-            competeStartDate: "",
-            competeEndDate: "",
-            scoringStartDate: isoToLocalInput(td.scoringStartDate ?? ""),
-            scoringEndDate: isoToLocalInput(td.scoringEndDate ?? ""),
-            appealStartDate: "",
-            appealEndDate: "",
-            resultPublishDate: "",
+            savedSubmissionRule: meta?.submissionRule ?? "",
+            // Hai khoảng thời gian thực của hạng mục (từ model lồng GET /Events/{id}).
+            startDate: isoToLocalInput(meta?.startDate ?? ""),
+            endDate: isoToLocalInput(meta?.endDate ?? ""),
+            scoringStartDate: isoToLocalInput(meta?.scoringStartDate ?? ""),
+            scoringEndDate: isoToLocalInput(meta?.scoringEndDate ?? ""),
           };
         }),
     })),
@@ -1311,7 +999,6 @@ const TL_DOT_X = [12, 42, 72];
 const TL_DOT_Y = 11;
 const TL_DOT_SIZE = ["w-3.5 h-3.5", "w-2.5 h-2.5", "w-2 h-2"];
 const TL_CONTENT_PL = ["sm:pl-[32px]", "sm:pl-[62px]", "sm:pl-[92px]"];
-const TL_TIME_W = ["sm:w-[428px]", "sm:w-[398px]", "sm:w-[368px]"];
 
 function TLSegment({ x, from, to }: { x: number; from: number; to: number | "bottom" }) {
   return (
@@ -1336,7 +1023,6 @@ interface FormRowProps {
 /** Một hàng timeline nhập: rail (spine + chấm) + [cột thời gian | cột title]. */
 function FormRow({ depth, isFirst, isLast, isFirstRow, isLastRow, extraGap, timeSlot, titleSlot }: FormRowProps) {
   const contentPl = TL_CONTENT_PL[depth] ?? TL_CONTENT_PL[2];
-  const timeW = TL_TIME_W[depth] ?? TL_TIME_W[2];
   const pb = isLastRow ? "" : extraGap ? "pb-14" : depth === 2 ? "pb-5" : "pb-10";
   return (
     <div className="relative flex">
@@ -1350,9 +1036,10 @@ function FormRow({ depth, isFirst, isLast, isFirstRow, isLastRow, extraGap, time
           style={{ left: TL_DOT_X[depth], top: TL_DOT_Y, transform: "translate(-50%, -50%)" }}
         />
       </div>
-      <div className={`flex-1 min-w-0 pl-24 ${contentPl} flex flex-col sm:flex-row sm:items-baseline sm:gap-x-3 ${pb}`}>
-        <div className={`shrink-0 ${timeW}`}>{timeSlot}</div>
+      {/* Nhãn/tiêu đề bên trái, ngày giờ bên phải — khớp màn hiển thị. */}
+      <div className={`flex-1 min-w-0 pl-24 ${contentPl} flex flex-col sm:flex-row sm:items-start sm:gap-x-3 ${pb}`}>
         <div className="flex flex-1 min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">{titleSlot}</div>
+        <div className="shrink-0 sm:text-right">{timeSlot}</div>
       </div>
     </div>
   );
@@ -1514,7 +1201,7 @@ function EventFormBody({
 
   const activeMutation = isEdit ? editMutation : createMutation;
 
-  type EventStringKey = "eventName" | "season" | "year" | "startDate" | "endDate" | "registrationStartDate" | "registrationEndDate" | "description" | "announceStartDate" | "announceEndDate";
+  type EventStringKey = "eventName" | "season" | "year" | "startDate" | "endDate" | "registrationStartDate" | "registrationEndDate" | "description";
   const setField = (key: EventStringKey, value: string) =>
     setForm((f) => {
       const updated = { ...f, [key]: value };
@@ -1847,7 +1534,7 @@ function EventFormBody({
               titleSlot: <span className="t-body-strong text-ink">Mở đăng ký</span>,
             });
 
-            // 2) Vòng → hạng mục → 5 bước
+            // 2) Vòng → hạng mục → 2 bước (Nộp bài, Chấm điểm)
             form.rounds.forEach((round, ri) => {
               const { type, value } = parseAdvancementRule(round.advancementRule);
               specs.push({
@@ -1876,63 +1563,36 @@ function EventFormBody({
                       <input className="text-input shrink-0" style={{ width: 90 }} type="number" value={value}
                         onChange={(e) => updateRound(ri, "advancementRule", `${type}:${e.target.value}`)} />
                     </div>
+
+                    {/* Hạng mục dạng thẻ — cùng format với màn hiển thị timeline. */}
+                    <div className="basis-full flex flex-col gap-3 mt-2">
+                      {round.tracks.map((track, ti) => (
+                        <TrackFormCard
+                          key={ti}
+                          track={track}
+                          index={ti}
+                          canRemove={round.tracks.length > 1}
+                          templates={templates}
+                          templatesLoading={templatesQuery.isLoading}
+                          onChange={(patch) => updateTrack(ri, ti, patch)}
+                          onRemove={() => removeTrack(ri, ti)}
+                        />
+                      ))}
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        style={{ alignSelf: "flex-start", cursor: "pointer" }}
+                        onClick={() => addTrack(ri)}
+                      >
+                        + Thêm hạng mục
+                      </button>
+                    </div>
                   </>
                 ),
               });
-
-              round.tracks.forEach((track, ti) => {
-                specs.push({
-                  key: `track-${ri}-${ti}`, depth: 1, isFirst: ti === 0, isLast: ti === round.tracks.length - 1,
-                  timeSlot: (
-                    <DateRangeInput
-                      start={track.windowStartDate} end={track.windowEndDate}
-                      onStart={(v) => updateTrack(ri, ti, { windowStartDate: v })} onEnd={(v) => updateTrack(ri, ti, { windowEndDate: v })}
-                    />
-                  ),
-                  titleSlot: (
-                    <>
-                      <input className="text-input" style={{ maxWidth: 320, fontWeight: 700 }} value={track.trackName}
-                        placeholder="Tên hạng mục" onChange={(e) => updateTrack(ri, ti, { trackName: e.target.value })} />
-                      {round.tracks.length > 1 && (
-                        <button type="button" className="btn btn-outline btn-sm" style={{ cursor: "pointer" }} onClick={() => removeTrack(ri, ti)}>Xóa</button>
-                      )}
-                      <div className="basis-full flex flex-col gap-2">
-                        <textarea className="text-input" rows={2} value={track.description} placeholder="Mô tả hạng mục"
-                          style={{ height: "auto", resize: "vertical", fontFamily: "inherit" }}
-                          onChange={(e) => updateTrack(ri, ti, { description: e.target.value })} />
-                        <select className="text-input" value={track.templateId} disabled={templatesQuery.isLoading}
-                          onChange={(e) => updateTrack(ri, ti, { templateId: e.target.value })}>
-                          <option value="">{templatesQuery.isLoading ? "Đang tải template…" : "— Chọn template chấm điểm —"}</option>
-                          {templates.map((t) => (<option key={t.id} value={t.id}>{t.templateName}</option>))}
-                        </select>
-                        <SubmissionRequirementsField value={track.submissionRequirements}
-                          onChange={(next) => updateTrack(ri, ti, { submissionRequirements: next })} savedReference={track.savedSubmissionRule} />
-                      </div>
-                    </>
-                  ),
-                });
-
-                const stepLabel = (label: string, note?: string) => (
-                  <span className="t-body-strong text-ink">{label}{note && <span className="t-caption-xs text-mute italic"> ({note})</span>}</span>
-                );
-                specs.push({ key: `s1-${ri}-${ti}`, depth: 2, isFirst: true, isLast: false, timeSlot: <DateRangeInput start={track.competeStartDate} end={track.competeEndDate} onStart={(v) => updateTrack(ri, ti, { competeStartDate: v })} onEnd={(v) => updateTrack(ri, ti, { competeEndDate: v })} />, titleSlot: stepLabel("Bắt đầu thi") });
-                specs.push({ key: `s2-${ri}-${ti}`, depth: 2, isFirst: false, isLast: false, timeSlot: <DateRangeInput start={track.startDate} end={track.endDate} onStart={(v) => updateTrack(ri, ti, { startDate: v })} onEnd={(v) => updateTrack(ri, ti, { endDate: v })} />, titleSlot: stepLabel("Nộp bài") });
-                specs.push({ key: `s3-${ri}-${ti}`, depth: 2, isFirst: false, isLast: false, timeSlot: <DateRangeInput start={track.scoringStartDate} end={track.scoringEndDate} onStart={(v) => updateTrack(ri, ti, { scoringStartDate: v })} onEnd={(v) => updateTrack(ri, ti, { scoringEndDate: v })} />, titleSlot: stepLabel("Chấm điểm") });
-                specs.push({ key: `s4-${ri}-${ti}`, depth: 2, isFirst: false, isLast: false, timeSlot: <DateRangeInput start={track.appealStartDate} end={track.appealEndDate} onStart={(v) => updateTrack(ri, ti, { appealStartDate: v })} onEnd={(v) => updateTrack(ri, ti, { appealEndDate: v })} />, titleSlot: stepLabel("Phúc khảo") });
-                specs.push({ key: `s5-${ri}-${ti}`, depth: 2, isFirst: false, isLast: true, timeSlot: <DateTimePicker value={track.resultPublishDate} onChange={(v) => updateTrack(ri, ti, { resultPublishDate: v })} placeholder="Chọn thời gian" />, titleSlot: stepLabel("Công bố kết quả") });
-              });
-
-              specs.push({ key: `addtrack-${ri}`, depth: 1, isFirst: false, isLast: true, titleSlot: (<button type="button" className="btn btn-outline btn-sm" style={{ cursor: "pointer" }} onClick={() => addTrack(ri)}>+ Thêm hạng mục</button>) });
             });
 
-            specs.push({ key: "addround", depth: 0, isFirst: false, isLast: false, titleSlot: (<button type="button" className="btn btn-outline btn-sm" style={{ cursor: "pointer" }} onClick={addRound}>+ Thêm vòng</button>) });
-            specs.push({
-              key: "final", depth: 0, isFirst: false, isLast: true,
-              timeSlot: (
-                <DateTimePicker value={form.announceStartDate} onChange={(v) => setField("announceStartDate", v)} placeholder="Chọn thời gian" />
-              ),
-              titleSlot: (<span className="t-body-strong text-ink">Công bố kết quả chung cuộc</span>),
-            });
+            specs.push({ key: "addround", depth: 0, isFirst: false, isLast: true, titleSlot: (<button type="button" className="btn btn-outline btn-sm" style={{ cursor: "pointer" }} onClick={addRound}>+ Thêm vòng</button>) });
 
             return specs.map((s, i) => (
               <FormRow key={s.key} depth={s.depth} isFirst={s.isFirst} isLast={s.isLast}

@@ -24,13 +24,12 @@ export interface TrackUpsertPayload {
    * adds the field there too.
    */
   submissionRuleDescription: string;
-  // ── Mốc thời gian riêng của hạng mục. BE CHƯA hỗ trợ (Create/UpdateTrackRequestModel
-  //    chưa có các field này) → gửi sẵn, BE bỏ qua, sẽ lưu khi BE cập nhật schema. ──
-  /** Mở nộp bài (Bắt đầu thi). */
+  // ── Hai khoảng thời gian thực của hạng mục (BE: Create/UpdateTrackRequestModel). ──
+  /** Nộp bài: mở nộp. */
   startDate?: string | null;
-  /** Hạn chót nộp bài (Nộp bài). */
+  /** Nộp bài: hạn chót nộp. */
   endDate?: string | null;
-  /** Cửa sổ chấm điểm. */
+  /** Chấm điểm: mở → đóng cửa sổ chấm. */
   scoringStartDate?: string | null;
   scoringEndDate?: string | null;
 }

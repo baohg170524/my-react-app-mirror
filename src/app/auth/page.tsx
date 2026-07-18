@@ -697,7 +697,7 @@ export default function AuthPage() {
           <div className="auth-cs-br" />
 
           <div style={{ position: "relative", zIndex: 1 }}>
-            <p className="auth-brand-tag">SWP SE1907</p>
+            <p className="auth-brand-tag">SEAL-HACKATHON</p>
             <h1 className="auth-brand-name">
               HACKATHON
               <br />

@@ -15,7 +15,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "SWP SE1907",
+  title: " SEAL-HACKATHON",
   description: "Software Project Platform",
 };
 

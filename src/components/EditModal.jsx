@@ -10,9 +10,10 @@ export default function EditModal({ team, criteria, onClose, onSave }) {
   const [scores, setScores] = useState(
     [...team.scores].concat(Array(Math.max(0, criteria.length - team.scores.length)).fill(0))
   );
-  const [cmts, setCmts] = useState(
-    [...(team.comments || [])].concat(Array(Math.max(0, criteria.length - (team.comments || []).length)).fill(''))
-  );
+  // Backend chỉ hỗ trợ 1 nhận xét chung cho cả phiếu chấm (Score.comment), không có
+  // nhận xét theo từng tiêu chí (CriterionScoreLine không có field comment) — nên chỉ
+  // giữ 1 ô nhận xét tổng thay vì mảng theo từng tiêu chí như trước.
+  const [comment, setComment] = useState(team.comment || '');
   const prev = calcScore(team.scores, criteria);
   const next = calcScore(scores, criteria);
   const delta = next - prev;
@@ -26,7 +27,7 @@ export default function EditModal({ team, criteria, onClose, onSave }) {
           <div>
             <div className="text-lg font-bold" style={{ color: '#000' }}>Chấm / Chỉnh sửa điểm số</div>
             <div className="text-xs mt-1" style={{ color: '#757575' }}>Xem lại và điều chỉnh điểm số theo từng tiêu chí.</div>
-            <div className="text-sm mt-1.5 font-bold" style={{ color: '#76b900' }}>Đội {String(team.id || '').slice(0, 8).toUpperCase()}</div>
+            <div className="text-sm mt-1.5 font-bold" style={{ color: '#76b900' }}>Đội {String(team.teamId || team.id || '').slice(0, 8).toUpperCase()}</div>
           </div>
           <button
             className="btn-hover text-xl leading-none"
@@ -72,7 +73,12 @@ export default function EditModal({ team, criteria, onClose, onSave }) {
                       </span>
                     )}
                   </div>
-                  <div className="text-[11px] mt-0.5" style={{ color: '#757575' }}>{c.labelVi} · tối đa {c.maxScore ?? 10} điểm</div>
+                  <div className="text-[11px] mt-0.5" style={{ color: '#757575' }}>
+                    {c.labelVi} · tối đa {c.maxScore ?? 10} điểm
+                    {typeof c.weight === 'number' && (
+                      <> · Điểm tối đa <strong>{(c.weight / 10).toFixed(1)}</strong> vào tổng điểm</>
+                    )}
+                  </div>
                 </div>
                 <input
                   type="number" min="0" max={c.maxScore ?? 10} step="0.5"
@@ -120,22 +126,23 @@ export default function EditModal({ team, criteria, onClose, onSave }) {
                 </div>
               )}
 
-              {/* Comment */}
-              <div>
-                <div className="text-[10px] tracking-widest mb-1 font-bold uppercase" style={{ color: '#757575' }}>
-                  Nhận xét
-                </div>
-                <textarea
-                  value={cmts[i] || ''}
-                  rows={2}
-                  onChange={e => { const v = [...cmts]; v[i] = e.target.value; setCmts(v); }}
-                  placeholder="Nhận xét cho tiêu chí này..."
-                  className="input-field resize-y text-xs leading-relaxed"
-                />
-              </div>
             </div>
           );
         })}
+
+        {/* Nhận xét chung — 1 ô cho cả phiếu chấm (khớp Score.comment ở backend) */}
+        <div className="mb-3 p-5" style={{ background: '#f7f7f7', border: '1px solid #cccccc', borderRadius: 2 }}>
+          <div className="text-[10px] tracking-widest mb-1 font-bold uppercase" style={{ color: '#757575' }}>
+            Nhận xét chung
+          </div>
+          <textarea
+            value={comment}
+            rows={3}
+            onChange={e => setComment(e.target.value)}
+            placeholder="Nhận xét tổng quan cho bài nộp này..."
+            className="input-field resize-y text-xs leading-relaxed"
+          />
+        </div>
 
         {/* Total bar */}
         <div
@@ -170,17 +177,19 @@ export default function EditModal({ team, criteria, onClose, onSave }) {
           <button className="btn btn-outline" onClick={onClose}>Hủy</button>
           <button
             className="btn btn-primary"
-            onClick={() => onSave(
+            onClick={() => onSave({
               // Ghép điểm với đúng tiêu chí bằng criteriaId (không dùng index mảng) để tránh
               // lệch dữ liệu nếu thứ tự `criteria` phía component cha đổi giữa lúc mở modal và
               // lúc lưu (vd do refetch/re-render) — trước đây từng gây lưu nhầm điểm sang tiêu
               // chí khác (điểm của Impact/Innovation bị gửi nhầm vào Feasibility).
-              criteria.map((c, i) => ({
+              details: criteria.map((c, i) => ({
                 criteriaId: c.id,
                 value: scores[i] || 0,
-                comment: cmts[i] || '',
               })),
-            )}
+              // Nhận xét chung cho cả phiếu (Score.comment) — backend không hỗ trợ nhận xét
+              // theo từng tiêu chí.
+              comment,
+            })}
           >✓ Xác nhận</button>
         </div>
 
