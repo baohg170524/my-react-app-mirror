@@ -1802,6 +1802,7 @@ function EventFormBody({
               }}
               aria-label={form.status ? "Ẩn sự kiện" : "Hiện sự kiện"}
             >
+              {/* transform:translateX thay vì left — animate trên GPU (compositor), tránh reflow mỗi frame. */}
               <span
                 style={{
                   width: 18,
@@ -1810,8 +1811,9 @@ function EventFormBody({
                   borderRadius: 1,
                   position: 'absolute',
                   top: 2,
-                  left: form.status ? 26 : 2,
-                  transition: 'left 150ms ease',
+                  left: 2,
+                  transform: `translateX(${form.status ? 24 : 0}px)`,
+                  transition: 'transform 150ms ease',
                 }}
               />
             </button>
