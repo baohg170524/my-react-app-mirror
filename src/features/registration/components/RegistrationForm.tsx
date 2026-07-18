@@ -13,6 +13,9 @@ interface Props {
     photoStudentCardUrl?: string | null;
   };
   onSubmit: (cmd: UpdateStudentProfileCommand) => void | Promise<void>;
+  /** Nút "Quay lại" cạnh nút gửi — chỉ hiện khi component cha truyền vào (vd khi mở form
+   *  này từ trang hồ sơ, để quay lại card trạng thái mà không cần submit). */
+  onBack?: () => void;
 }
 
 // ── OLD VERSION (commented out) ───────────────────────────────────────────────
@@ -37,7 +40,7 @@ interface Props {
 // }
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function RegistrationForm({ defaults, onSubmit }: Props) {
+export function RegistrationForm({ defaults, onSubmit, onBack }: Props) {
   const [fullName, setFullName] = useState(defaults.fullName);
   const [schoolChoice, setSchoolChoice] = useState<'FPT' | 'OTHER'>(
     defaults.isFpt !== false ? 'FPT' : 'OTHER',
@@ -354,9 +357,21 @@ export function RegistrationForm({ defaults, onSubmit }: Props) {
         </div>
       )}
 
-      <button type="submit" className="btn btn-primary w-fit" disabled={busy}>
-        {busy ? 'Đang xử lý…' : 'Gửi đăng ký'}
-      </button>
+      <div className="flex items-center gap-3">
+        {onBack && (
+          <button
+            type="button"
+            className="btn btn-secondary w-fit"
+            onClick={onBack}
+            disabled={busy}
+          >
+            ← Quay lại
+          </button>
+        )}
+        <button type="submit" className="btn btn-primary w-fit" disabled={busy}>
+          {busy ? 'Đang xử lý…' : 'Gửi đăng ký'}
+        </button>
+      </div>
     </form>
   );
 }

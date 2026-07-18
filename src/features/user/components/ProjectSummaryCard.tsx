@@ -47,13 +47,16 @@ export function ProjectSummaryCard() {
                 <span style={{ fontSize: "var(--fs-caption-xs)", fontWeight: 700, color: "var(--color-primary)" }}>{ps.completionPct}%</span>
               </div>
               <div style={{ height: 4, background: "var(--color-surface-soft)", borderRadius: "var(--radius-sm)", overflow: "hidden" }}>
+                {/* transform:scaleX thay vì width — animate trên GPU (compositor), tránh reflow mỗi frame. */}
                 <div
                   style={{
-                    width: `${ps.completionPct}%`,
+                    width: "100%",
                     height: "100%",
                     background: "var(--color-primary)",
                     borderRadius: "var(--radius-sm)",
-                    transition: "width 0.6s ease",
+                    transform: `scaleX(${ps.completionPct / 100})`,
+                    transformOrigin: "left",
+                    transition: "transform 0.6s ease",
                   }}
                 />
               </div>

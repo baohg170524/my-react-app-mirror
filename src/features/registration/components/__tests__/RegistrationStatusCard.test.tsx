@@ -39,7 +39,7 @@ describe('RegistrationStatusCard', () => {
         status="pending"
         reason={null}
         profile={profile}
-        onRegisterTeam={noop}
+        onChangePassword={noop}
         onEdit={onEdit}
         onResubmit={noop}
       />,
@@ -50,21 +50,24 @@ describe('RegistrationStatusCard', () => {
     expect(onEdit).toHaveBeenCalled();
   });
 
-  test('approved shows Đã được duyệt + Đăng ký đội button (onRegisterTeam)', () => {
-    const onRegisterTeam = jest.fn();
+  test('approved shows Đã được duyệt + Cập nhật hồ sơ (onEdit) + Đổi mật khẩu (onChangePassword)', () => {
+    const onEdit = jest.fn();
+    const onChangePassword = jest.fn();
     withQuery(
       <RegistrationStatusCard
         status="approved"
         reason={null}
         profile={profile}
-        onRegisterTeam={onRegisterTeam}
-        onEdit={noop}
+        onChangePassword={onChangePassword}
+        onEdit={onEdit}
         onResubmit={noop}
       />,
     );
     expect(screen.getByText(/Đã được duyệt/i)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Đăng ký đội/i }));
-    expect(onRegisterTeam).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: /Cập nhật hồ sơ/i }));
+    expect(onEdit).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: /Đổi mật khẩu/i }));
+    expect(onChangePassword).toHaveBeenCalled();
   });
 
   test('rejected shows Tài khoản bị từ chối + reason + Gửi lại (onResubmit)', () => {
@@ -74,7 +77,7 @@ describe('RegistrationStatusCard', () => {
         status="rejected"
         reason="Ảnh thẻ không rõ"
         profile={profile}
-        onRegisterTeam={noop}
+        onChangePassword={noop}
         onEdit={noop}
         onResubmit={onResubmit}
       />,

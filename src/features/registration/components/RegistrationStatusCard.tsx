@@ -8,7 +8,7 @@ interface Props {
   status: 'unregistered' | 'pending' | 'approved' | 'rejected';
   reason: string | null;
   profile: UserSummary | null;
-  onRegisterTeam: () => void;
+  onChangePassword: () => void;
   onEdit: () => void;
   onResubmit: () => Promise<void> | void;
   rejectionCount?: number;
@@ -34,7 +34,7 @@ export function RegistrationStatusCard({
   status,
   reason,
   profile,
-  onRegisterTeam,
+  onChangePassword,
   onEdit,
   onResubmit,
   rejectionCount,
@@ -135,11 +135,11 @@ export function RegistrationStatusCard({
       )}
       {status === 'approved' && (
         <div className="flex gap-2">
-          <button type="button" className="btn btn-primary w-fit" onClick={onRegisterTeam}>
-            Đăng ký đội
-          </button>
-          <button type="button" className="btn btn-secondary w-fit" onClick={onEdit}>
+          <button type="button" className="btn btn-primary w-fit" onClick={onEdit}>
             Cập nhật hồ sơ
+          </button>
+          <button type="button" className="btn btn-secondary w-fit" onClick={onChangePassword}>
+            Đổi mật khẩu
           </button>
         </div>
       )}

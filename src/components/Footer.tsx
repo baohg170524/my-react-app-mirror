@@ -147,7 +147,7 @@ export function Footer() {
                 <h4 className="footer-links-title font-bold">Liên kết</h4>
                 <ul className="footer-list">
                   <li>
-                    <Link href="/" className="footer-link">Sự kiện</Link>
+                    <Link href="/" className="footer-link">Trang chủ</Link>
                   </li>
                   <li>
                     <Link href="/criteria" className="footer-link">Tiêu chí chấm</Link>

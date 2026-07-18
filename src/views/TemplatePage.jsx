@@ -351,11 +351,21 @@ export default function TemplatePage({ sn }) {
                   className="input-field"
                 />
               </div>
-              {/* Điểm tối đa luôn cố định = 10 cho mọi tiêu chí, không cho nhập tay */}
+              {/* Điểm tối đa THẬT dùng để giới hạn ô nhập điểm luôn cố định = 10 cho mọi tiêu
+                  chí (xem saveCrit), không cho nhập tay. Số hiển thị bên dưới chỉ là tham khảo. */}
+              <div className="flex-1">
+                <label className="block text-xs font-bold mb-1.5 uppercase tracking-wider" style={{ color: '#757575' }}>
+                  Điểm tối đa
+                </label>
+                <div className="input-field flex items-center" style={{ color: '#757575', background: '#f7f7f7' }}>
+                  {(Number(critF.weight ?? 0) / 10).toFixed(1)} 
+                </div>
+              </div>
             </div>
             <div className="mb-6 text-xs" style={{ color: '#757575' }}>
-              Giám khảo luôn chấm mỗi tiêu chí trên thang <strong>0–10</strong>. Trọng số (%) quyết định
-              tỉ lệ đóng góp của tiêu chí vào tổng điểm cuối. Tổng trọng số của cả bộ phải bằng <strong>100</strong>.
+              Giám khảo luôn chấm mỗi tiêu chí trên thang <strong>0–10</strong> (không bị giới hạn
+              theo số "Điểm tối đa" ở trên — số đó chỉ để tham khảo tỉ lệ ảnh hưởng lên tổng
+              điểm cuối). Tổng trọng số của cả bộ phải bằng <strong>100</strong>.
             </div>
 
             <div className="flex justify-end gap-3">
@@ -510,7 +520,9 @@ export default function TemplatePage({ sn }) {
                       style={{ color: '#757575', background: '#fafafa', borderBottom: '1px solid #e5e5e5' }}>
                       <div style={{ flex: 1 }}>Tiêu chí</div>
                       <div style={{ width: 100, textAlign: 'center' }}>Trọng số (%)</div>
-                      <div style={{ width: 110, textAlign: 'center' }}>Điểm tối đa</div>
+                      <div style={{ width: 110, textAlign: 'center' }} title="Điểm tối đa của tiêu chí vào tổng điểm cuối (weight/10) — CHỈ để tham khảo. Giám khảo vẫn luôn chấm tự do trên thang 0–10, không bị giới hạn theo số này.">
+                        Điểm tối đa
+                      </div>
                       <div style={{ width: 110 }}></div>
                     </div>
 
@@ -534,7 +546,12 @@ export default function TemplatePage({ sn }) {
                           </span>
                         </div>
                         <div style={{ width: 110, textAlign: 'center' }}>
-                          <span className="text-sm" style={{ color: '#000' }}>{tc.maxScore ?? 10}</span>
+                          {/* Chỉ hiển thị tham khảo (weight/10) — KHÔNG phải maxScore thật dùng để
+                              giới hạn ô nhập điểm (maxScore thật luôn = 10, xem saveCrit bên dưới).
+                              Giám khảo vẫn chấm tự do 0–10 cho mọi tiêu chí bất kể trọng số. */}
+                          <span className="text-sm" style={{ color: '#000' }}>
+                            {(Number(tc.weight ?? 0) / 10).toFixed(1)}
+                          </span>
                         </div>
                         <div className="flex gap-2 justify-end" style={{ width: 110 }}>
                           <button className="btn-hover px-2.5 py-1 text-xs font-bold"

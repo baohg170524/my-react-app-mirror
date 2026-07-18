@@ -71,7 +71,8 @@ export const useRoundFinalResults = (roundId: string | undefined) =>
 
 /**
  * FE-01 — Tính kết quả cả vòng (EC/Admin). `topN` tùy chọn (bỏ trống để BE tự
- * quyết). Sau khi tính, làm mới leaderboard của vòng để hiển thị kết quả vừa công bố.
+ * quyết). CHỈ tính toán, ở trạng thái NHÁP (isPublished=false) — KHÔNG tự công bố.
+ * Làm mới leaderboard của vòng sau khi tính để hiển thị kết quả nháp cho EC rà soát.
  */
 export const useCalculateRoundResults = (roundId: string | undefined) => {
   const queryClient = useQueryClient();
@@ -85,9 +86,28 @@ export const useCalculateRoundResults = (roundId: string | undefined) => {
 };
 
 /**
- * FE-02 — Hủy công bố kết quả cả vòng (EC/Admin). Sau khi hủy, làm mới leaderboard
- * (sẽ rỗng) → UI tự ẩn bảng & hiện lại nút "Tính kết quả"; form chấm của vòng cũng
- * tự mở lại vì ScoringPanel suy trạng thái "đã công bố" từ leaderboard.
+ * FE-03 — Đặt trạng thái công bố kết quả cả vòng (EC/Admin), đảo được CẢ HAI CHIỀU
+ * qua tham số `isPublished` — KHÔNG mất dữ liệu Rank/FinalScore/IsAdvanced đã tính,
+ * khác hẳn `useCancelRoundResults` (xóa sạch, phải tính lại). Dùng cho nút bật/tắt
+ * công bố; muốn tính lại từ đầu thì dùng `useCancelRoundResults` + calculate lại.
+ */
+export const useSetRoundPublishStatus = (roundId: string | undefined) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (isPublished: boolean) =>
+      manageApi.setRoundPublishStatus(roundId as string, isPublished),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['finalResults', roundId] });
+    },
+  });
+};
+
+/**
+ * FE-02 — Xóa sạch kết quả cả vòng để tính lại từ đầu (EC/Admin). KHÁC với việc tạm
+ * ẩn/hiện bảng xếp hạng (xem `useSetRoundPublishStatus`) — hàm này XÓA HẲN Rank/
+ * FinalScore/IsAdvanced đã tính, chỉ dùng khi cần calculate lại (vd phát hiện sai
+ * sót, đổi topN). Sau khi xóa, làm mới leaderboard (sẽ rỗng) → UI tự hiện lại nút
+ * "Tính kết quả"; form chấm của vòng cũng tự mở lại.
  */
 export const useCancelRoundResults = (roundId: string | undefined) => {
   const queryClient = useQueryClient();

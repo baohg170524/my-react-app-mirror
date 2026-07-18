@@ -697,7 +697,7 @@ export default function AuthPage() {
           <div className="auth-cs-br" />
 
           <div style={{ position: "relative", zIndex: 1 }}>
-            <p className="auth-brand-tag">SWP SE1907</p>
+            <p className="auth-brand-tag">SEAL-HACKATHON</p>
             <h1 className="auth-brand-name">
               HACKATHON
               <br />
@@ -877,9 +877,14 @@ export default function AuthPage() {
                   <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
                     <GoogleLogin
                       onSuccess={(cred) => {
+                        setClientError("");
                         if (cred.credential) googleMutation.mutate(cred.credential);
                       }}
-                      onError={() => {}}
+                      onError={() =>
+                        setClientError(
+                          "Đăng nhập Google thất bại. Nếu trình duyệt đang chặn cửa sổ popup, vui lòng cho phép popup cho trang này rồi thử lại.",
+                        )
+                      }
                       size="large"
                       width="316"
                       shape="rectangular"

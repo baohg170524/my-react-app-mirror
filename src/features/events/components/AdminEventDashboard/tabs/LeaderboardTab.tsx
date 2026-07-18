@@ -5,6 +5,7 @@ import {
   useEventRounds,
   useRoundFinalResults,
   useCalculateRoundResults,
+  useSetRoundPublishStatus,
   useCancelRoundResults,
   useTeams,
 } from '@/features/events/hooks/useEvents';
@@ -39,6 +40,7 @@ export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
   } = useRoundFinalResults(roundId);
   const { data: teams = [], isLoading: teamsLoading } = useTeams();
   const calculate = useCalculateRoundResults(roundId);
+  const setPublishStatus = useSetRoundPublishStatus(roundId);
   const cancel = useCancelRoundResults(roundId);
 
   // topN chỉ là dự phòng: khi vòng CHƯA đặt luật thăng vòng thì mới cần nhập tay.
@@ -46,12 +48,15 @@ export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
 
   // ─── Trạng thái vòng thi (suy ra từ dữ liệu — BE không có field status) ───
   // "Đã kết thúc" = đã qua endDate (đồng bộ với logic khóa form của ScoringPanel).
-  // "Đã công bố" = leaderboard của vòng đã tồn tại.
+  // 3 trạng thái kết quả, dựa vào field `isPublished` THẬT từ Backend (FinalResultModel)
+  // — trước đây suy sai bằng `results.length > 0`, khiến EC/Admin vừa "Tính kết quả"
+  // (kết quả còn NHÁP) đã bị coi là "Đã công bố" vì họ có quyền xem cả nháp.
   const roundEnded = selectedRound?.endDate
     ? new Date() >= new Date(selectedRound.endDate)
     : false;
-  const isPublished = results.length > 0;
-  const busy = calculate.isPending || cancel.isPending;
+  const hasResults = results.length > 0;
+  const isPublished = hasResults && results[0].isPublished;
+  const busy = calculate.isPending || setPublishStatus.isPending || cancel.isPending;
   // Số đội thăng vòng lấy từ advancementRule (vd "top:2"). Có rule → BE tự quyết,
   // bỏ qua mọi topN gửi lên. Chưa có rule → cần EC nhập topN dự phòng.
   const advancementRule = selectedRound?.advancementRule?.trim() ?? '';
@@ -67,7 +72,7 @@ export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
       })
     : '';
 
-  // ─── FE-01: Tính kết quả ───
+  // ─── FE-01: Tính kết quả (KHÔNG tự công bố — chỉ ra bản nháp để rà soát) ───
   // Vòng có advancementRule → không gửi topN (BE tự quyết). Vòng chưa có rule →
   // gửi topN EC nhập (nếu bỏ trống, BE dùng mặc định của nó).
   const handleCalculate = async () => {
@@ -84,37 +89,59 @@ export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
       }
     }
     const ok = await dialog.confirm({
-      title: 'Công bố kết quả',
-      message: `Tính và công bố kết quả cho "${selectedRound?.roundName ?? 'vòng thi'}"?`,
-      confirmText: 'Công bố',
+      title: 'Tính kết quả',
+      message: `Tính kết quả (bản nháp) cho "${selectedRound?.roundName ?? 'vòng thi'}"? Sau khi tính, bạn có thể rà soát trước khi bấm "Công bố" riêng.`,
+      confirmText: 'Tính kết quả',
     });
     if (!ok) return;
 
     calculate.mutate(parsedTopN, {
       onSuccess: (rows) => {
-        notify.success(`Đã công bố kết quả: ${rows.length} đội được xếp hạng.`);
+        notify.success(`Đã tính xong ${rows.length} đội (bản nháp) — rà soát rồi bấm "Công bố" để mọi người xem được.`);
       },
       // BE trả các lỗi nghiệp vụ: chưa chấm hết bài, vòng chưa đóng, không đủ quyền...
       onError: (err) => notify.error(getErrorMessage(err)),
     });
   };
 
-  // ─── FE-02: Hủy công bố ───
-  const handleCancel = async () => {
-    if (!roundId || !isPublished || busy) return;
+  // ─── FE-03: Bật/tắt công bố — đảo được 2 chiều, KHÔNG mất dữ liệu đã tính
+  // (khác hẳn "Xóa & tính lại" bên dưới, vốn xóa sạch để tính lại từ đầu). ───
+  const handleTogglePublish = async () => {
+    if (!roundId || !hasResults || busy) return;
+    const nextPublished = !isPublished;
     const ok = await dialog.confirm({
-      title: 'Hủy công bố kết quả',
+      title: nextPublished ? 'Công bố kết quả' : 'Thu hồi về nháp',
+      message: nextPublished
+        ? `Công bố bảng xếp hạng của "${selectedRound?.roundName ?? 'vòng thi'}"? Sau khi công bố, mọi người (không chỉ EC/Admin) sẽ xem được kết quả này.`
+        : `Thu hồi bảng xếp hạng của "${selectedRound?.roundName ?? 'vòng thi'}" về bản nháp? Chỉ EC/Admin xem được, người ngoài sẽ không thấy nữa. Dữ liệu Rank/Điểm vẫn được giữ nguyên, có thể công bố lại bất cứ lúc nào.`,
+      confirmText: nextPublished ? 'Công bố' : 'Thu hồi',
+    });
+    if (!ok) return;
+
+    setPublishStatus.mutate(nextPublished, {
+      onSuccess: () => notify.success(nextPublished ? 'Đã công bố bảng xếp hạng.' : 'Đã thu hồi về bản nháp.'),
+      onError: (err) => notify.error(getErrorMessage(err)),
+    });
+  };
+
+  // ─── FE-02: Xóa & tính lại — XÓA SẠCH Rank/FinalScore/IsAdvanced đã tính, dùng khi
+  // cần calculate lại từ đầu (vd phát hiện sai sót, đổi topN). KHÁC với bật/tắt công
+  // bố ở trên (chỉ ẩn/hiện, không mất dữ liệu). ───
+  const handleRecalculate = async () => {
+    if (!roundId || !hasResults || busy) return;
+    const ok = await dialog.confirm({
+      title: 'Xóa kết quả để tính lại',
       message:
-        `Hủy công bố kết quả của "${selectedRound?.roundName ?? 'vòng thi'}"?\n\n` +
-        'Toàn bộ bảng xếp hạng sẽ bị xóa và form chấm điểm được mở lại.\n' +
-        'Chỉ hủy được khi vòng sau chưa có bài nộp/kết quả.',
-      confirmText: 'Hủy công bố',
+        `Xóa toàn bộ kết quả đã tính của "${selectedRound?.roundName ?? 'vòng thi'}" để tính lại từ đầu?\n\n` +
+        (isPublished ? 'Bảng xếp hạng đang công bố sẽ bị gỡ khỏi mọi người xem.\n' : '') +
+        'Chỉ thực hiện được khi vòng sau chưa có bài nộp/kết quả.',
+      confirmText: 'Xóa & tính lại',
       danger: true,
     });
     if (!ok) return;
 
     cancel.mutate(undefined, {
-      onSuccess: () => notify.success('Đã hủy công bố. Vòng thi quay lại trạng thái chờ chốt.'),
+      onSuccess: () => notify.success('Đã xóa kết quả. Bấm "Tính kết quả vòng" để tính lại.'),
       onError: (err) => notify.error(getErrorMessage(err)),
     });
   };
@@ -170,21 +197,42 @@ export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
           </select>
         </div>
 
-        {isPublished ? (
-          // ─── FE-02: đã công bố → cho hủy ───
-          <div className="flex flex-col gap-1 md:ml-auto">
-            <span className="t-caption-sm text-primary font-bold uppercase">Đã công bố</span>
+        {hasResults ? (
+          // ─── FE-03: có kết quả (nháp hoặc đã công bố) → toggle bật/tắt công bố +
+          // hành động riêng "Xóa & tính lại" khi cần làm lại từ đầu ───
+          <div className="flex items-center gap-2 md:ml-auto">
+            <span
+              className={`t-caption-sm font-bold uppercase px-3 py-2 rounded-sm border ${
+                isPublished
+                  ? 'text-primary bg-primary/10 border-primary/30'
+                  : 'text-warning bg-warning/10 border-warning/30'
+              }`}
+            >
+              {isPublished ? 'Đã công bố' : 'Bản nháp — chưa công bố'}
+            </span>
             <button
               type="button"
-              onClick={handleCancel}
+              onClick={handleRecalculate}
               disabled={busy}
-              className="px-4 py-2 rounded-sm t-body-sm font-bold bg-error text-on-primary disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-error"
+              className="px-4 py-2 rounded-sm t-body-sm font-bold bg-surface-soft text-ink border border-hairline disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
             >
-              {cancel.isPending ? 'Đang hủy…' : 'Hủy công bố'}
+              {cancel.isPending ? 'Đang xóa…' : 'Xóa & tính lại'}
+            </button>
+            <button
+              type="button"
+              onClick={handleTogglePublish}
+              disabled={busy}
+              className={`px-4 py-2 rounded-sm t-body-sm font-bold text-on-primary disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                isPublished ? 'bg-error focus-visible:outline-error' : 'bg-primary focus-visible:outline-primary'
+              }`}
+            >
+              {setPublishStatus.isPending
+                ? 'Đang lưu…'
+                : isPublished ? 'Thu hồi về nháp' : 'Công bố'}
             </button>
           </div>
         ) : (
-          // ─── FE-01: chưa công bố → cho tính ───
+          // ─── FE-01: chưa tính kết quả ───
           <>
             {hasRule ? (
               // Vòng đã đặt luật thăng vòng → BE tự quyết số đội, không cần nhập.
@@ -275,7 +323,7 @@ export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
       ) : (
         <p className="t-body-sm text-mute text-center py-8">
           {roundEnded
-            ? 'Chưa có kết quả. Bấm "Tính kết quả" để công bố bảng xếp hạng.'
+            ? 'Chưa có kết quả. Bấm "Tính kết quả vòng" để ra bản nháp, rà soát rồi công bố riêng.'
             : 'Chưa có dữ liệu xếp hạng.'}
         </p>
       )}
