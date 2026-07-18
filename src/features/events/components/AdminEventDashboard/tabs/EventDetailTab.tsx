@@ -123,15 +123,17 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
       {/* Canh thẳng với vạch spine chính của timeline: cùng cột max-w-7xl,
           thụt trái = padding card (p-4/p-6) + vị trí spine (12px). */}
       <div className="w-full max-w-7xl mx-auto pt-2 flex flex-wrap items-center gap-3 pl-7 md:pl-9">
-        {canEdit && (
-          <Button variant="primary" size="md" style={{ color: "#fff" }} onClick={() => setIsEditing(true)}>
+        {canManage && (
+          <Button
+            variant="primary"
+            size="md"
+            style={{ color: "#fff" }}
+            disabled={isEnded}
+            title={isEnded ? "Sự kiện đã kết thúc — không thể chỉnh sửa." : undefined}
+            onClick={() => setIsEditing(true)}
+          >
             Chỉnh sửa sự kiện
           </Button>
-        )}
-        {canManage && isEnded && (
-          <span className="t-body-sm text-mute">
-            Sự kiện đã kết thúc — không thể chỉnh sửa.
-          </span>
         )}
         <Button
           variant="danger"
