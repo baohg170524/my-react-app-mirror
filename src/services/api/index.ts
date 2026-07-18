@@ -13,6 +13,10 @@ export {
   type CreateScorePayload,
   type SaveScorePayload,
   type CreateScoreDetailPayload,
+  type CriterionScoreLine,
+  type JudgeScoreBreakdown,
+  type SubmissionScoreBreakdown,
+  type TeamScoreBreakdownModel,
 } from "./scores";
 export type {
   ApiError,

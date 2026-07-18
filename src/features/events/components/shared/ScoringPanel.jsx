@@ -105,21 +105,25 @@ export default function ScoringPanel({ eventId, trackId = null }) {
           .filter(c => c.isActive !== false && c.weight > 0)
           .map(c => ({ ...c, maxScore: c.maxScore ?? 10, templateId: track.templateId }));
 
-        // 5) Nạp trước điểm đã chấm: submitResultId → điểm theo từng tiêu chí.
+        // 5) Nạp trước điểm đã chấm: submitResultId → điểm theo từng tiêu chí + nhận xét chung.
         const scored = existingScores.filter(s => s.submitResultId);
         const detailList = await Promise.all(
           scored.map(s =>
             scoresApi.getWithDetails(s.id)
-              .then(d => ({ submitResultId: s.submitResultId, details: d.details ?? [] }))
-              .catch(() => ({ submitResultId: s.submitResultId, details: [] })),
+              // `comment` đọc kiểu defensive (?? '') vì kiểu ScoreWithDetails hiện chưa khai báo
+              // field này — nếu Backend có trả thật, vẫn nạp lại đúng; nếu không có, mặc định rỗng.
+              .then(d => ({ submitResultId: s.submitResultId, details: d.details ?? [], comment: d.comment ?? '' }))
+              .catch(() => ({ submitResultId: s.submitResultId, details: [], comment: '' })),
           ),
         );
         if (cancelled) return;
 
         const prefill = {};
-        for (const { submitResultId, details } of detailList) {
+        const prefillComment = {};
+        for (const { submitResultId, details, comment } of detailList) {
           const byCriteria = Object.fromEntries(details.map(d => [d.criteriaId, d.value]));
           prefill[submitResultId] = crit.map(c => byCriteria[c.id] ?? 0);
+          prefillComment[submitResultId] = comment;
         }
 
         // 6) Bài nộp → "teams" (ẩn danh khi hiển thị; id = submitResultId dùng để lưu điểm).
@@ -128,7 +132,9 @@ export default function ScoringPanel({ eventId, trackId = null }) {
           teamId: s.teamId, // Thêm teamId thật để đồng bộ mã ẩn danh với SubmissionsPanel
           name: s.teamName ?? s.projectName ?? '—',
           scores: prefill[s.id] ?? crit.map(() => 0),
-          comments: crit.map(() => ''),
+          // 1 nhận xét chung cho cả phiếu (Score.comment) — không còn theo từng tiêu chí.
+          // Chưa chắc backend model gõ đúng field này (xem ghi chú ở bước 5) nên fallback rỗng.
+          comment: prefillComment[s.id] ?? '',
         }));
 
         // 7) Khóa/mở form theo thời gian & trạng thái công bố (đồng bộ với Backend).
@@ -166,13 +172,13 @@ export default function ScoringPanel({ eventId, trackId = null }) {
     return () => { cancelled = true; };
   }, [currentUser?.id, eventId, trackId]);
 
-  const saveEdit = async (submitResultId, details) => {
+  const saveEdit = async (submitResultId, { details, comment }) => {
     // Chặn sớm ở client cho đúng logic khóa/mở; Backend vẫn là nguồn quyết định cuối cùng.
     if (lock.locked) {
       sn(lock.message ?? 'Chưa thể chấm điểm ở thời điểm này.', 'e');
       return;
     }
-    // `details` đến từ EditModal đã được ghép sẵn theo criteriaId ({ criteriaId, value, comment }),
+    // `details` đến từ EditModal đã được ghép sẵn theo criteriaId ({ criteriaId, value }),
     // không còn là mảng thô theo index nữa — tránh bug lệch điểm giữa các tiêu chí (từng xảy ra
     // khi `criteria` state ở đây đổi thứ tự so với lúc EditModal khởi tạo `scores`).
     const byCriteria = Object.fromEntries(criteria.map(c => [c.id, c]));
@@ -180,6 +186,9 @@ export default function ScoringPanel({ eventId, trackId = null }) {
       await scoresApi.save({
         eventRoleId,
         submitResultId,
+        // Backend chỉ hỗ trợ 1 nhận xét chung cho cả phiếu (Score.comment) — không có nhận
+        // xét theo từng tiêu chí (CriterionScoreLine không có field comment).
+        comment,
         // Backend (SaveScoreRequestModel.cs) chỉ nhận field `value`, không có `score`.
         // templateId bắt buộc trong mỗi detail (thiếu → 400) — lấy theo đúng criteriaId,
         // không dựa vào vị trí mảng.
@@ -193,8 +202,7 @@ export default function ScoringPanel({ eventId, trackId = null }) {
       // theo đúng thứ tự `criteria` hiện tại — an toàn vì tra theo criteriaId, không theo index.
       const detailByCriteria = Object.fromEntries(details.map(d => [d.criteriaId, d]));
       const scores = criteria.map(c => detailByCriteria[c.id]?.value ?? 0);
-      const comments = criteria.map(c => detailByCriteria[c.id]?.comment ?? '');
-      setTeams(p => p.map(t => t.id === submitResultId ? { ...t, scores, comments } : t));
+      setTeams(p => p.map(t => t.id === submitResultId ? { ...t, scores, comment } : t));
       setEditT(null);
       sn('Đã lưu điểm thành công!');
     } catch (e) {
@@ -218,7 +226,7 @@ export default function ScoringPanel({ eventId, trackId = null }) {
           team={editT}
           criteria={criteria}
           onClose={() => setEditT(null)}
-          onSave={(details) => saveEdit(editT.id, details)}
+          onSave={(payload) => saveEdit(editT.id, payload)}
         />
       )}
 

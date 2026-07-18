@@ -3,7 +3,7 @@
 import React from 'react';
 import {
   BarChart3, Upload, Trophy, Users, UserPlus, ClipboardList, FileText, Settings, ClipboardCheck,
-  Gavel, Inbox,
+  Inbox,
 } from 'lucide-react';
 import { useEventDashboard } from '@/features/events/contexts/EventDashboardContext';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -27,7 +27,6 @@ const ICON: Record<EventTabId, React.ComponentType<{ size?: number; className?: 
   leaderboard:   Trophy,
   judgeAssigned: ClipboardList,
   manage:        Settings,
-  scoring:          Gavel,
   reviewSubmission: Inbox,
 };
 

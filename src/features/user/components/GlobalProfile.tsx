@@ -1,17 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useRegistration } from '@/features/registration/hooks/useRegistration';
 import { RegistrationForm } from '@/features/registration/components/RegistrationForm';
 import { RegistrationStatusCard } from '@/features/registration/components/RegistrationStatusCard';
+import { ChangePasswordForm } from '@/features/registration/components/ChangePasswordForm';
 import { useCurrentUser } from '@/hooks/useAuth';
 
 export function GlobalProfile() {
-  const router = useRouter();
   const { data: user } = useCurrentUser();
   const { profile, status, reason, rejectionCount, isLoading, submit, clearRejections } = useRegistration(user?.id ?? '');
   const [editing, setEditing] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
 
   if (isLoading) return <div className="t-body-md text-mute p-6 text-center">Đang tải hồ sơ...</div>;
 
@@ -41,6 +41,19 @@ export function GlobalProfile() {
             await submit(cmd);
             setEditing(false);
           }}
+          onBack={() => setEditing(false)}
+        />
+      </div>
+    );
+  }
+
+  if (changingPassword) {
+    return (
+      <div className="card max-w-[40rem] mx-auto mt-8 p-6 shadow-sm bg-white rounded-lg">
+        <h2 className="t-heading-md mb-6">Đổi mật khẩu</h2>
+        <ChangePasswordForm
+          onSuccess={() => setChangingPassword(false)}
+          onBack={() => setChangingPassword(false)}
         />
       </div>
     );
@@ -53,7 +66,7 @@ export function GlobalProfile() {
         reason={reason}
         profile={profile}
         rejectionCount={rejectionCount}
-        onRegisterTeam={() => router.push('/')}
+        onChangePassword={() => setChangingPassword(true)}
         onEdit={() => setEditing(true)}
         onResubmit={async () => {
           await clearRejections();

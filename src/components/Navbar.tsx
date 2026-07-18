@@ -136,7 +136,7 @@ import { NotificationBell } from "./NotificationBell";
 type NavLink = { label: string; href: string; children?: { label: string; href: string }[] };
 
 const ADMIN_LINKS: NavLink[] = [
-  { label: "Sự kiện",     href: "/" },
+  { label: "Trang chủ",     href: "/" },
   {
     label: "Bộ tiêu chí", href: "/criteria",
     children: [
@@ -149,15 +149,15 @@ const ADMIN_LINKS: NavLink[] = [
 ];
 
 const MENTOR_LINKS: NavLink[] = [
-  { label: "Sự kiện",    href: "/" },
+  { label: "Trang chủ",    href: "/" },
 ];
 
 const STUDENT_LINKS: NavLink[] = [
-  { label: "Sự kiện",    href: "/" },
+  { label: "Trang chủ",    href: "/" },
 ];
 
 const GUEST_LINKS: NavLink[] = [
-  { label: "Sự kiện", href: "/" },
+  { label: "Trang chủ", href: "/" },
 ];
 
 export function Navbar() {
@@ -203,7 +203,7 @@ export function Navbar() {
           className="primary-nav__brand"
           style={{ fontSize: "var(--fs-heading-sm)", textDecoration: "none" }}
         >
-          SWP<span style={{ color: "var(--color-primary)" }}>·</span>SE1907
+          <span style={{ color: "var(--color-primary)" }}>SEAL-HACKATHON</span>
         </Link>
 
         <ul className="primary-nav__links" style={{ position: "relative" }}>

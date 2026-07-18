@@ -24,9 +24,9 @@ describe('getEventTabs', () => {
       .toEqual(['detail', 'register', 'myTeam', 'submission', 'results', 'leaderboard']);
   });
 
-  test('judge event role → detail + scoring + reviewSubmission + leaderboard', () => {
+  test('judge event role → detail + reviewSubmission + leaderboard', () => {
     expect(getEventTabs({ role: 'student', eventRoleName: 'Judge', hasTeam: false }).map((t) => t.id))
-      .toEqual(['detail', 'scoring', 'reviewSubmission', 'leaderboard']);
+      .toEqual(['detail', 'reviewSubmission', 'leaderboard']);
   });
 
   test('mentor event role → detail + reviewSubmission + leaderboard', () => {
