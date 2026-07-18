@@ -77,6 +77,10 @@ export interface FinalResult {
   finalScore: number;
   rank: number;
   isAdvanced: boolean;
+  /** NHÁP (false) vs ĐÃ CÔNG BỐ (true) — trước đây FE thiếu field này nên phải đoán
+   *  "đã công bố" bằng cách kiểm tra results.length > 0, SAI vì EC/Admin xem được cả
+   *  kết quả nháp (Backend trả nháp cho họ ngay khi vừa calculate, chưa publish). */
+  isPublished: boolean;
 }
 
 /** Matches backend CalculateRoundResultItemModel (trả về khi tính kết quả cả vòng). */
@@ -179,9 +183,36 @@ export const manageApi = {
   },
 
   /**
-   * FE-02 — DELETE /api/FinalResults/round/{roundId}: HỦY CÔNG BỐ, xóa trọn bộ
-   * FinalResult của vòng để mở lại khóa chấm/sửa điểm. Chỉ hủy được khi vòng sau
-   * chưa có bài nộp/kết quả (Backend kiểm tra). Chỉ EC/Admin.
+   * FE-03 (cũ) — POST /api/FinalResults/publish/{roundId}: công bố 1 CHIỀU.
+   * ĐÃ THAY BẰNG `setRoundPublishStatus` bên dưới (mới, đảo được 2 chiều, không mất
+   * dữ liệu) — giữ lại hàm này phòng trường hợp nơi khác trong code còn gọi tới,
+   * nhưng KHÔNG dùng nữa trong LeaderboardTab.tsx.
+   */
+  publishRoundResults: async (roundId: string): Promise<void> => {
+    await apiClient.post(`/FinalResults/publish/${encodeURIComponent(roundId)}`);
+  },
+
+  /**
+   * FE-03 — PUT /api/FinalResults/round/{roundId}/publish-status: ĐẶT trạng thái
+   * công bố, đảo được CẢ HAI CHIỀU:
+   *   isPublished: true  → công bố (mọi người xem được bảng xếp hạng)
+   *   isPublished: false → thu hồi về nháp (chỉ EC/Admin xem, ẩn khỏi người ngoài)
+   * GIỮ NGUYÊN Rank/FinalScore/IsAdvanced đã tính ở cả 2 chiều — khác hẳn
+   * `cancelRoundResults` (DELETE, xóa sạch, phải calculate lại từ đầu). Idempotent.
+   * Chỉ EventCoordinator/Admin.
+   */
+  setRoundPublishStatus: async (roundId: string, isPublished: boolean): Promise<void> => {
+    await apiClient.put(`/FinalResults/round/${encodeURIComponent(roundId)}/publish-status`, {
+      isPublished,
+    });
+  },
+
+  /**
+   * FE-02 — DELETE /api/FinalResults/round/{roundId}: XÓA SẠCH kết quả (Rank/
+   * FinalScore/IsAdvanced) để tính lại từ đầu bằng calculate — dùng khi phát hiện
+   * sai sót cần tính lại, KHÔNG dùng để tạm ẩn/hiện bảng xếp hạng nữa (dùng
+   * `setRoundPublishStatus` cho việc đó — nhanh hơn, không mất dữ liệu, đảo qua lại
+   * thoải mái). Chỉ hủy được khi vòng sau chưa có bài nộp/kết quả. Chỉ EC/Admin.
    */
   cancelRoundResults: async (roundId: string): Promise<void> => {
     await apiClient.delete(`/FinalResults/round/${encodeURIComponent(roundId)}`);
