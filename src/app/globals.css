@@ -332,6 +332,11 @@ button, input, select, textarea {
   padding: 11px 15px;
 }
 
+/* Form tạo/sửa sự kiện: viền các input màu đen (đậm hơn hairline mặc định). */
+.create-event-form .text-input {
+  border-color: var(--color-ink);
+}
+
 .search-input {
   height: var(--h-search-input);
   padding-left: 40px;

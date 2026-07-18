@@ -28,7 +28,10 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
   const { data: currentUser } = useCurrentUser();
   const { data: eventRole } = useUserEventRole(currentUser?.id ?? '', eventId);
   const globalRole = useUserRole();
-  const canEdit = globalRole === 'admin' || eventRole?.roleName === 'EventCoordinator' || eventRole?.roleName === 'Admin';
+  // Sự kiện đã kết thúc (quá ngày kết thúc) → khóa chỉnh sửa.
+  const isEnded = !!event && new Date(event.endDate).getTime() < Date.now();
+  const canManage = globalRole === 'admin' || eventRole?.roleName === 'EventCoordinator' || eventRole?.roleName === 'Admin';
+  const canEdit = canManage && !isEnded;
   const router = useRouter();
   const queryClient = useQueryClient();
   const notify = useNotify();
@@ -119,9 +122,16 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
 
       {/* Canh thẳng với vạch spine chính của timeline: cùng cột max-w-7xl,
           thụt trái = padding card (p-4/p-6) + vị trí spine (12px). */}
-      <div className="w-full max-w-7xl mx-auto pt-2 flex gap-3 pl-7 md:pl-9">
-        {canEdit && (
-          <Button variant="primary" size="md" onClick={() => setIsEditing(true)}>
+      <div className="w-full max-w-7xl mx-auto pt-2 flex flex-wrap items-center gap-3 pl-7 md:pl-9">
+        {canManage && (
+          <Button
+            variant="primary"
+            size="md"
+            style={{ color: "#fff" }}
+            disabled={isEnded}
+            title={isEnded ? "Sự kiện đã kết thúc — không thể chỉnh sửa." : undefined}
+            onClick={() => setIsEditing(true)}
+          >
             Chỉnh sửa sự kiện
           </Button>
         )}

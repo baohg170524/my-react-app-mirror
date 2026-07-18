@@ -50,7 +50,14 @@ export function EventSection() {
 
   return (
     <div className="container" style={{ paddingTop: "var(--space-section)" }}>
-      <div className="card" style={{ padding: "var(--space-xxl)", gap: "var(--space-xl)" }}>
+      <div
+        className="card"
+        style={{
+          padding: "var(--space-xxl)",
+          gap: "var(--space-xl)",
+          ...(mode === "create" ? { border: "1px solid var(--color-ink)" } : {}),
+        }}
+      >
         {/* Header row */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "var(--space-md)" }}>
           <h2 className="t-heading-md" style={{ margin: 0 }}>
