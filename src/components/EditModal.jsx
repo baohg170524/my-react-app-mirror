@@ -73,7 +73,12 @@ export default function EditModal({ team, criteria, onClose, onSave }) {
                       </span>
                     )}
                   </div>
-                  <div className="text-[11px] mt-0.5" style={{ color: '#757575' }}>{c.labelVi} · tối đa {c.maxScore ?? 10} điểm</div>
+                  <div className="text-[11px] mt-0.5" style={{ color: '#757575' }}>
+                    {c.labelVi} · tối đa {c.maxScore ?? 10} điểm
+                    {typeof c.weight === 'number' && (
+                      <> · Điểm tối đa <strong>{(c.weight / 10).toFixed(1)}</strong> vào tổng điểm</>
+                    )}
+                  </div>
                 </div>
                 <input
                   type="number" min="0" max={c.maxScore ?? 10} step="0.5"
