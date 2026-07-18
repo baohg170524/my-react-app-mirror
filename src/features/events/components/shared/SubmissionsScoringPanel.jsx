@@ -16,22 +16,26 @@ import { calcScore } from '@/utils.jsx';
 
 /**
  * Panel gộp "Bài nộp" + "Chấm điểm" — thay thế ScoringPanel.jsx + SubmissionsPanel.jsx.
+ * Dùng chung cho cả dashboard người tham gia (/events/{id}) lẫn dashboard quản lý của
+ * Admin/EC (/events/{id}/manage — xem AdminSidebar.tsx, tab "Bài nộp").
  *
  * Phân quyền theo roleName (EventRoleModel — xem eventRoles.ts):
- *  - "Judge": thấy nút "Chấm / Sửa", chỉ chấm được hạng mục (track) chính họ được phân
- *    công (giống ScoringPanel.jsx cũ). Cần eventRoleId để gọi Scores/save.
+ *  - "Judge": thấy nút "Chấm / Sửa", BẮT BUỘC phải có track được phân công (throw lỗi
+ *    nếu không có). Cần eventRoleId để gọi Scores/save.
  *  - Mọi role khác (EventCoordinator/Mentor/Admin/TeamLeader/Member...): CHỈ XEM — thấy
- *    nút "Xem chi tiết chấm điểm" mở breakdown read-only (điểm + nhận xét của MỌI giám
- *    khảo, qua GET /Scores/team/{teamId}/breakdown — xem scores.ts). Không gọi Scores/save.
- *  - Cả 2 nhóm đều bị giới hạn theo 1 track cụ thể — dùng chung field `trackId` trên
- *    EventRoleModel (không riêng gì Judge).
+ *    nút "Xem chi tiết" mở breakdown read-only (điểm + nhận xét của MỌI giám khảo, qua
+ *    GET /Scores/team/{teamId}/breakdown — xem scores.ts). Không gọi Scores/save.
+ *    KHÔNG bắt buộc có track riêng — nếu có track (vd Mentor/EC được gán 1 hạng mục) thì
+ *    xem đúng track đó; nếu không có track nào (vd Admin quản lý cả sự kiện) thì xem
+ *    TOÀN BỘ bài nộp của mọi track trong sự kiện (xem loadWholeEvent bên dưới).
  *
  * Nguồn dữ liệu bài nộp: submitResultsApi (TS, mới) — KHÔNG dùng getAllSubmissions/
  * submissionService.js (cũ) nữa, để tránh lệch dữ liệu giữa 2 nguồn (đã phát hiện: khác
  * timezone parsing, khác cách suy ra projectName — xem scoring-form-guide-FINAL.md).
  *
  * Props: eventId (sự kiện đang mở), trackId (nếu component cha đã biết trước hạng mục;
- * nếu không truyền sẽ lấy từ vai trò của user trong sự kiện).
+ * nếu không truyền sẽ lấy từ vai trò của user trong sự kiện, hoặc xem toàn sự kiện nếu
+ * user không gắn với track nào — xem trên).
  *
  * @param {{ eventId: string, trackId?: string | null }} props
  */
@@ -68,137 +72,25 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
         setError(null);
 
         // 1) Vai trò của user trong sự kiện — roleName (Judge hay không) + trackId được
-        //    phân công (áp dụng chung cho MỌI role, không riêng Judge).
+        //    phân công NẾU CÓ. Chỉ Judge bắt buộc phải có track được phân công — các role
+        //    khác (Admin/EC/Mentor/TeamLead/Member) có thể không gắn với 1 track cụ thể nào
+        //    (vd Admin quản lý toàn sự kiện) — khi đó xem TOÀN BỘ mọi track trong sự kiện,
+        //    không báo lỗi chặn như trước.
         const role = await eventRolesApi.getUserRole(currentUser.id, eventId);
         const roleId = role?.id ?? null;
         const roleName = role?.roleName ?? null;
-        const effectiveTrackId = trackId ?? role?.trackId ?? null;
-        if (!role || !effectiveTrackId) {
-          throw new Error('Bạn chưa được phân công vào hạng mục nào trong sự kiện này.');
-        }
         const judge = roleName === 'Judge';
+        const effectiveTrackId = trackId ?? role?.trackId ?? null;
 
-        // 2) Chi tiết track → templateId (bộ tiêu chí) + roundId (thời gian vòng thi).
-        const track = await tracksApi.getById(effectiveTrackId);
-        if (!track?.templateId) {
-          throw new Error('Hạng mục này chưa được gán bộ tiêu chí chấm điểm.');
+        if (judge && (!role || !effectiveTrackId)) {
+          throw new Error('Bạn chưa được phân công chấm hạng mục nào trong sự kiện này.');
         }
 
-        // 3) Tải song song: vòng thi, bộ tiêu chí, danh sách bài nộp (nguồn thống nhất
-        //    submitResultsApi), và — chỉ Judge mới cần — phiếu đã chấm + trạng thái công bố.
-        const [round, allCriteria, subsItems, existingScores, published] = await Promise.all([
-          track.roundId ? roundsApi.getById(track.roundId) : Promise.resolve(null),
-          getCriteria(track.templateId),
-          submitResultsApi.list({ eventId, trackId: effectiveTrackId, pageSize: 100 }),
-          judge ? scoresApi.listByEventRole(roleId) : Promise.resolve([]),
-          judge && track.roundId
-            ? resultsApi.listRoundLeaderboard(track.roundId).then(r => r.length > 0).catch(() => false)
-            : Promise.resolve(false),
-        ]);
-
-        if (cancelled) return;
-
-        setRoundInfo(round ? {
-          roundName: round.roundName ?? `Vòng ${round.roundNumber ?? '?'}`,
-          startDate: round.startDate ?? null,
-          endDate:   round.endDate   ?? null,
-        } : null);
-
-        // 4) Bộ tiêu chí: hệ 100 — dùng maxScore/weight thật từ backend, không hardcode
-        //    (Backend validate nghiêm ngặt điểm nhập theo maxScore thật — xem
-        //    scoring-form-guide-FINAL.md, Vòng 2).
-        const crit = allCriteria
-          .filter(c => c.isActive !== false && c.weight > 0)
-          .map(c => ({ ...c, maxScore: c.maxScore ?? 10, templateId: track.templateId }));
-
-        // 5a) JUDGE — nạp trước điểm + nhận xét đã chấm của CHÍNH họ, theo submitResultId.
-        let prefillScores = {};
-        let prefillComment = {};
-        if (judge) {
-          const scored = existingScores.filter(s => s.submitResultId);
-          const detailList = await Promise.all(
-            scored.map(s =>
-              scoresApi.getWithDetails(s.id)
-                .then(d => ({ submitResultId: s.submitResultId, details: d.details ?? [], comment: d.comment ?? '' }))
-                .catch(() => ({ submitResultId: s.submitResultId, details: [], comment: '' })),
-            ),
-          );
-          if (cancelled) return;
-          for (const { submitResultId, details, comment } of detailList) {
-            const byCriteria = Object.fromEntries(details.map(d => [d.criteriaId, d.value]));
-            prefillScores[submitResultId] = crit.map(c => byCriteria[c.id] ?? 0);
-            prefillComment[submitResultId] = comment;
-          }
+        if (effectiveTrackId) {
+          await loadScopedToTrack({ judge, roleId, effectiveTrackId });
+        } else {
+          await loadWholeEvent({ judge });
         }
-
-        // 5b) VIEWER (không phải Judge) — nạp breakdown điểm của MỌI giám khảo, theo teamId
-        //     (1 lần/đội, tránh gọi trùng nếu 1 đội có nhiều bài nộp trong cùng track).
-        let breakdownBySubmission = {};
-        if (!judge) {
-          const uniqueTeamIds = [...new Set(subsItems.map(s => s.teamId).filter(Boolean))];
-          const breakdowns = await Promise.all(
-            uniqueTeamIds.map(tid => scoresApi.getTeamBreakdown(tid).catch(() => null)),
-          );
-          if (cancelled) return;
-          for (const b of breakdowns) {
-            for (const sub of (b?.submissions ?? [])) {
-              if (sub.submitResultId) breakdownBySubmission[sub.submitResultId] = sub;
-            }
-          }
-        }
-
-        // 6) Bài nộp → shape hiển thị chung cho cả 2 chế độ.
-        const mapped = subsItems.map((s, i) => {
-          const rawUrl = s.submissionUrl ?? s.repoUrl ?? '';
-          const submittedAt = s.createdTime
-            ? new Date(s.createdTime.replace('+00:00', 'Z')).toLocaleString('vi-VN', {
-                day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-              })
-            : '—';
-          const breakdown = breakdownBySubmission[s.id] ?? null;
-          const scoredByJudge = judge
-            ? existingScores.some(es => es.submitResultId === s.id)
-            : (breakdown?.judgeScores?.length ?? 0) > 0;
-
-          return {
-            id: s.id,
-            teamId: s.teamId,
-            index: i,
-            name: s.teamName ?? '—',
-            links: parseSubmissionLinks(rawUrl),
-            submittedAt,
-            status: s.isActive === false ? 'Không hoạt động' : 'Đã nhận',
-            // Judge:
-            scores: prefillScores[s.id] ?? crit.map(() => 0),
-            comment: prefillComment[s.id] ?? '',
-            // Viewer:
-            breakdown,
-            // Chung — quyết định khung màu cam/xanh.
-            scored: scoredByJudge,
-          };
-        });
-
-        // 7) Khóa/mở form chấm (chỉ áp dụng cho Judge — viewer không chấm nên không cần khóa).
-        let lockState = { locked: false, message: null };
-        if (judge) {
-          const now = new Date();
-          const endDate = round?.endDate ? new Date(round.endDate) : null;
-          const notEnded = endDate ? now < endDate : false;
-          if (published) {
-            lockState = { locked: true, message: 'Vòng thi này đã chốt kết quả, không thể chấm điểm thêm.' };
-          } else if (notEnded) {
-            const when = endDate.toLocaleString('vi-VN', {
-              day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-            });
-            lockState = { locked: true, message: `Form chấm điểm sẽ được mở sau khi vòng thi kết thúc vào lúc ${when}.` };
-          }
-        }
-
-        setIsJudge(judge);
-        setEventRoleId(roleId);
-        setCriteria(crit);
-        setSubmissions(mapped);
-        setLock(lockState);
       } catch (e) {
         if (!cancelled) {
           setError(e?.response ? getErrorMessage(e, 'Không thể tải dữ liệu.') : (e?.message ?? 'Không thể tải dữ liệu.'));
@@ -206,6 +98,186 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
       } finally {
         if (!cancelled) setLoading(false);
       }
+    };
+
+    // ── Nhánh A: có 1 track cụ thể (Judge luôn ở nhánh này; Mentor/EC nếu được gán track) ──
+    const loadScopedToTrack = async ({ judge, roleId, effectiveTrackId }) => {
+      // 2) Chi tiết track → templateId (bộ tiêu chí) + roundId (thời gian vòng thi).
+      const track = await tracksApi.getById(effectiveTrackId);
+      if (!track?.templateId) {
+        throw new Error('Hạng mục này chưa được gán bộ tiêu chí chấm điểm.');
+      }
+
+      // 3) Tải song song: vòng thi, bộ tiêu chí, danh sách bài nộp (nguồn thống nhất
+      //    submitResultsApi), và — chỉ Judge mới cần — phiếu đã chấm + trạng thái công bố.
+      const [round, allCriteria, subsItems, existingScores, published] = await Promise.all([
+        track.roundId ? roundsApi.getById(track.roundId) : Promise.resolve(null),
+        getCriteria(track.templateId),
+        submitResultsApi.list({ eventId, trackId: effectiveTrackId, pageSize: 100 }),
+        judge ? scoresApi.listByEventRole(roleId) : Promise.resolve([]),
+        judge && track.roundId
+          ? resultsApi.listRoundLeaderboard(track.roundId).then(r => r.length > 0).catch(() => false)
+          : Promise.resolve(false),
+      ]);
+
+      if (cancelled) return;
+
+      setRoundInfo(round ? {
+        roundName: round.roundName ?? `Vòng ${round.roundNumber ?? '?'}`,
+        startDate: round.startDate ?? null,
+        endDate:   round.endDate   ?? null,
+      } : null);
+
+      // 4) Bộ tiêu chí: hệ 100 — dùng maxScore/weight thật từ backend, không hardcode
+      //    (Backend validate nghiêm ngặt điểm nhập theo maxScore thật — xem
+      //    scoring-form-guide-FINAL.md, Vòng 2).
+      const crit = allCriteria
+        .filter(c => c.isActive !== false && c.weight > 0)
+        .map(c => ({ ...c, maxScore: c.maxScore ?? 10, templateId: track.templateId }));
+
+      // 5a) JUDGE — nạp trước điểm + nhận xét đã chấm của CHÍNH họ, theo submitResultId.
+      let prefillScores = {};
+      let prefillComment = {};
+      if (judge) {
+        const scored = existingScores.filter(s => s.submitResultId);
+        const detailList = await Promise.all(
+          scored.map(s =>
+            scoresApi.getWithDetails(s.id)
+              .then(d => ({ submitResultId: s.submitResultId, details: d.details ?? [], comment: d.comment ?? '' }))
+              .catch(() => ({ submitResultId: s.submitResultId, details: [], comment: '' })),
+          ),
+        );
+        if (cancelled) return;
+        for (const { submitResultId, details, comment } of detailList) {
+          const byCriteria = Object.fromEntries(details.map(d => [d.criteriaId, d.value]));
+          prefillScores[submitResultId] = crit.map(c => byCriteria[c.id] ?? 0);
+          prefillComment[submitResultId] = comment;
+        }
+      }
+
+      // 5b) VIEWER (không phải Judge) — nạp breakdown điểm của MỌI giám khảo, theo teamId
+      //     (1 lần/đội, tránh gọi trùng nếu 1 đội có nhiều bài nộp trong cùng track).
+      let breakdownBySubmission = {};
+      if (!judge) {
+        const uniqueTeamIds = [...new Set(subsItems.map(s => s.teamId).filter(Boolean))];
+        const breakdowns = await Promise.all(
+          uniqueTeamIds.map(tid => scoresApi.getTeamBreakdown(tid).catch(() => null)),
+        );
+        if (cancelled) return;
+        for (const b of breakdowns) {
+          for (const sub of (b?.submissions ?? [])) {
+            if (sub.submitResultId) breakdownBySubmission[sub.submitResultId] = sub;
+          }
+        }
+      }
+
+      // 6) Bài nộp → shape hiển thị chung cho cả 2 chế độ.
+      const mapped = subsItems.map((s, i) => {
+        const rawUrl = s.submissionUrl ?? s.repoUrl ?? '';
+        const submittedAt = s.createdTime
+          ? new Date(s.createdTime.replace('+00:00', 'Z')).toLocaleString('vi-VN', {
+              day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+            })
+          : '—';
+        const breakdown = breakdownBySubmission[s.id] ?? null;
+        const scoredByJudge = judge
+          ? existingScores.some(es => es.submitResultId === s.id)
+          : (breakdown?.judgeScores?.length ?? 0) > 0;
+
+        return {
+          id: s.id,
+          teamId: s.teamId,
+          index: i,
+          name: s.teamName ?? '—',
+          links: parseSubmissionLinks(rawUrl),
+          submittedAt,
+          status: s.isActive === false ? 'Không hoạt động' : 'Đã nhận',
+          // Judge:
+          scores: prefillScores[s.id] ?? crit.map(() => 0),
+          comment: prefillComment[s.id] ?? '',
+          // Viewer:
+          breakdown,
+          // Chung — quyết định khung màu cam/xanh.
+          scored: scoredByJudge,
+        };
+      });
+
+      // 7) Khóa/mở form chấm (chỉ áp dụng cho Judge — viewer không chấm nên không cần khóa).
+      let lockState = { locked: false, message: null };
+      if (judge) {
+        const now = new Date();
+        const endDate = round?.endDate ? new Date(round.endDate) : null;
+        const notEnded = endDate ? now < endDate : false;
+        if (published) {
+          lockState = { locked: true, message: 'Vòng thi này đã chốt kết quả, không thể chấm điểm thêm.' };
+        } else if (notEnded) {
+          const when = endDate.toLocaleString('vi-VN', {
+            day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+          });
+          lockState = { locked: true, message: `Form chấm điểm sẽ được mở sau khi vòng thi kết thúc vào lúc ${when}.` };
+        }
+      }
+
+      setIsJudge(judge);
+      setEventRoleId(roleId);
+      setCriteria(crit);
+      setSubmissions(mapped);
+      setLock(lockState);
+    };
+
+    // ── Nhánh B: KHÔNG có track cụ thể (Admin/EC/TeamLead/Member không gắn track riêng)
+    //    → xem TOÀN BỘ bài nộp của mọi track trong sự kiện, chỉ ở chế độ xem (không chấm
+    //    được — Judge luôn bắt buộc có track nên không bao giờ rơi vào nhánh này).
+    //    Không cần bộ tiêu chí dùng chung vì mỗi bài nộp tự mang breakdown riêng (tên tiêu
+    //    chí/điểm/trọng số theo đúng track của nó — xem getTeamBreakdown).
+    const loadWholeEvent = async ({ judge }) => {
+      const subsItems = await submitResultsApi.list({ eventId, pageSize: 100 });
+      if (cancelled) return;
+
+      const uniqueTeamIds = [...new Set(subsItems.map(s => s.teamId).filter(Boolean))];
+      const breakdowns = await Promise.all(
+        uniqueTeamIds.map(tid => scoresApi.getTeamBreakdown(tid).catch(() => null)),
+      );
+      if (cancelled) return;
+
+      const breakdownBySubmission = {};
+      for (const b of breakdowns) {
+        for (const sub of (b?.submissions ?? [])) {
+          if (sub.submitResultId) breakdownBySubmission[sub.submitResultId] = sub;
+        }
+      }
+
+      const mapped = subsItems.map((s, i) => {
+        const rawUrl = s.submissionUrl ?? s.repoUrl ?? '';
+        const submittedAt = s.createdTime
+          ? new Date(s.createdTime.replace('+00:00', 'Z')).toLocaleString('vi-VN', {
+              day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+            })
+          : '—';
+        const breakdown = breakdownBySubmission[s.id] ?? null;
+
+        return {
+          id: s.id,
+          teamId: s.teamId,
+          index: i,
+          name: s.teamName ?? '—',
+          links: parseSubmissionLinks(rawUrl),
+          submittedAt,
+          status: s.isActive === false ? 'Không hoạt động' : 'Đã nhận',
+          trackName: breakdown?.trackName ?? null, // hiện thêm vì giờ gộp nhiều track
+          scores: [],
+          comment: '',
+          breakdown,
+          scored: (breakdown?.judgeScores?.length ?? 0) > 0,
+        };
+      });
+
+      setRoundInfo(null); // không có 1 vòng thi cụ thể khi xem gộp nhiều track
+      setIsJudge(judge); // luôn false ở nhánh này
+      setEventRoleId(null);
+      setCriteria([]);
+      setSubmissions(mapped);
+      setLock({ locked: false, message: null });
     };
 
     load();
@@ -320,7 +392,7 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
 
           {submissions.length === 0 ? (
             <div className="text-center py-20">
-              <p className="text-sm" style={{ color: '#757575' }}>Chưa có đội nào nộp bài trong track này.</p>
+              <p className="text-sm" style={{ color: '#757575' }}>Chưa có đội nào nộp bài.</p>
             </div>
           ) : (
             <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 1fr' }}>
@@ -338,7 +410,7 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
                     style={{ background: bgTint, border: `1.5px solid ${borderColor}`, borderRadius: 2, animationDelay: `${s.index * 0.06}s` }}
                   >
                     <div className="flex justify-between items-start mb-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         {/* Ẩn danh phía chấm: giám khảo/người xem thấy mã bài, không thấy tên đội. */}
                         <span className="text-sm font-bold" style={{ color: '#000' }}>Bài nộp #{s.index + 1}</span>
                         <span
@@ -347,6 +419,16 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
                         >
                           {s.scored ? '● Đã chấm' : '● Chưa chấm'}
                         </span>
+                        {/* Chỉ xuất hiện khi xem gộp toàn sự kiện (nhiều track) — giúp phân biệt
+                            bài nộp thuộc hạng mục nào. */}
+                        {s.trackName && (
+                          <span
+                            className="text-[10px] font-bold px-1.5 py-0.5"
+                            style={{ background: '#f0f0f0', color: '#757575', borderRadius: 2 }}
+                          >
+                            {s.trackName}
+                          </span>
+                        )}
                       </div>
                       {isJudge && (
                         <div className="text-right">
@@ -410,7 +492,7 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
                         <button className="btn-hover flex items-center gap-2 px-4 py-2 text-xs font-bold"
                           onClick={() => setViewT(s)}
                           style={{ background: '#f7f7f7', border: '1px solid #cccccc', color: '#000', borderRadius: 2, cursor: 'pointer' }}>
-                          🔍 Xem chi tiết chấm điểm
+                          🔍 Xem chi tiết
                         </button>
                       )}
                     </div>
