@@ -9,6 +9,17 @@ interface Props { eventId: string; }
 const roundLabel = (r: { id: string; roundName: string | null }) =>
   r.roundName?.trim() || `Vòng ${r.id.slice(0, 4)}`;
 
+// Cùng bảng màu/nhãn hạng với LeaderboardTab.tsx (trang Admin) — 2 nơi hiển thị
+// bảng xếp hạng của cùng 1 hệ thống nên dùng chung quy ước để nhất quán.
+const rankStyle = (rank: number) => {
+  if (rank === 1) return 'bg-primary text-on-primary';
+  if (rank === 2) return 'bg-stone text-on-dark';
+  if (rank === 3) return 'bg-ash text-on-dark';
+  return 'bg-surface-soft text-ink border border-hairline';
+};
+const rankIcon = (rank: number) =>
+  rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : String(rank);
+
 export function RoundLeaderboard({ eventId }: Props) {
   const { data: rounds = [] } = useEventRounds(eventId);
   const { data: teams = [] } = useTeams();
@@ -25,38 +36,76 @@ export function RoundLeaderboard({ eventId }: Props) {
   const teamName = (row: { teamId: string; teamName?: string }) =>
     row.teamName ?? teams.find((t) => t.id === row.teamId)?.name ?? row.teamId;
 
-  return (
-    <div className="space-y-4">
-      <select
-        value={roundId}
-        onChange={(e) => setPicked(e.target.value)}
-        className="input font-bold"
-        style={{ width: '100%', maxWidth: '20rem' }}
-        aria-label="Chọn vòng để xem bảng xếp hạng"
-      >
-        {rounds.length === 0 && <option value="">— Chưa có vòng —</option>}
-        {(rounds as Array<{ id: string; roundName: string | null }>).map((r) => (
-          <option key={r.id} value={r.id}>{roundLabel(r)}</option>
-        ))}
-      </select>
+  const sorted = [...rows].sort(
+    (a, b) => (a.rank || 9999) - (b.rank || 9999) || b.finalScore - a.finalScore,
+  );
 
-      {!roundId ? <p className="t-body-sm text-mute">Chưa có vòng nào để xem bảng xếp hạng.</p>
-      : isLoading ? <p className="t-body-sm text-mute">Đang tải…</p>
-      : rows.length === 0 ? <p className="t-body-sm text-mute">Chưa có dữ liệu.</p>
-      : (
-        <table className="w-full text-sm">
-          <thead className="text-left"><tr><th>#</th><th>Đội</th><th>Điểm</th><th></th></tr></thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} className="border-t border-hairline">
-                <td>{r.rank}</td>
-                <td>{teamName(r)}</td>
-                <td>{r.finalScore.toFixed(2)}</td>
-                <td>{r.isAdvanced ? <span className="text-success">Đi tiếp</span> : null}</td>
+  return (
+    <div className="border border-hairline rounded-sm bg-canvas p-4 md:p-6 space-y-4">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <h2 className="t-heading-md m-0">Bảng xếp hạng</h2>
+        <select
+          value={roundId}
+          onChange={(e) => setPicked(e.target.value)}
+          className="border border-hairline rounded-sm px-3 py-2 t-body-sm text-ink bg-canvas font-bold min-w-56"
+          aria-label="Chọn vòng để xem bảng xếp hạng"
+        >
+          {rounds.length === 0 && <option value="">— Chưa có vòng —</option>}
+          {(rounds as Array<{ id: string; roundName: string | null }>).map((r) => (
+            <option key={r.id} value={r.id}>{roundLabel(r)}</option>
+          ))}
+        </select>
+      </div>
+
+      {!roundId ? (
+        <p className="t-body-sm text-mute text-center py-8">Chưa có vòng nào để xem bảng xếp hạng.</p>
+      ) : isLoading ? (
+        <p className="t-body-sm text-mute text-center py-8">Đang tải…</p>
+      ) : sorted.length === 0 ? (
+        <p className="t-body-sm text-mute text-center py-8">Chưa có dữ liệu xếp hạng.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="border-b border-hairline-strong text-left">
+                <th className="t-caption-md text-mute font-bold uppercase py-3 px-2 text-center w-16">Hạng</th>
+                <th className="t-caption-md text-mute font-bold uppercase py-3 px-2">Đội</th>
+                <th className="t-caption-md text-mute font-bold uppercase py-3 px-2 text-center">Điểm</th>
+                <th className="t-caption-md text-mute font-bold uppercase py-3 px-2 text-center">Trạng thái</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {sorted.map((r, idx) => {
+                const rank = r.rank || idx + 1;
+                return (
+                  <tr key={r.id} className="border-b border-hairline last:border-b-0">
+                    <td className="py-3 px-2 text-center">
+                      <span
+                        className={`inline-flex items-center justify-center w-8 h-8 rounded-full t-body-strong font-bold ${rankStyle(rank)}`}
+                      >
+                        {rankIcon(rank)}
+                      </span>
+                    </td>
+                    <td className="t-body-sm font-bold text-ink py-3 px-2">{teamName(r)}</td>
+                    <td className="py-3 px-2 text-center">
+                      <span className="t-heading-sm text-primary font-bold">{r.finalScore.toFixed(2)}</span>
+                      <span className="t-caption-sm text-mute"> /10</span>
+                    </td>
+                    <td className="py-3 px-2 text-center">
+                      <span
+                        className={`inline-block px-3 py-1 rounded-sm t-caption-sm font-bold uppercase ${
+                          r.isAdvanced ? 'bg-primary/10 text-primary' : 'bg-surface-soft text-mute border border-hairline'
+                        }`}
+                      >
+                        {r.isAdvanced ? 'Đi tiếp' : 'Dừng lại'}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

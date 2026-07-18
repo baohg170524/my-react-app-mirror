@@ -24,3 +24,12 @@ export const StatusBadge = ({ status }) => {
   const s = STATUS_MAP[status] || STATUS_MAP['Chờ xử lý'];
   return <span className={s.cls}>{status}</span>;
 };
+
+export const calcScoreNormalized = (scores, criteria) => {
+  if (!scores || !criteria || scores.length === 0) return 0;
+  const total = criteria.reduce((sum, c, i) => {
+    const max = c.maxScore || 10;
+    return sum + ((scores[i] || 0) / max) * (c.weight / 10);
+  }, 0);
+  return Math.round(total * 100) / 100;
+};

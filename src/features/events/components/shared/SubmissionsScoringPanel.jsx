@@ -12,7 +12,7 @@ import { getCriteria } from '@/services/criteriaService';
 import { submitResultsApi } from '@/features/events/api/submitResults';
 import { parseSubmissionLinks } from '@/features/submissions/utils/submissionLinks';
 import { getErrorMessage } from '@/lib/apiError';
-import { calcScore } from '@/utils.jsx';
+import { calcScoreNormalized } from '@/utils.jsx';
 
 /**
  * Panel gộp "Bài nộp" + "Chấm điểm" — thay thế ScoringPanel.jsx + SubmissionsPanel.jsx.
@@ -48,11 +48,18 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
   const [eventRoleId, setEventRoleId] = useState(null);
   const [roundInfo, setRoundInfo] = useState(null); // { roundName, startDate, endDate }
   const [lock, setLock] = useState({ locked: false, message: null });
+  // Tách riêng khỏi `lock` — lock.locked còn bật vì lý do "chưa tới hạn chấm", không chỉ
+  // vì đã công bố. Chỉ dùng cờ này để quyết định ẩn nút "Chấm/Sửa" → "Xem chi tiết".
+  const [resultsPublished, setResultsPublished] = useState(false);
   const [editT, setEditT] = useState(null);       // bài nộp đang chấm (Judge)
   const [viewT, setViewT] = useState(null);        // bài nộp đang xem breakdown (viewer)
   const [notif, setNotif] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Tăng số này để buộc useEffect load lại toàn bộ — dùng khi phát hiện trạng thái đã
+  // đổi ở phía backend (vd vòng vừa bị công bố ở tab/phiên khác) mà state hiện tại
+  // (lock/resultsPublished) đang cũ, khiến form vẫn hiện editable dù backend đã khóa.
+  const [reloadKey, setReloadKey] = useState(0);
 
   const sn = useCallback((m, t = 's') => {
     setNotif({ m, t });
@@ -138,25 +145,37 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
       // 5a) JUDGE — nạp trước điểm + nhận xét đã chấm của CHÍNH họ, theo submitResultId.
       let prefillScores = {};
       let prefillComment = {};
+      // `totalScore` lấy THẲNG từ backend (Score.totalScore), KHÔNG dùng calcScore() để tự
+      // tính lại ở FE — calcScore() giả định mọi tiêu chí có maxScore=10 (Σscore×weight/100),
+      // sai khi có tiêu chí bị data lệch max (vd max=1, 1.5 — xem "max bất thường" ở
+      // EditModal.jsx), khiến điểm hiển thị lệch với totalScore thật backend đã tính đúng
+      // theo value/maxScore của từng tiêu chí. Dùng số backend trả để luôn khớp breakdown.
+      let prefillTotalScore = {};
       if (judge) {
         const scored = existingScores.filter(s => s.submitResultId);
         const detailList = await Promise.all(
           scored.map(s =>
             scoresApi.getWithDetails(s.id)
-              .then(d => ({ submitResultId: s.submitResultId, details: d.details ?? [], comment: d.comment ?? '' }))
-              .catch(() => ({ submitResultId: s.submitResultId, details: [], comment: '' })),
+              .then(d => ({ submitResultId: s.submitResultId, details: d.details ?? [], comment: d.comment ?? '', totalScore: d.totalScore }))
+              .catch(() => ({ submitResultId: s.submitResultId, details: [], comment: '', totalScore: null })),
           ),
         );
         if (cancelled) return;
-        for (const { submitResultId, details, comment } of detailList) {
+        for (const { submitResultId, details, comment, totalScore } of detailList) {
           const byCriteria = Object.fromEntries(details.map(d => [d.criteriaId, d.value]));
           prefillScores[submitResultId] = crit.map(c => byCriteria[c.id] ?? 0);
           prefillComment[submitResultId] = comment;
+          prefillTotalScore[submitResultId] = typeof totalScore === 'number' ? totalScore : null;
         }
       }
 
-      // 5b) VIEWER (không phải Judge) — nạp breakdown điểm của MỌI giám khảo, theo teamId
-      //     (1 lần/đội, tránh gọi trùng nếu 1 đội có nhiều bài nộp trong cùng track).
+      // 5b) Nạp breakdown điểm của MỌI giám khảo, theo teamId (1 lần/đội, tránh gọi
+      //     trùng nếu 1 đội có nhiều bài nộp trong cùng track). CHỈ dùng cho VIEWER
+      //     (không phải Judge) — Backend CỐ TÌNH chặn Judge gọi API này (403 "Bạn chỉ
+      //     có thể xem điểm của đội mình.") để giám khảo không thấy điểm đồng nghiệp
+      //     rồi bị ảnh hưởng khi chấm. Từng thử mở rộng cho Judge khi đã công bố
+      //     (published) — SAI, đã revert. Judge luôn dùng `prefillScores`/`prefillComment`
+      //     (điểm của chính họ, đã có sẵn ở bước 5a) để xem lại, kể cả sau khi công bố.
       let breakdownBySubmission = {};
       if (!judge) {
         const uniqueTeamIds = [...new Set(subsItems.map(s => s.teamId).filter(Boolean))];
@@ -195,6 +214,7 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
           // Judge:
           scores: prefillScores[s.id] ?? crit.map(() => 0),
           comment: prefillComment[s.id] ?? '',
+          totalScore: prefillTotalScore[s.id] ?? null,
           // Viewer:
           breakdown,
           // Chung — quyết định khung màu cam/xanh.
@@ -223,6 +243,7 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
       setCriteria(crit);
       setSubmissions(mapped);
       setLock(lockState);
+      setResultsPublished(!!published);
     };
 
     // ── Nhánh B: KHÔNG có track cụ thể (Admin/EC/TeamLead/Member không gắn track riêng)
@@ -278,11 +299,12 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
       setCriteria([]);
       setSubmissions(mapped);
       setLock({ locked: false, message: null });
+      setResultsPublished(false); // không có 1 round cụ thể để biết trạng thái công bố
     };
 
     load();
     return () => { cancelled = true; };
-  }, [currentUser?.id, eventId, trackId]);
+  }, [currentUser?.id, eventId, trackId, reloadKey]);
 
   const saveEdit = async (submitResultId, { details, comment }) => {
     if (lock.locked) {
@@ -291,7 +313,10 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
     }
     const byCriteria = Object.fromEntries(criteria.map(c => [c.id, c]));
     try {
-      await scoresApi.save({
+      // `save` trả về Score đã tính lại — dùng thẳng `totalScore` của nó thay vì tự tính
+      // lại bằng calcScore() (xem ghi chú ở bước 5a), để card hiện đúng ngay không cần đợi
+      // reload.
+      const saved = await scoresApi.save({
         eventRoleId,
         submitResultId,
         comment,
@@ -303,11 +328,23 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
       });
       const detailByCriteria = Object.fromEntries(details.map(d => [d.criteriaId, d]));
       const scores = criteria.map(c => detailByCriteria[c.id]?.value ?? 0);
-      setSubmissions(p => p.map(s => s.id === submitResultId ? { ...s, scores, comment, scored: true } : s));
+      const totalScore = typeof saved?.totalScore === 'number' ? saved.totalScore : null;
+      setSubmissions(p => p.map(s => s.id === submitResultId ? { ...s, scores, comment, totalScore, scored: true } : s));
       setEditT(null);
       sn('Đã lưu điểm thành công!');
     } catch (e) {
       const msg = e?.response ? getErrorMessage(e, 'Lưu điểm thất bại, vui lòng thử lại') : (e?.message ?? 'Lưu điểm thất bại, vui lòng thử lại');
+      // 403 = vòng thi đã công bố kết quả (Backend chặn chấm/sửa) — có thể xảy ra dù FE
+      // đang hiện form editable, nếu vòng vừa bị công bố ở tab/phiên khác trong lúc trang
+      // này đã mở sẵn (state `lock`/`resultsPublished` bị cũ). Thay vì để form đứng yên
+      // khiến người dùng bấm lại vô ích, đóng modal + tải lại toàn bộ dữ liệu ngay để UI
+      // phản ánh đúng thực tế (chuyển hẳn sang "Xem chi tiết").
+      if (e?.response?.status === 403) {
+        setEditT(null);
+        setReloadKey(k => k + 1);
+        sn('Vòng thi này vừa được công bố kết quả nên không thể chấm/sửa nữa — đã tải lại dữ liệu mới nhất.', 'e');
+        return;
+      }
       sn(msg, 'e');
     }
   };
@@ -318,20 +355,38 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
       })
     : '—';
 
+  // 8 ký tự đầu của teamId, dùng thay cho nhãn ẩn danh "Bài nộp #i" cũ.
+  const teamLabel = (s) => `Đội: ${String(s.teamId || s.id || '').slice(0, 8).toUpperCase()}`;
+
+  // Điểm trung bình của mọi giám khảo đã chấm (từ breakdown) — dùng khi không phải
+  // Judge đang ở chế độ sửa (viewer, hoặc Judge sau khi đã công bố kết quả).
+  const avgBreakdownScore = (breakdown) => {
+    const scores = (breakdown?.judgeScores ?? [])
+      .map(js => js.totalScore)
+      .filter(v => typeof v === 'number');
+    if (scores.length === 0) return null;
+    return scores.reduce((a, b) => a + b, 0) / scores.length;
+  };
+
   return (
     <>
       <Notif n={notif} />
-      {editT && !lock.locked && (
+      {editT && (
         <EditModal
           team={editT}
           criteria={criteria}
           onClose={() => setEditT(null)}
           onSave={(payload) => saveEdit(editT.id, payload)}
+          // Sau khi vòng công bố, Judge vẫn mở được modal này để xem lại điểm CHÍNH HỌ
+          // đã chấm (dữ liệu đã có sẵn trong `editT.scores`/`editT.comment`) — nhưng ở
+          // chế độ chỉ xem, không sửa được nữa. KHÔNG dùng ScoreBreakdownModal ở đây vì
+          // modal đó cần dữ liệu breakdown (mọi giám khảo) mà Judge không được phép gọi.
+          readOnly={resultsPublished}
         />
       )}
       {viewT && (
         <ScoreBreakdownModal
-          teamLabel={`Bài nộp #${viewT.index + 1}`}
+          teamLabel={teamLabel(viewT)}
           submission={viewT.breakdown}
           onClose={() => setViewT(null)}
         />
@@ -401,7 +456,13 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
                 // viewer; chính họ với Judge).
                 const borderColor = s.scored ? '#76b900' : '#df6500';
                 const bgTint = s.scored ? 'rgba(118,185,0,.04)' : 'rgba(223,101,0,.04)';
-                const score = isJudge ? calcScore(s.scores, criteria) : null;
+                // Judge LUÔN dùng điểm của chính mình. Ưu tiên `totalScore` backend đã tính
+                // sẵn (đúng theo value/maxScore thật của từng tiêu chí) — chỉ fallback về
+                // calcScore() (giả định maxScore=10) khi chưa có totalScore (bài chưa chấm).
+                // Chỉ viewer (không phải Judge) mới dùng điểm trung bình từ breakdown.
+               const score = isJudge
+                  ? (s.totalScore ?? calcScoreNormalized(s.scores, criteria))
+                  : avgBreakdownScore(s.breakdown);
 
                 return (
                   <div
@@ -411,8 +472,9 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
                   >
                     <div className="flex justify-between items-start mb-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        {/* Ẩn danh phía chấm: giám khảo/người xem thấy mã bài, không thấy tên đội. */}
-                        <span className="text-sm font-bold" style={{ color: '#000' }}>Bài nộp #{s.index + 1}</span>
+                        {/* Trước đây ẩn danh theo "Bài nộp #i" — giờ hiện 8 ký tự đầu teamId
+                            theo yêu cầu, không còn ẩn danh hoàn toàn nữa. */}
+                        <span className="text-sm font-bold" style={{ color: '#000' }}>{teamLabel(s)}</span>
                         <span
                           className="text-[10px] font-bold px-1.5 py-0.5"
                           style={{ background: s.scored ? 'rgba(118,185,0,.15)' : 'rgba(223,101,0,.15)', color: s.scored ? '#5a8d00' : '#df6500', borderRadius: 2 }}
@@ -430,12 +492,15 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
                           </span>
                         )}
                       </div>
-                      {isJudge && (
-                        <div className="text-right">
-                          <div className="text-2xl font-black leading-none" style={{ color: '#76b900' }}>{score.toFixed(2)}</div>
-                          <div className="text-xs" style={{ color: '#757575' }}>/10</div>
+                      {/* Điểm tổng luôn hiện ra ngoài (không chỉ riêng Judge nữa) — Judge đang
+                          sửa thì là điểm của chính họ; còn lại (viewer, hoặc Judge sau khi đã
+                          công bố) là điểm trung bình mọi giám khảo từ breakdown. */}
+                      <div className="text-right">
+                        <div className="text-2xl font-black leading-none" style={{ color: '#76b900' }}>
+                          {score != null ? score.toFixed(2) : '—'}
                         </div>
-                      )}
+                        <div className="text-xs" style={{ color: '#757575' }}>/10</div>
+                      </div>
                     </div>
 
                     <div className="grid gap-2.5 my-3" style={{ gridTemplateColumns: '1fr 1fr' }}>
@@ -459,7 +524,7 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
                       </div>
                     ))}
 
-                    {isJudge && (
+                    {isJudge && !resultsPublished && (
                       <div className="mt-2.5 flex flex-col gap-1.5">
                         {criteria.slice(0, 3).map((c, ci) => (
                           <div key={ci} className="flex items-center gap-2">
@@ -480,13 +545,16 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
                       {isJudge ? (
                         <button className="btn-hover flex items-center gap-2 px-4 py-2 text-xs font-bold"
                           onClick={() => setEditT(s)}
-                          disabled={lock.locked}
+                          // Chỉ disable khi bị khóa vì lý do KHÁC "đã công bố" (vd chưa tới
+                          // hạn chấm) — nếu đã công bố, vẫn cho mở modal ở chế độ chỉ xem.
+                          disabled={lock.locked && !resultsPublished}
                           style={{
                             background: '#f7f7f7', border: '1px solid #cccccc',
-                            color: lock.locked ? '#aaaaaa' : '#000', borderRadius: 2,
-                            cursor: lock.locked ? 'not-allowed' : 'pointer', opacity: lock.locked ? 0.6 : 1,
+                            color: (lock.locked && !resultsPublished) ? '#aaaaaa' : '#000', borderRadius: 2,
+                            cursor: (lock.locked && !resultsPublished) ? 'not-allowed' : 'pointer',
+                            opacity: (lock.locked && !resultsPublished) ? 0.6 : 1,
                           }}>
-                          ⚡ Chấm / Sửa
+                          {resultsPublished ? '🔍 Xem chi tiết' : '⚡ Chấm / Sửa'}
                         </button>
                       ) : (
                         <button className="btn-hover flex items-center gap-2 px-4 py-2 text-xs font-bold"
