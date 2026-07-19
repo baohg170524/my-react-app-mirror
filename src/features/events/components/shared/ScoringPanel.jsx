@@ -138,8 +138,14 @@ export default function ScoringPanel({ eventId, trackId = null }) {
         }));
 
         // 7) Khóa/mở form theo thời gian & trạng thái công bố (đồng bộ với Backend).
+        // Ưu tiên dùng hạn chót của Hạng mục (Track.endDate — mốc kết thúc nộp bài, cũng
+        // là lúc mở chấm điểm). Chỉ fallback về Round.endDate nếu Track không có (round.endDate
+        // là mốc đóng TOÀN BỘ vòng thi, sau cả chấm điểm + công bố — dùng nó để mở form là sai,
+        // xem scoring-timeline-explanation.md).
         const now = new Date();
-        const endDate = round?.endDate ? new Date(round.endDate) : null;
+        const endDate = track?.endDate
+          ? new Date(track.endDate)
+          : (round?.endDate ? new Date(round.endDate) : null);
         const notEnded = endDate ? now < endDate : false;
         let lockState = { locked: false, message: null };
         if (published) {
@@ -148,7 +154,7 @@ export default function ScoringPanel({ eventId, trackId = null }) {
           const when = endDate.toLocaleString('vi-VN', {
             day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
           });
-          lockState = { locked: true, message: `Form chấm điểm sẽ được mở sau khi vòng thi kết thúc vào lúc ${when}.` };
+          lockState = { locked: true, message: `Form chấm điểm sẽ được mở sau khi kết thúc nộp bài vào lúc ${when}.` };
         }
 
         setEventRoleId(roleId);
