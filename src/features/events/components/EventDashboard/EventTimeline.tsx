@@ -72,7 +72,10 @@ function statusOf(now: number, start?: string | null, end?: string | null): Node
   if (!hasS && !hasE) return 'pending';
   if (hasE && now > e) return 'done';
   if (hasS && now < s) return 'upcoming';
-  // now is within [start, end], or after start with no end.
+  // Mốc đơn ngày (chỉ có start, không có end) đã qua → coi như đã xong (xanh đậm),
+  // thay vì kẹt ở "đang diễn ra" mãi. Mốc có khoảng thời gian thì vẫn "đang diễn ra".
+  if (hasS && !hasE) return 'done';
+  // now is within [start, end].
   return 'active';
 }
 
@@ -143,18 +146,34 @@ function buildTimeline(
   const roles = opts.roles ?? [];
   const distinct = (arr: (string | null)[]) => new Set(arr.filter(Boolean)).size;
 
-  // 1) Registration window. Admin: số đội đã đăng ký (tổng đội phân biệt).
+  // 1) Sự kiện bắt đầu (mốc đơn — event.startDate) — nằm trên mốc mở đăng ký.
   nodes.push({
-    id: 'registration',
+    id: 'event-start',
+    title: 'Bắt đầu sự kiện',
+    start: event.startDate,
+    end: null,
+  });
+
+  // 2) Mở đăng ký (chỉ ngày mở). Admin: số đội đã đăng ký (tổng đội phân biệt).
+  nodes.push({
+    id: 'registration-open',
     title: 'Mở đăng ký',
     start: event.registrationStartDate,
-    end: event.registrationEndDate,
+    end: null,
     sideStats: opts.admin
       ? [{ label: 'Đội đăng ký', value: distinct(roles.map((r) => r.teamId)) }]
       : undefined,
   });
 
-  // 2) Rounds, in order — mỗi vòng mang danh sách thẻ hạng mục của nó.
+  // 3) Đóng đăng ký (chỉ ngày đóng — tách từ khoảng đăng ký phía trên).
+  nodes.push({
+    id: 'registration-close',
+    title: 'Đóng đăng ký',
+    start: event.registrationEndDate,
+    end: null,
+  });
+
+  // 4) Rounds, in order — mỗi vòng mang danh sách thẻ hạng mục của nó.
   const ordered = [...rounds].sort((a, b) => a.roundNumber - b.roundNumber);
   for (const round of ordered) {
     const roundTracks = tracks.filter((t) => t.roundId === round.id);
@@ -194,7 +213,7 @@ function buildTimeline(
     });
   }
 
-  // 3) Sự kiện kết thúc (mốc đơn — event.endDate).
+  // 5) Sự kiện kết thúc (mốc đơn — event.endDate).
   nodes.push({
     id: 'event-end',
     title: 'Kết thúc sự kiện',

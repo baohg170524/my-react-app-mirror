@@ -28,6 +28,8 @@ function toUiEvent(e: EventModel): Event {
   return {
     id: e.id,
     title: e.eventName?.trim() || "(Chưa đặt tên)",
+    season: e.season ?? null,
+    year: e.year ?? null,
     startDate: e.startDate,
     endDate: e.endDate,
     registrationStartDate: e.registrationStartDate ?? null,

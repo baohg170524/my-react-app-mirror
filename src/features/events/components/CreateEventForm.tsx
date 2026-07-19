@@ -630,7 +630,7 @@ function EventPhotoUpload({
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
           style={{
-            border: "1px dashed var(--color-hairline)",
+            border: "1px dashed var(--color-ink)",
             borderRadius: "var(--radius-sm)",
             padding: "var(--space-lg)",
             aspectRatio: "2.35 / 1",
@@ -709,7 +709,7 @@ function SubmissionRequirementsField({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <span className="t-caption-xs" style={{ color: "var(--color-ink)" }}>
+      <span className="t-body-strong" style={{ color: "var(--color-ink)", letterSpacing: "0.05em" }}>
         Yêu cầu nộp bài
       </span>
 
@@ -774,7 +774,7 @@ function PhaseInput({
 }) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
-      <span className="t-body-sm text-ink shrink-0 sm:w-24">{label}</span>
+      <span className="t-body-strong text-ink shrink-0 sm:w-40 tracking-wider">{label}</span>
       <div className="flex-1 min-w-0">
         <DateRangeInput start={start} end={end} onStart={onStart} onEnd={onEnd} />
       </div>
@@ -847,44 +847,53 @@ function TrackFormCard({
 
   return (
     <>
-      <input
-        className="text-input"
-        style={{ fontWeight: 700 }}
-        value={track.trackName}
-        placeholder={`Tên hạng mục ${index + 1}`}
-        onChange={(e) => onChange({ trackName: e.target.value })}
-      />
+      <div className="flex items-center gap-3">
+        <span className="t-body-strong text-ink shrink-0 tracking-wider sm:w-40">Tên hạng mục</span>
+        <input
+          className="text-input flex-1 min-w-0"
+          style={{ fontWeight: 700 }}
+          value={track.trackName}
+          placeholder={`Tên hạng mục ${index + 1}`}
+          onChange={(e) => onChange({ trackName: e.target.value })}
+        />
+      </div>
 
-      <textarea
-        className="text-input"
-        rows={2}
-        value={track.description}
-        placeholder="Mô tả hạng mục"
-        style={{ height: "auto", resize: "vertical", fontFamily: "inherit" }}
-        onChange={(e) => onChange({ description: e.target.value })}
-      />
+      <div className="flex items-start gap-3">
+        <span className="t-body-strong text-ink shrink-0 tracking-wider sm:w-40 pt-2">Mô tả</span>
+        <textarea
+          className="text-input flex-1 min-w-0"
+          rows={2}
+          value={track.description}
+          placeholder="Mô tả hạng mục"
+          style={{ height: "auto", resize: "vertical", fontFamily: "inherit" }}
+          onChange={(e) => onChange({ description: e.target.value })}
+        />
+      </div>
 
-      <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
-        <select
-          className="text-input"
-          style={{ flex: 1, minWidth: 0 }}
-          value={track.templateId}
-          disabled={templatesLoading}
-          onChange={(e) => onChange({ templateId: e.target.value })}
-        >
-          <option value="">{templatesLoading ? "Đang tải template…" : "— Chọn template chấm điểm —"}</option>
-          {templates.map((t) => (
-            <option key={t.id} value={t.id}>{t.templateName}</option>
-          ))}
-        </select>
-        <button
-          type="button"
-          className="btn btn-outline btn-sm shrink-0"
-          style={{ height: "auto", alignSelf: "stretch", cursor: "pointer", whiteSpace: "nowrap" }}
-          onClick={() => (track.templateId ? setShowCriteria(true) : openCreateBlank())}
-        >
-          {track.templateId ? "Xem tiêu chí" : "Tạo bộ tiêu chí"}
-        </button>
+      <div className="flex items-center gap-3">
+        <span className="t-body-strong text-ink shrink-0 tracking-wider sm:w-40">Bộ tiêu chí</span>
+        <div className="flex-1 min-w-0" style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
+          <select
+            className="text-input"
+            style={{ flex: 1, minWidth: 0 }}
+            value={track.templateId}
+            disabled={templatesLoading}
+            onChange={(e) => onChange({ templateId: e.target.value })}
+          >
+            <option value="">{templatesLoading ? "Đang tải template…" : "— Chọn template chấm điểm —"}</option>
+            {templates.map((t) => (
+              <option key={t.id} value={t.id}>{t.templateName}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="btn btn-outline btn-sm shrink-0"
+            style={{ height: "auto", alignSelf: "stretch", cursor: "pointer", whiteSpace: "nowrap" }}
+            onClick={() => (track.templateId ? setShowCriteria(true) : openCreateBlank())}
+          >
+            {track.templateId ? "Xem tiêu chí" : "Tạo bộ tiêu chí"}
+          </button>
+        </div>
       </div>
       {showCriteria && track.templateId && (
         <TemplateCriteriaModal
@@ -1101,6 +1110,7 @@ function AccordionSection({
   onToggle,
   actions,
   accent,
+  inset,
   children,
 }: {
   title: string;
@@ -1111,11 +1121,13 @@ function AccordionSection({
   actions?: ReactNode;
   /** Màu viền trái để phân biệt khối. */
   accent?: string;
+  /** Thụt thêm phần thân để input thẳng hàng với input hạng mục (lồng sâu hơn). */
+  inset?: boolean;
   children: ReactNode;
 }) {
   return (
     <div
-      className="rounded-md border border-hairline bg-canvas overflow-hidden"
+      className="rounded-md border border-ink bg-canvas overflow-hidden"
       style={accent ? { borderLeftWidth: 4, borderLeftColor: accent } : undefined}
     >
       <div className="flex items-center gap-2 px-4 py-3">
@@ -1140,7 +1152,7 @@ function AccordionSection({
         {actions && <div style={{ flexShrink: 0 }}>{actions}</div>}
       </div>
       {open && (
-        <div className="px-4 pb-4 pt-1 border-t border-hairline flex flex-col gap-3">
+        <div className={`px-4 pb-4 pt-1 border-t border-hairline flex flex-col gap-3${inset ? " sm:pl-9 sm:pr-8.25" : ""}`}>
           {children}
         </div>
       )}
@@ -1612,6 +1624,7 @@ function EventFormBody({
           summary={form.eventName.trim() || "(Chưa đặt tên)"}
           warn={infoWarn}
           accent={SECTION_ACCENTS[0]}
+          inset
           open={openSections.has("info")}
           onToggle={() => toggleSection("info")}
         >
@@ -1638,16 +1651,18 @@ function EventFormBody({
           style={{ textAlign: "center", height: "auto", resize: "vertical", fontFamily: "inherit", width: "100%" }}
         />
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <span className="t-body-strong" style={{ color: "var(--color-ink)", letterSpacing: "0.05em" }}>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+          <span className="t-body-strong text-ink shrink-0 tracking-wider sm:w-40">
             Thời gian sự kiện
           </span>
-          <DateRangeInput
-            start={form.startDate}
-            end={form.endDate}
-            onStart={(v) => setField("startDate", v)}
-            onEnd={(v) => setField("endDate", v)}
-          />
+          <div className="flex-1 min-w-0">
+            <DateRangeInput
+              start={form.startDate}
+              end={form.endDate}
+              onStart={(v) => setField("startDate", v)}
+              onEnd={(v) => setField("endDate", v)}
+            />
+          </div>
         </div>
 
         {/* Mùa + Năm — suy tự động từ ngày bắt đầu; BE là nguồn chính, chỉ hiển thị. */}
@@ -1710,20 +1725,24 @@ function EventFormBody({
         {/* <Hint>Sự kiện tự chuyển sang “Đã kết thúc” (vẫn hiện cho mọi người) sau ngày kết thúc.</Hint> */}
         </AccordionSection>
 
-        {/* Khối 2: Mở đăng ký */}
+        {/* Khối 2: Đăng ký */}
         <AccordionSection
-          title="Mở đăng ký"
+          title="Đăng ký"
           summary={regSummary}
           warn={regWarn}
           accent={SECTION_ACCENTS[1]}
+          inset
           open={openSections.has("reg")}
           onToggle={() => toggleSection("reg")}
         >
-          <div style={{ maxWidth: 520 }}>
-            <DateRangeInput
-              start={form.registrationStartDate} end={form.registrationEndDate}
-              onStart={(v) => setField("registrationStartDate", v)} onEnd={(v) => setField("registrationEndDate", v)}
-            />
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+            <span className="t-body-strong text-ink shrink-0 tracking-wider sm:w-40">Thời gian đăng ký</span>
+            <div className="flex-1 min-w-0">
+              <DateRangeInput
+                start={form.registrationStartDate} end={form.registrationEndDate}
+                onStart={(v) => setField("registrationStartDate", v)} onEnd={(v) => setField("registrationEndDate", v)}
+              />
+            </div>
           </div>
         </AccordionSection>
 
@@ -1743,24 +1762,33 @@ function EventFormBody({
                 <button type="button" className="btn btn-outline btn-sm" style={{ cursor: "pointer" }} onClick={() => removeRound(ri)}>Xóa vòng</button>
               ) : undefined}
             >
-              <div style={{ maxWidth: 520 }}>
-                <DateRangeInput
-                  start={round.startDate} end={round.endDate}
-                  onStart={(v) => updateRound(ri, "startDate", v)} onEnd={(v) => updateRound(ri, "endDate", v)}
-                />
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 sm:pl-5 sm:pr-4.25">
+                <span className="t-body-strong text-ink shrink-0 tracking-wider sm:w-40">Thời gian vòng {ri + 1}</span>
+                <div className="flex-1 min-w-0">
+                  <DateRangeInput
+                    start={round.startDate} end={round.endDate}
+                    onStart={(v) => updateRound(ri, "startDate", v)} onEnd={(v) => updateRound(ri, "endDate", v)}
+                  />
+                </div>
               </div>
-              <input className="text-input" style={{ width: 320, maxWidth: "100%" }} value={round.roundName}
-                placeholder={`Tên vòng ${ri + 1}`} onChange={(e) => updateRound(ri, "roundName", e.target.value)} />
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="t-caption-xs text-ink shrink-0">Lên vòng:</span>
-                <select className="text-input shrink-0" style={{ width: 160 }} value={type}
-                  onChange={(e) => { const nt = e.target.value; const dv = nt === "minScore" ? "7.5" : nt === "percent" ? "50" : "10"; updateRound(ri, "advancementRule", `${nt}:${dv}`); }}>
-                  <option value="top">Top số đội</option>
-                  <option value="percent">Phần trăm</option>
-                  <option value="minScore">Điểm tối thiểu</option>
-                </select>
-                <input className="text-input shrink-0" style={{ width: 90 }} type="number" value={value}
-                  onChange={(e) => updateRound(ri, "advancementRule", `${type}:${e.target.value}`)} />
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 sm:pl-5 sm:pr-4.25">
+                <span className="t-body-strong text-ink shrink-0 tracking-wider sm:w-40">Tên vòng</span>
+                <div className="flex-1 min-w-0 flex items-center gap-2">
+                  <input className="text-input min-w-0" style={{ flex: "0.93 1 0%" }} value={round.roundName}
+                    placeholder={`Tên vòng ${ri + 1}`} onChange={(e) => updateRound(ri, "roundName", e.target.value)} />
+                  <span className="t-body-sm" style={{ flexShrink: 0, visibility: "hidden" }} aria-hidden>→</span>
+                  <div className="flex-1 min-w-0 flex items-center gap-2">
+                    <span className="t-body-strong text-ink shrink-0 tracking-wider">Lên vòng</span>
+                    <select className="text-input flex-1 min-w-0" value={type}
+                      onChange={(e) => { const nt = e.target.value; const dv = nt === "minScore" ? "7.5" : nt === "percent" ? "50" : "10"; updateRound(ri, "advancementRule", `${nt}:${dv}`); }}>
+                      <option value="top">Top số đội</option>
+                      <option value="percent">Phần trăm</option>
+                      <option value="minScore">Điểm tối thiểu</option>
+                    </select>
+                    <input className="text-input shrink-0" style={{ width: 90 }} type="number" value={value}
+                      onChange={(e) => updateRound(ri, "advancementRule", `${type}:${e.target.value}`)} />
+                  </div>
+                </div>
               </div>
               <div className="flex flex-col gap-2">
                 {round.tracks.map((track, ti) => (
