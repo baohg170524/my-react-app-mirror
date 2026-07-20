@@ -159,7 +159,7 @@ export const manageApi = {
   listRoundFinalResults: async (roundId: string): Promise<FinalResult[]> => {
     const { data } = await apiClient.get<PagedResult<FinalResult>>(
       `/FinalResults/round/${encodeURIComponent(roundId)}`,
-      { params: { RoundId: roundId, PageNumber: 1, PageSize: 200 } },
+      { params: { PageNumber: 1, PageSize: 200 } },
     );
     return data.data ?? [];
   },
