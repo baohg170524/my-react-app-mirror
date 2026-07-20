@@ -13,17 +13,30 @@ const apiClient = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-function isAuthRoute(url?: string): boolean {
+/** Only endpoints that genuinely do not require an authenticated session. */
+function isPublicAuthRoute(url?: string): boolean {
   if (!url) return false;
-  return /\/auth\//i.test(url);
+
+  const pathname = url.split("?")[0].toLowerCase();
+  return [
+    "/auth/login",
+    "/auth/google-login",
+    "/auth/register",
+    "/auth/refresh-token",
+    "/auth/verify-email",
+    "/auth/resend-verification",
+    "/auth/forgot-password",
+    "/auth/reset-password",
+  ].some((route) => pathname.endsWith(route));
 }
 
 // ─── Request: attach access token ─────────────────────────────────────────────
-// KHÔNG đính token cho các route /Auth/* (login, refresh-token…): access token đã
-// hết hạn ở header có thể khiến backend từ chối chính lời gọi refresh → logout oan.
+// Refresh itself is public so it must not carry the expired access token. Other
+// authenticated /Auth routes (logout, change-password, profiles...) still need
+// Bearer and must participate in the refresh flow.
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    if (typeof window !== "undefined" && !isAuthRoute(config.url)) {
+    if (typeof window !== "undefined" && !isPublicAuthRoute(config.url)) {
       const token = localStorage.getItem("accessToken");
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
@@ -44,17 +57,12 @@ let refreshPromise: Promise<string> | null = null;
 async function refreshAccessToken(): Promise<string> {
   const refreshToken = localStorage.getItem("refreshToken");
   if (!refreshToken) throw new Error("No refresh token");
-  // Route /Auth/refresh-token là auth route → 401 tại đây KHÔNG kích hoạt vòng lặp refresh.
+  // Route /Auth/refresh-token is public, so its 401 never triggers a refresh loop.
   console.warn("[auth] refresh: gọi /Auth/refresh-token…");
   const { data } = await apiClient.post<{ accessToken: string; refreshToken: string }>(
     "/Auth/refresh-token",
     { refreshToken },
   );
-  console.warn("[auth] refresh: nhận về", {
-    hasAccess: !!data?.accessToken,
-    hasRefresh: !!data?.refreshToken,
-    raw: data,
-  });
   if (!data?.accessToken) throw new Error("Refresh response thiếu accessToken");
   localStorage.setItem("accessToken", data.accessToken);
   if (data.refreshToken) localStorage.setItem("refreshToken", data.refreshToken);
@@ -85,6 +93,8 @@ apiClient.interceptors.response.use(
         const err: ApiError = {
           message: env.message ?? "Request failed",
           statusCode: env.statusCode ?? response.status,
+          // Preserve field-level validation details for the UI.
+          details: env.data,
         };
         return Promise.reject({
           response: { status: env.statusCode ?? response.status, data: err },
@@ -103,8 +113,9 @@ apiClient.interceptors.response.use(
       (error.response as AxiosResponse).data = {
         message: env.message,
         statusCode: env.statusCode,
-        data: env.data, // <-- Bổ sung dòng này để giữ lại danh sách lỗi
-      };
+        // Validation errors are returned inside BaseResponse.data.
+        details: env.data,
+      } satisfies ApiError;
     }
 
     const original = error.config as
@@ -114,7 +125,7 @@ apiClient.interceptors.response.use(
     if (
       error.response?.status === 401 &&
       typeof window !== "undefined" &&
-      !isAuthRoute(error.config?.url)
+      !isPublicAuthRoute(error.config?.url)
     ) {
       console.warn("[auth] 401 tại", error.config?.url, {
         hasRefreshToken: !!localStorage.getItem("refreshToken"),

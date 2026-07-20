@@ -9,7 +9,6 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { AxiosError } from "axios";
 import { eventsApi, type CreateEventPayload } from "../api/events";
 import { templatesApi, type TemplateSummary } from "../api/templates";
 import { TemplateCriteriaModal } from "./TemplateCriteriaModal";
@@ -204,11 +203,32 @@ const emptyEvent = (): EventForm => ({
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** datetime-local value → ISO string (empty stays empty). */
-function toIso(local: string): string {
-  if (!local) return "";
-  const d = new Date(local);
-  return Number.isNaN(d.getTime()) ? local : d.toISOString();
+/** Date input → ISO 8601 string. Supports both ISO and the picker display format `dd/MM/yyyy HH:mm`. */
+function toIso(value: string): string {
+  if (!value) return "";
+
+  const nativeDate = new Date(value);
+  if (!Number.isNaN(nativeDate.getTime())) return nativeDate.toISOString();
+
+  const match = value.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})$/);
+  if (!match) return "";
+
+  const [, dayText, monthText, yearText, hourText, minuteText] = match;
+  const day = Number(dayText);
+  const month = Number(monthText);
+  const year = Number(yearText);
+  const hour = Number(hourText);
+  const minute = Number(minuteText);
+  const localDate = new Date(year, month - 1, day, hour, minute);
+
+  // Reject rollover values such as 31/02/2026 instead of silently changing them.
+  const isExactDate =
+    localDate.getFullYear() === year &&
+    localDate.getMonth() === month - 1 &&
+    localDate.getDate() === day &&
+    localDate.getHours() === hour &&
+    localDate.getMinutes() === minute;
+  return isExactDate ? localDate.toISOString() : "";
 }
 
 /** ISO string → `YYYY-MM-DDTHH:mm` for a datetime-local input (local time). */
@@ -220,30 +240,11 @@ function isoToLocalInput(iso: string): string {
   return local.toISOString().slice(0, 16);
 }
 
-/** Backend 400 body: { message?, data?: [{ key, value: string[] }] }. */
-interface BackendFieldError {
-  key?: string;
-  value?: string[];
-}
-
 const GENERIC_ERROR = "Tạo sự kiện thất bại. Vui lòng thử lại.";
 
 /** Turn an Axios error into a user-facing message, surfacing field-level details. */
-function extractApiError(err: unknown): string | string[] {
-  const body = (err as AxiosError<{ message?: string; data?: BackendFieldError[] }>)
-    ?.response?.data;
-  if (!body) return GENERIC_ERROR;
-  if (Array.isArray(body.data)) {
-    const messages = body.data.flatMap((item) =>
-      Array.isArray(item.value) ? item.value : [],
-    );
-    if (messages.length) return messages;
-  }
-  // Hide raw server exception strings ("Exception of type ... was thrown").
-  if (body.message && !/Exception|was thrown/i.test(body.message)) {
-    return body.message;
-  }
-  return GENERIC_ERROR;
+function extractApiError(err: unknown): string {
+  return getErrorMessage(err, GENERIC_ERROR);
 }
 
 // ─── Small field primitives ───────────────────────────────────────────────────
@@ -1084,19 +1085,7 @@ function EditEventLoader({
 
 // ─── Accordion section (vỏ chứa từng khối của form) ────────────────────────────
 
-/** dd/mm HH:mm ngắn gọn cho tóm tắt header (chuỗi datetime-local). */
-function fmtShort(local: string): string {
-  if (!local) return "";
-  const d = new Date(local);
-  if (Number.isNaN(d.getTime())) return "";
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mi = String(d.getMinutes()).padStart(2, "0");
-  return `${dd}/${mm} ${hh}:${mi}`;
-}
-
-/** Một khối accordion: header (chevron + tiêu đề + tóm tắt + chấm cảnh báo + hành động)
+/** Một khối accordion: header (chevron + tiêu đề + chấm cảnh báo + hành động)
  *  và phần thân mở/đóng được. */
 /** Bảng màu viền trái phân biệt các khối. Thông tin/Đăng ký cố định 2 màu đầu;
  *  mỗi Vòng lấy màu xoay vòng từ phần còn lại. */
@@ -1178,6 +1167,8 @@ function EventFormBody({
   const isEdit = !!eventId;
   const router = useRouter();
   const [form, setForm] = useState<EventForm>(() => initialForm);
+  // Keep an immutable snapshot for date locks even after the form state changes.
+  const initialFormSnapshot = useRef(initialForm);
   const [formError, setFormError] = useState<string | null>(null);
   // Trạng thái mở/đóng các khối accordion (mở nhiều tùy ý). Mặc định mở "Thông tin".
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(["info"]));
@@ -1326,7 +1317,27 @@ function EventFormBody({
   const activeMutation = isEdit ? editMutation : createMutation;
 
   type EventStringKey = "eventName" | "season" | "year" | "startDate" | "endDate" | "registrationStartDate" | "registrationEndDate" | "description";
-  const setField = (key: EventStringKey, value: string) =>
+  const lockedDateLabels: Partial<Record<EventStringKey, string>> = {
+    startDate: "Thời gian bắt đầu sự kiện",
+    endDate: "Thời gian kết thúc sự kiện",
+    registrationStartDate: "Thời gian mở đăng ký",
+    registrationEndDate: "Thời gian kết thúc đăng ký",
+  };
+  const setField = (key: EventStringKey, value: string) => {
+    const label = lockedDateLabels[key];
+    const original = initialFormSnapshot.current[key];
+    const originalTime = label && original ? new Date(toIso(original)).getTime() : Number.NaN;
+    if (
+      isEdit &&
+      label &&
+      !Number.isNaN(originalTime) &&
+      originalTime < Date.now() &&
+      toIso(original) !== toIso(value)
+    ) {
+      setFormError(`${label} đã qua nên không thể chỉnh sửa.`);
+      return;
+    }
+
     setForm((f) => {
       const updated = { ...f, [key]: value };
       // When event start date is updated, auto-fill (chỉ khi đang trống) Round 1 start,
@@ -1365,6 +1376,7 @@ function EventFormBody({
       }
       return updated;
     });
+  };
 
   const setStatus = (status: boolean) => setForm((f) => ({ ...f, status }));
 
@@ -1460,13 +1472,23 @@ function EventFormBody({
       description: form.description.trim(),
       status: form.status,
       photoEventUrl: form.photoEventUrl || null,
-      rounds: form.rounds.map((r, ri) => ({
+      // Rounds and tracks are optional while an event is being created. Only
+      // include entries that are complete enough for the backend contract;
+      // untouched draft rows must not make the event creation fail.
+      rounds: form.rounds
+        .filter((r) =>
+          r.roundName.trim() &&
+          r.startDate &&
+          r.endDate &&
+          r.advancementRule.trim(),
+        )
+        .map((r, ri) => ({
         roundName: r.roundName.trim(),
         roundNumber: ri + 1,
         startDate: toIso(r.startDate),
         endDate: toIso(r.endDate),
         advancementRule: r.advancementRule.trim(),
-        tracks: r.tracks.map((t) => ({
+        tracks: r.tracks.filter((t) => t.trackName.trim()).map((t) => ({
           trackName: t.trackName.trim(),
           description: t.description.trim(),
           templateId: t.templateId.trim() || null,
@@ -1481,104 +1503,152 @@ function EventFormBody({
   }
 
   function validate(): string | null {
-    // Sự kiện đã kết thúc (theo mốc kết thúc gốc đã lưu) → khóa mọi chỉnh sửa.
-    if (isEdit) {
-      const originalEnd = new Date(initialForm.endDate).getTime();
-      if (!Number.isNaN(originalEnd) && originalEnd < Date.now()) {
-        return "Sự kiện đã kết thúc, không thể chỉnh sửa.";
-      }
-    }
     if (!form.eventName.trim()) return "Vui lòng nhập tên sự kiện.";
-    if ((Number(form.year) || 0) <= 2000) return "Năm tổ chức phải lớn hơn 2000.";
     if (!form.startDate) return "Vui lòng chọn ngày bắt đầu sự kiện.";
     if (!form.endDate) return "Vui lòng chọn ngày kết thúc sự kiện.";
 
-    const now = Date.now() - 60000; // Allow 1 minute buffer for user entry latency
-    const eventStart = new Date(form.startDate).getTime();
-    const eventEnd = new Date(form.endDate).getTime();
+    const eventStart = new Date(toIso(form.startDate)).getTime();
+    const eventEnd = new Date(toIso(form.endDate)).getTime();
 
-    // Prevent past dates when creating a new event
-    if (!isEdit && eventStart < now) {
-      return "Ngày bắt đầu sự kiện không được ở trong quá khứ.";
-    }
+    if (Number.isNaN(eventStart)) return "Ngày bắt đầu sự kiện không hợp lệ.";
+    if (Number.isNaN(eventEnd)) return "Ngày kết thúc sự kiện không hợp lệ.";
 
     if (eventEnd <= eventStart) {
       return "Ngày kết thúc sự kiện phải sau ngày bắt đầu.";
     }
 
-    // Thời gian đăng ký (tùy chọn) — nhất quán với auto-fill: đăng ký mở khi sự
-    // kiện bắt đầu và phải nằm gọn trong khung thời gian sự kiện.
-    if (form.registrationStartDate && form.registrationEndDate) {
-      const regStart = new Date(form.registrationStartDate).getTime();
-      const regEnd = new Date(form.registrationEndDate).getTime();
-      if (regEnd <= regStart) {
-        return "Ngày kết thúc đăng ký phải sau ngày bắt đầu đăng ký.";
-      }
-      if (regStart < eventStart || regEnd > eventEnd) {
-        return "Thời gian đăng ký phải nằm trong khoảng thời gian diễn ra sự kiện.";
-      }
-    } else if (form.registrationStartDate || form.registrationEndDate) {
-      return "Vui lòng nhập đầy đủ cả thời gian bắt đầu và kết thúc đăng ký.";
+    // Mốc đã diễn ra không được đổi khi chỉnh sửa; các mốc khác và nội dung
+    // không phải thời gian vẫn có thể cập nhật.
+    const changedPastDate = (label: string, original: string, next: string): string | null => {
+      if (!isEdit || !original) return null;
+      const originalTime = new Date(toIso(original)).getTime();
+      if (Number.isNaN(originalTime) || originalTime >= Date.now()) return null;
+      return toIso(original) === toIso(next)
+        ? null
+        : `${label} đã qua nên không thể chỉnh sửa.`;
+    };
+    for (const [label, original, next] of [
+      ["Thời gian bắt đầu sự kiện", initialForm.startDate, form.startDate],
+      ["Thời gian kết thúc sự kiện", initialForm.endDate, form.endDate],
+      ["Thời gian mở đăng ký", initialForm.registrationStartDate, form.registrationStartDate],
+      ["Thời gian kết thúc đăng ký", initialForm.registrationEndDate, form.registrationEndDate],
+    ] as const) {
+      const error = changedPastDate(label, original, next);
+      if (error) return error;
+    }
+
+    const isWithinEvent = (value: string) => {
+      const time = new Date(value).getTime();
+      return time >= eventStart && time <= eventEnd;
+    };
+
+    // Các mốc đăng ký là tùy chọn và có thể diễn ra trước khi sự kiện bắt đầu.
+    // Backend chỉ yêu cầu thứ tự mở đăng ký → kết thúc đăng ký hợp lệ.
+    if (
+      form.registrationStartDate &&
+      form.registrationEndDate &&
+      new Date(form.registrationEndDate).getTime() <= new Date(form.registrationStartDate).getTime()
+    ) {
+      return "Thời gian kết thúc đăng ký phải sau thời gian mở đăng ký.";
     }
 
     for (let i = 0; i < form.rounds.length; i++) {
-      const r = form.rounds[i];
-      if (!r.roundName.trim()) return `Vòng ${i + 1}: vui lòng nhập tên vòng.`;
-      if (!r.startDate || !r.endDate)
-        return `Vòng ${i + 1}: vui lòng chọn ngày bắt đầu và kết thúc.`;
-
-      // Validate Quy tắc thăng vòng (Advancement Rule)
-      const ruleStr = (r.advancementRule || "").trim();
-      if (!ruleStr) {
-        return `Vòng ${i + 1}: vui lòng cấu hình quy tắc thăng vòng.`;
+      const round = form.rounds[i];
+      const roundLabel = `Vòng ${i + 1}`;
+      const originalRound = initialForm.rounds.find((item) => item.id === round.id);
+      for (const [label, original, next] of [
+        [`${roundLabel}: thời gian bắt đầu`, originalRound?.startDate ?? "", round.startDate],
+        [`${roundLabel}: thời gian kết thúc`, originalRound?.endDate ?? "", round.endDate],
+      ] as const) {
+        const error = changedPastDate(label, original, next);
+        if (error) return error;
       }
-      if (ruleStr.startsWith('top:')) {
-        const val = Number(ruleStr.replace('top:', ''));
-        if (Number.isNaN(val) || val <= 0 || !Number.isInteger(val)) {
-          return `Vòng ${i + 1}: số lượng đội thi lấy top phải là một số nguyên lớn hơn 0.`;
+
+      if (round.startDate && !isWithinEvent(round.startDate)) {
+        return `${roundLabel}: thời gian bắt đầu phải nằm trong khoảng thời gian diễn ra sự kiện.`;
+      }
+      if (round.endDate && !isWithinEvent(round.endDate)) {
+        return `${roundLabel}: thời gian kết thúc phải nằm trong khoảng thời gian diễn ra sự kiện.`;
+      }
+      if (
+        round.startDate &&
+        round.endDate &&
+        new Date(round.endDate).getTime() <= new Date(round.startDate).getTime()
+      ) {
+        return `${roundLabel}: thời gian kết thúc phải sau thời gian bắt đầu.`;
+      }
+
+      if (
+        i === 0 &&
+        round.startDate &&
+        form.registrationEndDate &&
+        new Date(round.startDate).getTime() < new Date(form.registrationEndDate).getTime()
+      ) {
+        return "Thời gian bắt đầu Vòng 1 phải sau thời gian kết thúc đăng ký.";
+      }
+      const previousRoundEnd = i > 0 ? form.rounds[i - 1].endDate : "";
+      if (
+        i > 0 &&
+        round.startDate &&
+        previousRoundEnd &&
+        new Date(round.startDate).getTime() < new Date(previousRoundEnd).getTime()
+      ) {
+        return `Thời gian bắt đầu ${roundLabel} phải sau khi Vòng ${i} kết thúc.`;
+      }
+
+      for (let j = 0; j < round.tracks.length; j++) {
+        const track = round.tracks[j];
+        const trackLabel = `${roundLabel} – Hạng mục ${j + 1}`;
+        const originalTrack = originalRound?.tracks.find((item) => item.id === track.id);
+        for (const [label, original, next] of [
+          [`${trackLabel}: mở nộp bài`, originalTrack?.startDate ?? "", track.startDate],
+          [`${trackLabel}: hạn nộp bài`, originalTrack?.endDate ?? "", track.endDate],
+          [`${trackLabel}: bắt đầu chấm điểm`, originalTrack?.scoringStartDate ?? "", track.scoringStartDate],
+          [`${trackLabel}: kết thúc chấm điểm`, originalTrack?.scoringEndDate ?? "", track.scoringEndDate],
+        ] as const) {
+          const error = changedPastDate(label, original, next);
+          if (error) return error;
         }
-      } else if (ruleStr.toLowerCase().startsWith('percent:')) {
-        const val = Number(ruleStr.replace(/percent:/i, ''));
-        if (Number.isNaN(val) || val < 0 || val > 100) {
-          return `Vòng ${i + 1}: tỷ lệ phần trăm đội thi lấy tiếp phải nằm trong khoảng từ 0% đến 100%.`;
+        const trackTimes = [
+          track.startDate,
+          track.endDate,
+          track.scoringStartDate,
+          track.scoringEndDate,
+        ].filter(Boolean);
+
+        // Nếu nhập bất kỳ mốc nào của hạng mục, cần có đủ khung thời gian vòng
+        // để bảo đảm các mốc nộp bài/chấm điểm thuộc đúng vòng đó.
+        if (trackTimes.length && (!round.startDate || !round.endDate)) {
+          return `${trackLabel}: cần nhập thời gian bắt đầu và kết thúc của vòng trước.`;
         }
-      } else if (ruleStr.toLowerCase().startsWith('minscore:')) {
-        const val = Number(ruleStr.replace(/minscore:/i, ''));
-        if (Number.isNaN(val) || val < 0 || val > 100) {
-          return `Vòng ${i + 1}: điểm số tối thiểu để thăng vòng phải nằm trong khoảng từ 0 đến 100.`;
+
+        if (trackTimes.length) {
+          const roundStart = new Date(round.startDate).getTime();
+          const roundEnd = new Date(round.endDate).getTime();
+          if (trackTimes.some((value) => {
+            const time = new Date(value).getTime();
+            return time < roundStart || time > roundEnd;
+          })) {
+            return `${trackLabel}: thời gian nộp bài và chấm điểm phải nằm trong thời gian của vòng.`;
+          }
         }
-      } else {
-        return `Vòng ${i + 1}: quy tắc thăng vòng không hợp lệ. Vui lòng chọn và cấu hình lại.`;
-      }
-
-      const roundStart = new Date(r.startDate).getTime();
-      const roundEnd = new Date(r.endDate).getTime();
-
-      if (!isEdit && roundStart < now) {
-        return `Vòng ${i + 1}: ngày bắt đầu không được ở trong quá khứ.`;
-      }
-
-      if (roundEnd <= roundStart) {
-        return `Vòng ${i + 1}: ngày kết thúc phải sau ngày bắt đầu.`;
-      }
-
-      // Round dates must fit within the overall event timeline
-      if (roundStart < eventStart || roundEnd > eventEnd) {
-        return `Vòng ${i + 1}: thời gian của vòng thi phải nằm trong khoảng thời gian diễn ra sự kiện.`;
-      }
-
-      for (let j = 0; j < r.tracks.length; j++) {
-        const track = r.tracks[j];
-        if (!track.trackName.trim())
-          return `Vòng ${i + 1} – Hạng mục ${j + 1}: vui lòng nhập tên hạng mục.`;
-
-        const req = track.submissionRequirements;
-        if (req.otherEnabled && !req.otherText.trim())
-          return `Vòng ${i + 1} – Hạng mục ${j + 1}: đã chọn "Khác" nhưng chưa nhập nội dung yêu cầu.`;
-        if (!serializeSubmissionRequirements(req).trim())
-          return `Vòng ${i + 1} – Hạng mục ${j + 1}: vui lòng chọn ít nhất một yêu cầu nộp bài.`;
+        if (
+          track.startDate &&
+          track.endDate &&
+          new Date(track.endDate).getTime() <= new Date(track.startDate).getTime()
+        ) {
+          return `${trackLabel}: hạn nộp bài phải sau thời gian mở nộp bài.`;
+        }
+        if (
+          track.scoringStartDate &&
+          track.scoringEndDate &&
+          new Date(track.scoringEndDate).getTime() <= new Date(track.scoringStartDate).getTime()
+        ) {
+          return `${trackLabel}: thời gian kết thúc chấm điểm phải sau thời gian bắt đầu chấm điểm.`;
+        }
       }
     }
+
     return null;
   }
 
@@ -1596,22 +1666,9 @@ function EventFormBody({
     ? extractApiError(activeMutation.error)
     : null;
 
-  // ── Tóm tắt + cảnh báo (chấm đỏ) cho header các khối accordion ──
-  const infoWarn = !form.eventName.trim() || !form.startDate || !form.endDate || (Number(form.year) || 0) <= 2000;
-  const regWarn = (!!form.registrationStartDate) !== (!!form.registrationEndDate); // chỉ điền 1 trong 2
-  const regSummary = form.registrationStartDate && form.registrationEndDate
-    ? `${fmtShort(form.registrationStartDate)} → ${fmtShort(form.registrationEndDate)}`
-    : "Chưa đặt thời gian";
-  const roundWarn = (r: RoundForm) =>
-    !r.roundName.trim() || !r.startDate || !r.endDate || !r.advancementRule.trim() || r.tracks.some((t) => !t.trackName.trim());
-  const roundSummary = (r: RoundForm) => {
-    const time = r.startDate && r.endDate ? `${fmtShort(r.startDate)} → ${fmtShort(r.endDate)}` : "chưa đặt";
-    return `${time} · ${r.tracks.length} hạng mục`;
-  };
-  const trackWarn = (t: TrackForm) =>
-    !t.trackName.trim() || !serializeSubmissionRequirements(t.submissionRequirements).trim();
-  const trackSummary = (t: TrackForm) =>
-    t.startDate && t.endDate ? `Nộp: ${fmtShort(t.startDate)} → ${fmtShort(t.endDate)}` : "Chưa đặt giờ nộp";
+  // ── Cảnh báo (chấm đỏ) cho header các khối accordion ──
+  const infoWarn = !form.eventName.trim() || !form.startDate || !form.endDate;
+  const regWarn = false;
 
   return (
     <form className="create-event-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "var(--space-xl)" }}>
@@ -1621,7 +1678,6 @@ function EventFormBody({
         {/* Khối 1: Thông tin sự kiện */}
         <AccordionSection
           title="Thông tin sự kiện"
-          summary={form.eventName.trim() || "(Chưa đặt tên)"}
           warn={infoWarn}
           accent={SECTION_ACCENTS[0]}
           inset
@@ -1728,7 +1784,6 @@ function EventFormBody({
         {/* Khối 2: Đăng ký */}
         <AccordionSection
           title="Đăng ký"
-          summary={regSummary}
           warn={regWarn}
           accent={SECTION_ACCENTS[1]}
           inset
@@ -1753,8 +1808,7 @@ function EventFormBody({
             <AccordionSection
               key={round.uid}
               title={`Vòng ${ri + 1}${round.roundName.trim() ? ": " + round.roundName.trim() : ""}`}
-              summary={roundSummary(round)}
-              warn={roundWarn(round)}
+              warn={false}
               accent={SECTION_ACCENTS[(2 + ri) % SECTION_ACCENTS.length]}
               open={openSections.has(`round-${round.uid}`)}
               onToggle={() => toggleSection(`round-${round.uid}`)}
@@ -1795,8 +1849,7 @@ function EventFormBody({
                   <AccordionSection
                     key={track.uid}
                     title={`Hạng mục ${ti + 1}${track.trackName.trim() ? ": " + track.trackName.trim() : ""}`}
-                    summary={trackSummary(track)}
-                    warn={trackWarn(track)}
+                    warn={false}
                     accent="var(--color-ink)"
                     open={openSections.has(`track-${track.uid}`)}
                     onToggle={() => toggleSection(`track-${track.uid}`)}

@@ -4,6 +4,57 @@ interface ApiErrorBody {
   message?: string;
   statusCode?: number;
   errors?: Record<string, string[]>;
+  details?: unknown;
+}
+
+interface BackendFieldError {
+  key?: string;
+  value?: string[];
+}
+
+function fieldLabel(field: string): string {
+  const key = field.replace(/^\$\./, '').toLowerCase();
+  const labels: Record<string, string> = {
+    eventname: 'Tên sự kiện',
+    startdate: 'Thời gian bắt đầu sự kiện',
+    enddate: 'Thời gian kết thúc sự kiện',
+    registrationstartdate: 'Thời gian mở đăng ký',
+    registrationenddate: 'Thời gian kết thúc đăng ký',
+  };
+  return labels[key] ?? '';
+}
+
+function formatFieldError(field: string, message: string): string | null {
+  // ASP.NET adds this duplicate top-level error when one field cannot deserialize.
+  if (field.toLowerCase() === 'requestmodel') return null;
+
+  const label = fieldLabel(field);
+  if (/could not be converted to system\.datetime/i.test(message)) {
+    return label
+      ? `${label} không hợp lệ. Vui lòng chọn ngày và giờ hợp lệ.`
+      : 'Có thời gian không hợp lệ. Vui lòng chọn lại ngày và giờ.';
+  }
+
+  return label ? `${label}: ${message}` : message;
+}
+
+function formatFieldErrors(data: ApiErrorBody): string[] {
+  const recordErrors = data.errors
+    ? Object.entries(data.errors).flatMap(([field, messages]) =>
+        messages
+          .map((message) => formatFieldError(field, message))
+          .filter((message): message is string => Boolean(message)),
+      )
+    : [];
+  if (recordErrors.length) return recordErrors;
+
+  if (!Array.isArray(data.details)) return [];
+  return (data.details as BackendFieldError[]).flatMap((item) => {
+    if (!Array.isArray(item.value)) return [];
+    return item.value
+      .map((message) => formatFieldError(item.key ?? '', message))
+      .filter((message): message is string => Boolean(message));
+  });
 }
 
 /** Reword backend phrasings into friendlier user-facing Vietnamese. */
@@ -24,7 +75,7 @@ export function getErrorMessage(e: unknown, fallback?: string): string {
   const data = res?.data;
 
   // 1. Field-level validation errors from the backend.
-  const fieldMsgs = data?.errors ? Object.values(data.errors).flat() : [];
+  const fieldMsgs = data ? formatFieldErrors(data) : [];
   if (fieldMsgs.length) return humanizeMessage(fieldMsgs.join(' '));
 
   // 2. A human-readable message from the backend.
