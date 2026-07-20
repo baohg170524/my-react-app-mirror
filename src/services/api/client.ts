@@ -60,7 +60,8 @@ apiClient.interceptors.response.use(
       (error.response as AxiosResponse).data = {
         message: env.message,
         statusCode: env.statusCode,
-      } satisfies ApiError;
+        data: env.data, // <-- Bổ sung dòng này để giữ lại danh sách lỗi
+      };
     }
 
     if (
