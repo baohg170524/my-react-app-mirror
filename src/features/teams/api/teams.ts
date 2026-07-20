@@ -1,23 +1,35 @@
 import { apiClient } from '@/services/api';
 import type { PagedResult } from '@/services/api';
-import type { CreateTeamPayload, TeamMember, TeamModel } from '../types/team.types';
+import type { CreateTeamPayload, TeamMember, TeamModel, TeamStatus } from '../types/team.types';
 
 /** Backend EventRoleModel (subset). `roleName` is a string (e.g. "Participant",
- *  "Judge", "Mentor"); `user` carries the display info. */
+ *  "Judge", "Mentor"); `user` carries the display info.
+ *  Field `schoolId`/`studentCode` chỉ có ở NGUỒN NÀY (EventRoles/event) — Teams/{id}
+ *  hiện KHÔNG trả 2 field này trong `members[]`, nên khi cần hiện Trường/MSSV trong
+ *  Modal duyệt đội, phải lấy qua listEventRoles() chứ không phải qua getById(). */
 interface EventRoleRow {
   id: string;
   userId: string | null;
   eventId: string | null;
   teamId: string | null;
   roleName: string | null;
-  user?: { id: string | null; fullName: string | null; email: string | null } | null;
+  user?: {
+    id: string | null;
+    fullName: string | null;
+    email: string | null;
+    schoolId?: string | null;
+    studentCode?: string | null;
+  } | null;
 }
 
-/** Backend TeamDetailResponseModel / CreateTeamResponseModel (subset). */
+/** Backend TeamDetailResponseModel / CreateTeamResponseModel (subset).
+ *  `status` + `members[].studentCode`/`isApproved` đã xác nhận có thật trong response
+ *  (xem Swagger GET /Teams/{id}) — KHÔNG có schoolId/major ở cấp member trong nguồn này. */
 interface TeamDetail {
   id: string;
   name: string | null;
   description: string | null;
+  status?: string;
   members?: any[];
 }
 
@@ -60,6 +72,8 @@ function toMember(r: EventRoleRow): TeamMember {
     fullName: r.user?.fullName ?? '—',
     email: r.user?.email ?? '',
     isLeader: norm(r.roleName).includes('leader'),
+    studentCode: r.user?.studentCode ?? null,
+    schoolId: r.user?.schoolId ?? null,
   };
 }
 
@@ -72,7 +86,7 @@ async function buildTeam(teamId: string, roles: EventRoleRow[]): Promise<TeamMod
     teamName: data.name?.trim() || '(Chưa đặt tên)',
     description: data.description,
     members,
-    status: (data as any).status ?? undefined,
+    status: (data.status as TeamStatus) ?? undefined,
   };
 }
 
@@ -86,13 +100,16 @@ export const teamsApi = {
   getById: async (id: string): Promise<TeamModel> => {
     const { data } = await apiClient.get<TeamDetail>(`/Teams/${encodeURIComponent(id)}`);
 
-    //a
-    // Map members if backend returns them
+    // Map members if backend returns them. LƯU Ý: nguồn này (Teams/{id}) có studentCode
+    // nhưng KHÔNG có schoolId — nếu cần hiện Trường học, phải bổ sung qua EventRoles/event
+    // (xem toMember() ở trên) hoặc chờ Backend thêm schoolId vào response này.
     const mappedMembers: TeamMember[] = (data.members || []).map((m: any) => ({
       userId: m.userId || m.id || '',
       fullName: m.fullName || m.name || '—',
       email: m.email || '',
       isLeader: m.isLeader || (m.roleName && norm(m.roleName).includes('leader')) || false,
+      studentCode: m.studentCode ?? null,
+      schoolId: m.schoolId ?? null, // chưa có ở response thật hiện tại, để dành nếu BE bổ sung sau
     }));
 
     return {
@@ -100,7 +117,7 @@ export const teamsApi = {
       teamName: data.name?.trim() || '(Chưa đặt tên)',
       description: data.description,
       members: mappedMembers,
-      status: (data as any).status ?? undefined,
+      status: (data.status as TeamStatus) ?? undefined,
     };
   },
 
@@ -168,11 +185,33 @@ export const teamsApi = {
   },
 
   /** POST /api/Teams/{teamId}/confirm-registration
-   *  TeamLeader chốt danh sách đội (yêu cầu 3-5 thành viên đã duyệt).
-   *  Sau khi chốt → trạng thái đội đổi thành "Registered", không thể thêm/xóa thành viên.
+   *  TeamLeader (hoặc Coordinator/Admin) chốt danh sách đội (yêu cầu 3-5 thành viên,
+   *  mỗi người đã nộp hồ sơ thí sinh — IsStudent + SchoolId).
+   *  Sau khi chốt → status chuyển "Forming" -> "PendingApproval" (CHỜ EC DUYỆT).
+   *  Đội chỉ thật sự "Registered" (chính thức thi) sau khi EventCoordinator gọi
+   *  `approveTeam` — xem ConfirmTeamRegistrationCommandHandler (BE), đã xác nhận đúng
+   *  hành vi này qua code thật, KHÔNG còn tự nhảy thẳng Registered như trước.
    */
   confirmRegistration: async (teamId: string): Promise<void> => {
     await apiClient.post(`/Teams/${encodeURIComponent(teamId)}/confirm-registration`);
+  },
+
+  /** POST /api/Teams/{teamId}/approve-registration — chỉ EventCoordinator gọi được (BE
+   *  chặn bằng [EventRoleAuthorize(EventRoleType.EventCoordinator)], trả 403 nếu sai role).
+   *  Điều kiện: đội phải đang ở "PendingApproval" (BE trả 400 kèm status hiện tại nếu sai).
+   *  Kết quả: "PendingApproval" -> "Registered" — đội chính thức được thi.
+   */
+  approveTeam: async (teamId: string): Promise<void> => {
+    await apiClient.post(`/Teams/${encodeURIComponent(teamId)}/approve-registration`);
+  },
+
+  /** POST /api/Teams/{teamId}/reject-registration — chỉ EventCoordinator gọi được.
+   *  `reason` BẮT BUỘC (BE gửi email lý do cho trưởng nhóm).
+   *  Điều kiện: đội phải đang ở "PendingApproval".
+   *  Kết quả: "PendingApproval" -> "Forming" (mở khóa lại để đội sửa rồi chốt lại).
+   */
+  rejectTeam: async (teamId: string, reason: string): Promise<void> => {
+    await apiClient.post(`/Teams/${encodeURIComponent(teamId)}/reject-registration`, { reason });
   },
 
   /** Get pending invitation for the current user to a specific team (if any). */

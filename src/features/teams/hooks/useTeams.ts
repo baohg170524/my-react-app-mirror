@@ -49,9 +49,39 @@ export const useConfirmRegistration = (teamId: string, eventId: string, userId: 
   return useMutation({
     mutationFn: () => teamsApi.confirmRegistration(teamId),
     onSuccess: () => {
-      // Làm mới team để cập nhật status → "Registered"
+      // Làm mới team để cập nhật status → "PendingApproval" (KHÔNG còn nhảy thẳng
+      // "Registered" — đã xác nhận qua code thật ConfirmTeamRegistrationCommandHandler).
       qc.invalidateQueries({ queryKey: TEAM_KEYS.myTeam(eventId, userId) });
       qc.invalidateQueries({ queryKey: TEAM_KEYS.detail(teamId) });
+    },
+  });
+};
+
+/** EC/Admin duyệt đội đang "PendingApproval" -> "Registered". Chỉ EventCoordinator
+ *  được BE cho phép gọi (403 nếu sai role) — xem teamsApi.approveTeam.
+ *  Dùng CHUNG cho cả danh sách nhiều đội (vd TeamListTab.tsx) — nhận `teamId` lúc
+ *  gọi `.mutate(teamId)`, KHÔNG nhận lúc tạo hook (tránh gọi hook trong `.map()`
+ *  theo từng dòng — vi phạm Rules of Hooks). */
+export const useApproveTeamRegistration = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (teamId: string) => teamsApi.approveTeam(teamId),
+    onSuccess: (_data, teamId) => {
+      qc.invalidateQueries({ queryKey: TEAM_KEYS.detail(teamId) });
+    },
+  });
+};
+
+/** EC/Admin từ chối đội đang "PendingApproval" -> "Forming" (kèm lý do bắt buộc,
+ *  BE gửi email cho trưởng nhóm, KHÔNG lưu lại lý do — xem teamsApi.rejectTeam).
+ *  Dùng chung cho danh sách — gọi `.mutate({ teamId, reason })`. */
+export const useRejectTeamRegistration = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ teamId, reason }: { teamId: string; reason: string }) =>
+      teamsApi.rejectTeam(teamId, reason),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: TEAM_KEYS.detail(vars.teamId) });
     },
   });
 };

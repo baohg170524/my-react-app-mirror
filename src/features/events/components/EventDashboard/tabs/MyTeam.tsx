@@ -27,7 +27,13 @@ export function MyTeamTab({ eventId, userId }: Props) {
   const confirm  = useConfirmRegistration(teamId, eventId, userId);
   const removeMember = useRemoveMember(teamId, eventId, userId);
 
-  const isRegistered = team?.status === 'Registered';
+  // 3 trạng thái đội (xem TeamStatus trong team.types.ts): Forming (đang lập, sửa được)
+  // -> PendingApproval (đã chốt, chờ EC duyệt, KHÓA sửa) -> Registered (EC đã duyệt).
+  // "Locked" = không còn sửa được thành viên/gửi lời mời/chốt lại — đúng cho cả 2
+  // trạng thái PendingApproval và Registered, chỉ Forming mới sửa được.
+  const isPending  = team?.status === 'PendingApproval';
+  const isApproved = team?.status === 'Registered';
+  const isLocked   = isPending || isApproved;
   const [email, setEmail] = useState('');
   const notify = useNotify();
   const dialog = useDialog();
@@ -56,11 +62,6 @@ export function MyTeamTab({ eventId, userId }: Props) {
         <header>
           <div className="flex items-center gap-3 flex-wrap">
             <h2 className="t-heading-md">{team.teamName}</h2>
-            {isRegistered && (
-              <span className="text-xs font-bold px-2 py-0.5 rounded-sm bg-green-50 text-green-700 border border-green-200 whitespace-nowrap">
-                ✓ Đã chốt danh sách
-              </span>
-            )}
           </div>
           {team.description ? <p className="t-body-sm text-mute mt-1">{team.description}</p> : null}
         </header>
@@ -96,7 +97,7 @@ export function MyTeamTab({ eventId, userId }: Props) {
                         Chuyển quyền
                       </button>
                     )}
-                    {isLeader && !m.isLeader && !isRegistered && (
+                    {isLeader && !m.isLeader && !isLocked && (
                       <button
                         type="button"
                         className="btn btn-secondary btn-sm"
@@ -132,7 +133,7 @@ export function MyTeamTab({ eventId, userId }: Props) {
       </div>
 
       {/* Chỉ trưởng nhóm mới mời được (BE chặn 403 với thành viên thường). */}
-      {isLeader && !isRegistered && (
+      {isLeader && !isLocked && (
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -194,7 +195,7 @@ export function MyTeamTab({ eventId, userId }: Props) {
                     </span>
                     <span className="flex items-center gap-2">
                       {/* Mời lại: chỉ với người đã rời / lời mời hết hạn / đã từ chối, khi đội chưa chốt */}
-                      {!isRegistered && !!inv.invitedUserEmail
+                      {!isLocked && !!inv.invitedUserEmail
                         && (hasLeft || inv.status === 'Expired' || inv.status === 'Declined') && (
                         <button
                           type="button"
@@ -225,7 +226,7 @@ export function MyTeamTab({ eventId, userId }: Props) {
       <div className="flex flex-wrap gap-3">
 
         {/* Nút chốt danh sách — chỉ trưởng nhóm, chưa chốt */}
-        {isLeader && !isRegistered && (
+        {isLeader && !isLocked && (
           <button
             type="button"
             disabled={confirm.isPending}
@@ -256,7 +257,7 @@ export function MyTeamTab({ eventId, userId }: Props) {
         )}
 
         {/* Nút rời đội — ẩn khi đã chốt */}
-        {!isRegistered && (
+        {!isLocked && (
           <button
             type="button"
             onClick={async () => {

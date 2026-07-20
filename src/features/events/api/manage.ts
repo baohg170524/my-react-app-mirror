@@ -25,13 +25,18 @@ export interface EventRole {
   user?: EventRoleUser | null;
 }
 
-/** Matches backend TeamListItemModel. */
+/** Matches backend TeamListItemModel.
+ *  `status` — cùng TeamStatus enum đã xác nhận ở entity Team (Forming/PendingApproval/
+ *  Registered, xem team.types.ts) — để optional vì chưa tự kiểm chứng riêng response
+ *  của GET /Teams (list) có trả field này giống hệt GET /Teams/{id} (đã xác nhận qua
+ *  Swagger) hay không; nếu undefined, TeamListTab.tsx tự fallback về badge "—". */
 export interface TeamItem {
   id: string;
   name: string | null;
   description: string | null;
   isActive: boolean;
   createdTime: string;
+  status?: string;
 }
 
 /** Matches backend RoundModel. */
