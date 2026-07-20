@@ -1506,16 +1506,15 @@ function EventFormBody({
       return "Ngày kết thúc sự kiện phải sau ngày bắt đầu.";
     }
 
-    // Thời gian đăng ký (tùy chọn) — nhất quán với auto-fill: đăng ký mở khi sự
-    // kiện bắt đầu và phải nằm gọn trong khung thời gian sự kiện.
+    // Thời gian đăng ký (tùy chọn)
     if (form.registrationStartDate && form.registrationEndDate) {
       const regStart = new Date(form.registrationStartDate).getTime();
       const regEnd = new Date(form.registrationEndDate).getTime();
       if (regEnd <= regStart) {
         return "Ngày kết thúc đăng ký phải sau ngày bắt đầu đăng ký.";
       }
-      if (regStart < eventStart || regEnd > eventEnd) {
-        return "Thời gian đăng ký phải nằm trong khoảng thời gian diễn ra sự kiện.";
+      if (regEnd > eventEnd) {
+        return "Thời gian đăng ký phải kết thúc trước hoặc cùng lúc với thời gian kết thúc sự kiện.";
       }
     } else if (form.registrationStartDate || form.registrationEndDate) {
       return "Vui lòng nhập đầy đủ cả thời gian bắt đầu và kết thúc đăng ký.";
