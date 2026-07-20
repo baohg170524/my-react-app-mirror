@@ -229,7 +229,7 @@ interface BackendFieldError {
 const GENERIC_ERROR = "Tạo sự kiện thất bại. Vui lòng thử lại.";
 
 /** Turn an Axios error into a user-facing message, surfacing field-level details. */
-function extractApiError(err: unknown): string {
+function extractApiError(err: unknown): string | string[] {
   const body = (err as AxiosError<{ message?: string; data?: BackendFieldError[] }>)
     ?.response?.data;
   if (!body) return GENERIC_ERROR;
@@ -237,7 +237,7 @@ function extractApiError(err: unknown): string {
     const messages = body.data.flatMap((item) =>
       Array.isArray(item.value) ? item.value : [],
     );
-    if (messages.length) return messages.join(" ");
+    if (messages.length) return messages;
   }
   // Hide raw server exception strings ("Exception of type ... was thrown").
   if (body.message && !/Exception|was thrown/i.test(body.message)) {
@@ -1832,7 +1832,15 @@ function EventFormBody({
           }}
           className="t-body-sm"
         >
-          {formError ?? apiErrorMessage}
+          {formError ? formError : (
+            Array.isArray(apiErrorMessage) ? (
+              <ul style={{ margin: 0, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 4 }}>
+                {apiErrorMessage.map((msg, i) => (
+                  <li key={i}>{msg}</li>
+                ))}
+              </ul>
+            ) : apiErrorMessage
+          )}
         </div>
       )}
 
