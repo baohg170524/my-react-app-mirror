@@ -70,7 +70,7 @@ export function RegistrationStatusCard({
   return (
     <div className="card flex flex-col gap-4" style={{ padding: 'var(--space-xl)', maxWidth: '40rem' }}>
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h2 className="t-heading-md m-0">Hồ sơ thí sinh</h2>
+        <h2 className="t-heading-md m-0">Hồ sơ cá nhân</h2>
         <div className="flex items-center gap-2">
           {rejectionCount !== undefined && rejectionCount > 0 && status !== 'approved' && (
             <span
@@ -121,7 +121,7 @@ export function RegistrationStatusCard({
       {status === 'unregistered' && (
         <>
           <p className="t-body-sm m-0 text-mute">
-            Bạn chưa đăng ký hồ sơ thí sinh. Hãy đăng ký để có thể tham gia sự kiện.
+            Bạn chưa đăng ký hồ sơ cá nhân. Hãy đăng ký để có thể tham gia sự kiện.
           </p>
           <button type="button" className="btn btn-primary w-fit" onClick={onEdit}>
             Đăng ký hồ sơ
