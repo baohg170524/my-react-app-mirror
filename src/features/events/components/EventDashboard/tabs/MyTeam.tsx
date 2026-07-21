@@ -74,7 +74,7 @@ export function MyTeamTab({ eventId, userId }: Props) {
               gì — coi như đội mới, không có tín hiệu "đã từng bị từ chối" trong UI. */}
           {isPending && (
             <p className="t-caption-sm font-bold text-amber-700 mt-1">
-              Trạng thái: Đang chờ EC duyệt
+              Trạng thái: Đang chờ duyệt
             </p>
           )}
           {team.description ? <p className="t-body-sm text-mute mt-1">{team.description}</p> : null}
