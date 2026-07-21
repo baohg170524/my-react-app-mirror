@@ -12,6 +12,7 @@ import {
 import { useNotify } from '@/components/NotificationProvider';
 import { useDialog } from '@/components/ConfirmDialogProvider';
 import { getErrorMessage } from '@/lib/apiError';
+import { formatAdvancementRule } from '@/lib/events/advancementRule';
 import { Card } from '../../EventDashboard/Card';
 import { CardSkeleton } from '../../EventDashboard/SkeletonLoaders';
 
@@ -239,7 +240,7 @@ export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
               <div className="flex flex-col gap-1">
                 <label className="t-caption-sm text-mute font-bold uppercase">Luật thăng vòng</label>
                 <span className="t-body-sm text-ink font-bold px-3 py-2 bg-surface-soft rounded-sm border border-hairline">
-                  {advancementRule}
+                  {formatAdvancementRule(advancementRule)}
                 </span>
               </div>
             ) : (

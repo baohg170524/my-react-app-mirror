@@ -5,6 +5,7 @@ import { useEventRounds, useEventTracks } from '@/features/events/hooks/useEvent
 import { templatesApi } from '../../api/templates';
 import { Card } from '../EventDashboard/Card';
 import { CardSkeleton } from '../EventDashboard/SkeletonLoaders';
+import { formatAdvancementRule } from '@/lib/events/advancementRule';
 
 interface Props {
   eventId: string;
@@ -66,7 +67,9 @@ export function EventStructureView({ eventId }: Props) {
                 </div>
                 <div className="bg-surface-soft border border-hairline rounded-sm px-4 py-3">
                   <p className="t-caption-xs text-mute uppercase font-bold m-0">Quy tắc lên vòng</p>
-                  <p className="t-body-sm text-ink m-0 mt-1">{round.advancementRule || '—'}</p>
+                  <p className="t-body-sm text-ink m-0 mt-1">
+                    {formatAdvancementRule(round.advancementRule)}
+                  </p>
                 </div>
               </div>
 

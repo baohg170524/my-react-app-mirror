@@ -11,6 +11,7 @@ import type { EventRound, TrackItem, EventRole } from '@/features/events/api/man
 import { Card } from './Card';
 import { CardSkeleton } from './SkeletonLoaders';
 import { formatDateTime } from '@/lib/date';
+import { formatAdvancementRule } from '@/lib/events/advancementRule';
 
 type TimelineVariant = 'admin' | 'participant';
 
@@ -96,13 +97,6 @@ const CARD_BORDER_L: Record<NodeStatus, string> = {
 };
 
 // ─── Derive nodes from event data ─────────────────────────────────────────────
-
-/** Diễn giải quy tắc lên vòng: "top:5" → "Top 5 đội dẫn đầu vào vòng tiếp theo". */
-function advancementText(rule: string): string {
-  const n = rule.match(/\d+/)?.[0];
-  if (/top/i.test(rule) && n) return `Top ${n} đội có tổng điểm cao nhất vào vòng tiếp theo`;
-  return `Đội đạt "${rule}" sẽ được vào vòng tiếp theo`;
-}
 
 interface TrackDates {
   startDate?: string | null;
@@ -208,7 +202,7 @@ function buildTimeline(
       title: `Vòng ${round.roundNumber}: ${round.roundName ?? '—'}`,
       start: round.startDate,
       end: round.endDate,
-      meta: round.advancementRule ? advancementText(round.advancementRule) : undefined,
+      meta: round.advancementRule ? formatAdvancementRule(round.advancementRule) : undefined,
       tracks: trackCards,
     });
   }
