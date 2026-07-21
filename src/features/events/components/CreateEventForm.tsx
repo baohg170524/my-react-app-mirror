@@ -1426,13 +1426,13 @@ function EventFormBody({
       rounds: f.rounds.map((r, i) =>
         i === ri
           ? {
-              ...r,
-              // Hạng mục mới điền sẵn: nộp bài mở = bắt đầu vòng, chấm điểm mở = kết thúc vòng.
-              tracks: [
-                ...r.tracks,
-                { ...emptyTrack(), uid, startDate: r.startDate, scoringStartDate: r.endDate },
-              ],
-            }
+            ...r,
+            // Hạng mục mới điền sẵn: nộp bài mở = bắt đầu vòng, chấm điểm mở = kết thúc vòng.
+            tracks: [
+              ...r.tracks,
+              { ...emptyTrack(), uid, startDate: r.startDate, scoringStartDate: r.endDate },
+            ],
+          }
           : r,
       ),
     }));
@@ -1483,22 +1483,22 @@ function EventFormBody({
           r.advancementRule.trim(),
         )
         .map((r, ri) => ({
-        roundName: r.roundName.trim(),
-        roundNumber: ri + 1,
-        startDate: toIso(r.startDate),
-        endDate: toIso(r.endDate),
-        advancementRule: r.advancementRule.trim(),
-        tracks: r.tracks.filter((t) => t.trackName.trim()).map((t) => ({
-          trackName: t.trackName.trim(),
-          description: t.description.trim(),
-          templateId: t.templateId.trim() || null,
-          submissionRuleDescription: serializeSubmissionRequirements(t.submissionRequirements),
-          startDate: toIso(t.startDate) || null,
-          endDate: toIso(t.endDate) || null,
-          scoringStartDate: toIso(t.scoringStartDate) || null,
-          scoringEndDate: toIso(t.scoringEndDate) || null,
+          roundName: r.roundName.trim(),
+          roundNumber: ri + 1,
+          startDate: toIso(r.startDate),
+          endDate: toIso(r.endDate),
+          advancementRule: r.advancementRule.trim(),
+          tracks: r.tracks.filter((t) => t.trackName.trim()).map((t) => ({
+            trackName: t.trackName.trim(),
+            description: t.description.trim(),
+            templateId: t.templateId.trim() || null,
+            submissionRuleDescription: serializeSubmissionRequirements(t.submissionRequirements),
+            startDate: toIso(t.startDate) || null,
+            endDate: toIso(t.endDate) || null,
+            scoringStartDate: toIso(t.scoringStartDate) || null,
+            scoringEndDate: toIso(t.scoringEndDate) || null,
+          })),
         })),
-      })),
     };
   }
 
@@ -1684,101 +1684,101 @@ function EventFormBody({
           open={openSections.has("info")}
           onToggle={() => toggleSection("info")}
         >
-        {/* Thứ tự khớp trang chi tiết: ảnh → tên → mô tả → thời gian */}
-        <EventPhotoUpload
-          value={form.photoEventUrl}
-          onChange={(url) => setForm(f => ({ ...f, photoEventUrl: url }))}
-        />
+          {/* Thứ tự khớp trang chi tiết: ảnh → tên → mô tả → thời gian */}
+          <EventPhotoUpload
+            value={form.photoEventUrl}
+            onChange={(url) => setForm(f => ({ ...f, photoEventUrl: url }))}
+          />
 
-        {/* Tên & mô tả căn giữa, không nhãn — vị trí giống title/desc ở trang chi tiết */}
-        <input
-          className="text-input"
-          value={form.eventName}
-          placeholder="Tên sự kiện"
-          onChange={(e) => setField("eventName", e.target.value)}
-          style={{ textAlign: "center", fontSize: "1.75rem", fontWeight: 700 }}
-        />
-        <textarea
-          className="text-input"
-          rows={2}
-          value={form.description}
-          placeholder="Mô tả sự kiện"
-          onChange={(e) => setField("description", e.target.value)}
-          style={{ textAlign: "center", height: "auto", resize: "vertical", fontFamily: "inherit", width: "100%" }}
-        />
+          {/* Tên & mô tả căn giữa, không nhãn — vị trí giống title/desc ở trang chi tiết */}
+          <input
+            className="text-input"
+            value={form.eventName}
+            placeholder="Tên sự kiện"
+            onChange={(e) => setField("eventName", e.target.value)}
+            style={{ textAlign: "center", fontSize: "1.75rem", fontWeight: 700 }}
+          />
+          <textarea
+            className="text-input"
+            rows={2}
+            value={form.description}
+            placeholder="Mô tả sự kiện"
+            onChange={(e) => setField("description", e.target.value)}
+            style={{ textAlign: "center", height: "auto", resize: "vertical", fontFamily: "inherit", width: "100%" }}
+          />
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
-          <span className="t-body-strong text-ink shrink-0 tracking-wider sm:w-40">
-            Thời gian sự kiện
-          </span>
-          <div className="flex-1 min-w-0">
-            <DateRangeInput
-              start={form.startDate}
-              end={form.endDate}
-              onStart={(v) => setField("startDate", v)}
-              onEnd={(v) => setField("endDate", v)}
-            />
-          </div>
-        </div>
-
-        {/* Mùa + Năm — suy tự động từ ngày bắt đầu; BE là nguồn chính, chỉ hiển thị. */}
-        <div style={{ display: "flex", gap: "var(--space-xl)", flexWrap: "wrap" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <span className="t-body-strong" style={{ color: "var(--color-ink)", letterSpacing: "0.05em" }}>Mùa</span>
-            <span className="t-body-sm" style={{ color: form.season ? "var(--color-ink)" : "var(--color-mute)", fontWeight: 600 }}>
-              {form.season || "—"}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+            <span className="t-body-strong text-ink shrink-0 tracking-wider sm:w-40">
+              Thời gian sự kiện
             </span>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <span className="t-body-strong" style={{ color: "var(--color-ink)", letterSpacing: "0.05em" }}>Năm</span>
-            <span className="t-body-sm" style={{ color: form.year ? "var(--color-ink)" : "var(--color-mute)", fontWeight: 600 }}>
-              {form.year || "—"}
-            </span>
-          </div>
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <span className="t-body-strong" style={{ color: "var(--color-ink)", letterSpacing: "0.05em" }}>
-            Trạng thái hiển thị
-          </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
-            <button
-              type="button"
-              onClick={() => setStatus(!form.status)}
-              style={{
-                width: 48,
-                height: 24,
-                background: form.status ? 'var(--color-primary)' : 'var(--color-surface-elevated)',
-                border: '1px solid var(--color-hairline-strong)',
-                borderRadius: 2,
-                position: 'relative',
-                cursor: 'pointer',
-                transition: 'background-color 150ms ease',
-                padding: 0,
-              }}
-              aria-label={form.status ? "Ẩn sự kiện" : "Hiện sự kiện"}
-            >
-              {/* transform:translateX thay vì left — animate trên GPU (compositor), tránh reflow mỗi frame. */}
-              <span
-                style={{
-                  width: 18,
-                  height: 18,
-                  background: '#fff',
-                  borderRadius: 1,
-                  position: 'absolute',
-                  top: 2,
-                  left: 2,
-                  transform: `translateX(${form.status ? 24 : 0}px)`,
-                  transition: 'transform 150ms ease',
-                }}
+            <div className="flex-1 min-w-0">
+              <DateRangeInput
+                start={form.startDate}
+                end={form.endDate}
+                onStart={(v) => setField("startDate", v)}
+                onEnd={(v) => setField("endDate", v)}
               />
-            </button>
-            <span style={{ fontSize: 'var(--fs-body-sm)', fontWeight: 700, color: form.status ? 'var(--color-primary)' : 'var(--color-mute)' }}>
-              {form.status ? 'HIỆN' : 'ẨN'}
-            </span>
+            </div>
           </div>
-        </div>
-        {/* <Hint>Sự kiện tự chuyển sang “Đã kết thúc” (vẫn hiện cho mọi người) sau ngày kết thúc.</Hint> */}
+
+          {/* Mùa + Năm — suy tự động từ ngày bắt đầu; BE là nguồn chính, chỉ hiển thị. */}
+          <div style={{ display: "flex", gap: "var(--space-xl)", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span className="t-body-strong" style={{ color: "var(--color-ink)", letterSpacing: "0.05em" }}>Mùa</span>
+              <span className="t-body-sm" style={{ color: form.season ? "var(--color-ink)" : "var(--color-mute)", fontWeight: 600 }}>
+                {form.season || "—"}
+              </span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span className="t-body-strong" style={{ color: "var(--color-ink)", letterSpacing: "0.05em" }}>Năm</span>
+              <span className="t-body-sm" style={{ color: form.year ? "var(--color-ink)" : "var(--color-mute)", fontWeight: 600 }}>
+                {form.year || "—"}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <span className="t-body-strong" style={{ color: "var(--color-ink)", letterSpacing: "0.05em" }}>
+              Trạng thái hiển thị
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
+              <button
+                type="button"
+                onClick={() => setStatus(!form.status)}
+                style={{
+                  width: 48,
+                  height: 24,
+                  background: form.status ? 'var(--color-primary)' : 'var(--color-surface-elevated)',
+                  border: '1px solid var(--color-hairline-strong)',
+                  borderRadius: 2,
+                  position: 'relative',
+                  cursor: 'pointer',
+                  transition: 'background-color 150ms ease',
+                  padding: 0,
+                }}
+                aria-label={form.status ? "Ẩn sự kiện" : "Hiện sự kiện"}
+              >
+                {/* transform:translateX thay vì left — animate trên GPU (compositor), tránh reflow mỗi frame. */}
+                <span
+                  style={{
+                    width: 18,
+                    height: 18,
+                    background: '#fff',
+                    borderRadius: 1,
+                    position: 'absolute',
+                    top: 2,
+                    left: 2,
+                    transform: `translateX(${form.status ? 24 : 0}px)`,
+                    transition: 'transform 150ms ease',
+                  }}
+                />
+              </button>
+              <span style={{ fontSize: 'var(--fs-body-sm)', fontWeight: 700, color: form.status ? 'var(--color-primary)' : 'var(--color-mute)' }}>
+                {form.status ? 'HIỆN' : 'ẨN'}
+              </span>
+            </div>
+          </div>
+          {/* <Hint>Sự kiện tự chuyển sang “Đã kết thúc” (vẫn hiện cho mọi người) sau ngày kết thúc.</Hint> */}
         </AccordionSection>
 
         {/* Khối 2: Đăng ký */}
