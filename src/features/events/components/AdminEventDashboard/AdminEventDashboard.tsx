@@ -8,7 +8,6 @@ import { AdminSidebar, AdminTab } from './AdminSidebar';
 import { EventDetailTab } from './tabs/EventDetailTab';
 import { TeamListTab } from './tabs/TeamListTab';
 import { RoleListTab } from './tabs/RoleListTab';
-import { AccountApprovalTab } from './tabs/AccountApprovalTab';
 import { LeaderboardTab } from './tabs/LeaderboardTab';
 import SubmissionsScoringPanel from '../shared/SubmissionsScoringPanel';
 import AppealsPanel from '../shared/AppealsPanel';
@@ -71,8 +70,6 @@ export function AdminEventDashboard({ eventId, role = 'Admin' }: AdminEventDashb
         return <TeamListTab eventId={eventId} />;
       case 'roles':
         return <RoleListTab eventId={eventId} />;
-      case 'approvals':
-        return <AccountApprovalTab eventId={eventId} />;
       case 'submission':
         return <SubmissionsScoringPanel eventId={eventId} />;
       case 'appeal':
