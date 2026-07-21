@@ -43,6 +43,7 @@ export const useTeamRoundBreakdown = (teamId: string, roundId: string) => {
     .filter((s) => s.roundId === roundId)
     .flatMap((s) =>
       s.judgeScores.map((js, i) => ({
+        trackName: s.trackName,
         score: {
           id: `${s.submitResultId}-${i}`,
           judgeName: js.judgeName,
