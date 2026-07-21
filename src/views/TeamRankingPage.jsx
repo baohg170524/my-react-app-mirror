@@ -1,4 +1,4 @@
-import { calcScore, getRankColor, getRankBg, getRankIcon } from '../utils.jsx';
+import { calcScore, getRankColor, getRankBg } from '../utils.jsx';
 
 export default function TeamRankingPage({ teams, criteria, myId }) {
   const by     = [...teams].sort((a, b) => calcScore(b.scores, criteria) - calcScore(a.scores, criteria));
@@ -37,7 +37,7 @@ export default function TeamRankingPage({ teams, criteria, myId }) {
                 <div className="text-xl font-bold" style={{ color: '#76b900' }}>{me.scores[i] || 0}</div>
                 <div className="text-xs" style={{ color: '#757575' }}>{c.weight}/10</div>
                 {me.comments?.[i] && (
-                  <div className="text-xs mt-1 italic leading-snug" style={{ color: '#757575' }}>"{me.comments[i]}"</div>
+                  <div className="text-xs mt-1 italic leading-snug" style={{ color: '#757575' }}>&ldquo;{me.comments[i]}&rdquo;</div>
                 )}
               </div>
             ))}
@@ -54,9 +54,8 @@ export default function TeamRankingPage({ teams, criteria, myId }) {
             borderRadius: 2,
             animationDelay: `${i * 0.06}s`,
           }}>
-          <div className="w-11 text-center font-bold"
-            style={{ fontSize: t.rank <= 3 ? 22 : 14, color: getRankColor(t.rank) }}>
-            {getRankIcon(t.rank)}
+          <div className="w-11 text-center text-sm font-bold" style={{ color: '#000' }}>
+            {t.rank}
           </div>
           <div className="flex-1">
             <div className="text-sm font-bold" style={{ color: t.id === myId ? '#76b900' : '#000' }}>

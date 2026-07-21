@@ -11,6 +11,7 @@ import {
 } from '@/features/events/hooks/useEvents';
 import { useNotify } from '@/components/NotificationProvider';
 import { useDialog } from '@/components/ConfirmDialogProvider';
+import { StatusBadge } from '@/components/StatusBadge';
 import { getErrorMessage } from '@/lib/apiError';
 import { formatAdvancementRule } from '@/lib/events/advancementRule';
 import { Card } from '../../EventDashboard/Card';
@@ -172,13 +173,6 @@ export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
     (a, b) => (a.rank || 9999) - (b.rank || 9999) || b.finalScore - a.finalScore,
   );
 
-  const rankStyle = (rank: number) => {
-    if (rank === 1) return 'bg-primary text-on-primary';
-    if (rank === 2) return 'bg-stone text-on-dark';
-    if (rank === 3) return 'bg-ash text-on-dark';
-    return 'bg-surface-soft text-ink border border-hairline';
-  };
-
   return (
     <Card title="Bảng xếp hạng">
       {/* ─── Thanh điều khiển: chọn vòng + tính / hủy kết quả ─── */}
@@ -202,34 +196,26 @@ export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
           // ─── FE-03: có kết quả (nháp hoặc đã công bố) → toggle bật/tắt công bố +
           // hành động riêng "Xóa & tính lại" khi cần làm lại từ đầu ───
           <div className="flex items-center gap-2 md:ml-auto">
-            <span
-              className={`t-caption-sm font-bold uppercase px-3 py-2 rounded-sm border ${
-                isPublished
-                  ? 'text-primary bg-primary/10 border-primary/30'
-                  : 'text-warning bg-warning/10 border-warning/30'
-              }`}
-            >
+            <StatusBadge tone={isPublished ? 'success' : 'pending'}>
               {isPublished ? 'Đã công bố' : 'Bản nháp — chưa công bố'}
-            </span>
+            </StatusBadge>
             <button
               type="button"
               onClick={handleRecalculate}
               disabled={busy}
-              className="px-4 py-2 rounded-sm t-body-sm font-bold bg-surface-soft text-ink border border-hairline disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
+              className="btn btn-delete disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {cancel.isPending ? 'Đang xóa…' : 'Xóa & tính lại'}
+              {cancel.isPending ? 'Đang tính lại…' : 'Tính lại'}
             </button>
             <button
               type="button"
               onClick={handleTogglePublish}
               disabled={busy}
-              className={`px-4 py-2 rounded-sm t-body-sm font-bold text-on-primary disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 ${
-                isPublished ? 'bg-error focus-visible:outline-error' : 'bg-primary focus-visible:outline-primary'
-              }`}
+              className="btn btn-update disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {setPublishStatus.isPending
                 ? 'Đang lưu…'
-                : isPublished ? 'Thu hồi về nháp' : 'Công bố'}
+                : isPublished ? 'Ẩn' : 'Công bố'}
             </button>
           </div>
         ) : (
@@ -265,7 +251,7 @@ export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
                 type="button"
                 onClick={handleCalculate}
                 disabled={!roundEnded || busy}
-                className="px-4 py-2 rounded-sm t-body-sm font-bold bg-primary text-on-primary disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                className="btn btn-create disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {calculate.isPending ? 'Đang tính…' : 'Tính kết quả vòng'}
               </button>
@@ -298,22 +284,14 @@ export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
                 return (
                   <tr key={row.id} className="border-b border-hairline last:border-b-0">
                     <td className="py-3 px-2 text-center">
-                      <span
-                        className={`inline-flex items-center justify-center w-8 h-8 rounded-full t-body-strong font-bold ${rankStyle(rank)}`}
-                      >
-                        {rank}
-                      </span>
+                      <span className="t-body-strong font-bold text-ink">{rank}</span>
                     </td>
                     <td className="t-body-sm font-bold text-ink py-3 px-2">{teamName(row.teamId)}</td>
                     <td className="t-heading-sm text-primary font-bold py-3 px-2 text-center">{row.finalScore}</td>
                     <td className="py-3 px-2 text-center">
-                      <span
-                        className={`inline-block px-3 py-1 rounded-sm t-caption-sm font-bold uppercase ${
-                          row.isAdvanced ? 'bg-primary/10 text-primary' : 'bg-surface-soft text-mute border border-hairline'
-                        }`}
-                      >
-                        {row.isAdvanced ? 'Đạt' : 'Loại'}
-                      </span>
+                      <StatusBadge tone={row.isAdvanced ? 'success' : 'pending'}>
+                        {row.isAdvanced ? 'Đi tiếp' : 'Dừng lại'}
+                      </StatusBadge>
                     </td>
                   </tr>
                 );

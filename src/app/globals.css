@@ -352,9 +352,9 @@ button, input, select, textarea {
   align-items: center;
   width: fit-content;
   padding: 4px 10px;
-  background: var(--color-canvas);
+  background: #ffffff;
   color: var(--status-color);
-  border: 1px solid var(--status-color);
+  border: 1px solid currentColor;
   border-radius: var(--radius-sm);
   font-size: var(--fs-utility-xs);
   font-weight: 700;
@@ -399,6 +399,15 @@ select.input {
   height: var(--h-control);
   min-height: var(--h-control);
   box-sizing: border-box;
+}
+
+/* Giữ chữ trong dropdown căn giữa theo chiều dọc, kể cả khi focus. */
+select.text-input,
+select.input,
+select.text-input:focus,
+select.input:focus {
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 /* Form tạo/sửa sự kiện: viền các input màu đen (đậm hơn hairline mặc định). */

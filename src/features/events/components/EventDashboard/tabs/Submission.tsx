@@ -8,6 +8,7 @@ import { eventsApi } from '@/features/events/api/events';
 import { useTeamSubmissions, useCreateSubmission, useUpdateSubmission } from '@/features/submissions/hooks/useSubmissions';
 import type { SubmissionModel } from '@/features/submissions/api/submissions';
 import { useNotify } from '@/components/NotificationProvider';
+import { StatusBadge } from '@/components/StatusBadge';
 import {
   parseRuleLabels,
   parseSubmissionLinks,
@@ -28,6 +29,11 @@ const fmt = (iso: string) =>
   });
 
 interface RoundInfo { id: string; roundName: string | null; startDate: string; endDate: string; }
+interface EventModelWithSubmissionRules {
+  rounds?: Array<{
+    tracks?: Array<{ id: string; submissionRuleDescription?: string | null }>;
+  }>;
+}
 
 interface Props { teamId: string; eventId: string; }
 
@@ -49,6 +55,7 @@ export function SubmissionTab({ teamId, eventId }: Props) {
   // Track không cấu hình -> 1 ô "Link nộp bài" như cũ.
   const [links, setLinks] = useState<SubmissionLink[]>([]);
   const [description, setDesc] = useState('');
+  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
   // Bài đang sửa (null = đang ở chế độ nộp mới). Chỉ sửa được link + mô tả, trong thời gian vòng còn mở.
   const [editing, setEditing] = useState<SubmissionModel | null>(null);
   const [now] = useState(() => Date.now());
@@ -75,9 +82,9 @@ export function SubmissionTab({ teamId, eventId }: Props) {
   const buildLinksForTrack = (tid: string): SubmissionLink[] => {
     // Tìm rules từ nested model thay vì flat model (do BE không trả field này ở flat list)
     let ruleDesc: string | null | undefined = null;
-    const nestedRounds = (eventModel as any)?.rounds ?? [];
+    const nestedRounds = (eventModel as EventModelWithSubmissionRules | undefined)?.rounds ?? [];
     for (const r of nestedRounds) {
-      const track = (r.tracks ?? []).find((x: any) => x.id === tid);
+      const track = (r.tracks ?? []).find((x) => x.id === tid);
       if (track) {
         ruleDesc = track.submissionRuleDescription;
         break;
@@ -163,7 +170,6 @@ export function SubmissionTab({ teamId, eventId }: Props) {
           className="flex items-center gap-3 px-4 py-3"
           style={{ background: 'rgba(118,185,0,0.08)', border: '1px solid rgba(118,185,0,0.3)', borderRadius: 4 }}
         >
-          <span style={{ fontSize: 16 }}>🟢</span>
           <div className="text-sm">
             <span className="font-bold" style={{ color: '#5a8d00' }}>
               {activeRound.roundName ?? 'Vòng thi'} đang diễn ra
@@ -180,14 +186,13 @@ export function SubmissionTab({ teamId, eventId }: Props) {
           className="flex items-center gap-3 px-4 py-3"
           style={{ background: 'rgba(255,193,7,0.1)', border: '1px solid #ffc107', borderRadius: 4 }}
         >
-          <span style={{ fontSize: 16 }}>⏳</span>
           <p className="text-sm m-0" style={{ color: '#8a6d00' }}>
             Hiện không có vòng thi nào đang mở. Bạn chỉ có thể xem bài đã nộp.
           </p>
         </div>
       )}
 
-      <form onSubmit={submit} className="space-y-3 border border-hairline rounded-sm bg-canvas p-4 md:p-6">
+      <form onSubmit={submit} className="space-y-3 border border-hairline rounded-sm bg-white p-4 md:p-6">
         {editing ? (
           <p className="t-body-sm text-mute">
             Đang sửa bài của hạng mục <b className="text-ink">{trackName(editing.trackId)}</b> — chỉ đổi được link và mô tả.
@@ -202,7 +207,7 @@ export function SubmissionTab({ teamId, eventId }: Props) {
                   const isActive = isRoundOpen(r);
                   return (
                     <option key={r.id} value={r.id}>
-                      {isActive ? '🟢 ' : ''}{r.roundName ?? 'Vòng ' + r.id.slice(0, 4)}
+                      {r.roundName ?? 'Vòng ' + r.id.slice(0, 4)}
                       {isActive ? ' (Đang mở)' : ''}
                     </option>
                   );
@@ -212,7 +217,7 @@ export function SubmissionTab({ teamId, eventId }: Props) {
 
             {selectedRound && (
               <p className={`t-body-sm ${selectedClosed ? 'text-error font-bold' : 'text-mute'}`}>
-                ⏰ Thời gian nộp: {fmt(selectedRound.startDate)} → {fmt(selectedRound.endDate)}
+                Thời gian nộp: {fmt(selectedRound.startDate)} → {fmt(selectedRound.endDate)}
                 {selectedClosed && ' — NGOÀI thời gian nộp bài'}
               </p>
             )}
@@ -287,24 +292,20 @@ export function SubmissionTab({ teamId, eventId }: Props) {
               const r = roundOfTrack(s.trackId);
               const canEdit = isRoundOpen(r);
               return (
-                <li key={s.id} className="border border-hairline rounded-sm bg-canvas p-4 space-y-2">
+                <li key={s.id} className="border border-hairline rounded-sm bg-white p-4 space-y-2">
                   {/* Dòng 1: trạng thái + hạng mục / vòng + nút Sửa */}
                   <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div className="flex items-center gap-2 flex-wrap min-w-0">
-                      <span className="text-xs font-bold px-2 py-0.5 rounded-sm bg-green-50 text-green-700 border border-green-200 whitespace-nowrap">
-                        ✓ Đã nộp
-                      </span>
-                      <span className="t-body-md font-bold">{trackName(s.trackId)}</span>
-                      {r && <span className="t-body-sm text-mute">· {r.roundName ?? 'Vòng thi'}</span>}
+                      <StatusBadge tone="success">Đã nộp</StatusBadge>
+                      <StatusBadge tone="neutral">{trackName(s.trackId)}</StatusBadge>
+                      {r && <span className="t-body-sm text-ink">{r.roundName ?? 'Vòng thi'}</span>}
                     </div>
                     {canEdit ? (
                       <button type="button" onClick={() => startEdit(s)} className="btn btn-update shrink-0 text-xs px-3 py-1">
                         Sửa bài
                       </button>
                     ) : (
-                      <span className="text-xs font-bold px-2 py-0.5 rounded-sm bg-gray-100 text-gray-500 border border-gray-200 shrink-0 whitespace-nowrap">
-                        🔒 Đã khóa
-                      </span>
+                      <StatusBadge tone="inactive" className="shrink-0">Đã khóa</StatusBadge>
                     )}
                   </div>
 
@@ -312,25 +313,28 @@ export function SubmissionTab({ teamId, eventId }: Props) {
                       dữ liệu cũ (1 URL thường) -> 1 dòng như trước (tương thích ngược). */}
                   {parseSubmissionLinks(s.submissionUrl).map((lnk, i) => (
                     <div key={i} className="flex items-center gap-2 min-w-0">
-                      <span aria-hidden className="shrink-0">🔗</span>
                       <span className="t-body-sm font-bold shrink-0">{lnk.label}:</span>
                       <a
                         href={lnk.url} target="_blank" rel="noreferrer"
-                        className="t-body-sm text-primary underline truncate"
+                        className="t-body-sm text-primary underline truncate flex-1 min-w-0"
                         title={lnk.url}
                       >
                         {lnk.url}
                       </a>
                       <button
                         type="button"
-                        className="btn shrink-0 text-xs px-2 py-0.5"
+                        className="btn btn-outline btn-sm ml-auto shrink-0"
                         onClick={() => {
                           navigator.clipboard?.writeText(lnk.url)
-                            .then(() => notify.success(`Đã copy ${lnk.label}.`))
+                            .then(() => {
+                              setCopiedUrl(lnk.url);
+                              notify.success(`Đã copy ${lnk.label}.`);
+                              window.setTimeout(() => setCopiedUrl((current) => current === lnk.url ? null : current), 2000);
+                            })
                             .catch(() => notify.error('Không copy được, hãy copy thủ công.'));
                         }}
                       >
-                        Copy
+                        {copiedUrl === lnk.url ? 'Đã copy' : 'Copy'}
                       </button>
                     </div>
                   ))}
@@ -344,13 +348,13 @@ export function SubmissionTab({ teamId, eventId }: Props) {
 
                   {/* Meta: thời gian nộp + hạn sửa */}
                   <div className="flex items-center gap-4 flex-wrap t-body-sm text-mute">
-                    <span>🕒 Nộp lúc: {fmt(s.createdTime)}</span>
+                    <span>Nộp lúc: {fmt(s.createdTime)}</span>
                     {r && (canEdit ? (
                       <span className="font-bold" style={{ color: '#5a8d00' }}>
-                        ⏰ Còn sửa được đến {fmt(r.endDate)}
+                        Còn sửa được đến {fmt(r.endDate)}
                       </span>
                     ) : (
-                      <span>⏰ Hết hạn sửa: {fmt(r.endDate)}</span>
+                      <span>Hết hạn sửa: {fmt(r.endDate)}</span>
                     ))}
                   </div>
                 </li>

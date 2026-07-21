@@ -13,6 +13,7 @@ import { submitResultsApi } from '@/features/events/api/submitResults';
 import { parseSubmissionLinks } from '@/features/submissions/utils/submissionLinks';
 import { getErrorMessage } from '@/lib/apiError';
 import { calcScoreNormalized } from '@/utils.jsx';
+import { StatusBadge } from '@/components/StatusBadge';
 
 /**
  * Panel gộp "Bài nộp" + "Chấm điểm" — thay thế ScoringPanel.jsx + SubmissionsPanel.jsx.
@@ -420,7 +421,7 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
                   : 'Xem bài nộp và kết quả chấm điểm từ các đội thi.'}
               </p>
             </div>
-            <div className="badge-accent px-4 py-2 text-sm">{submissions.length} bài nộp</div>
+            <StatusBadge tone="success">{submissions.length} bài nộp</StatusBadge>
           </div>
 
           {roundInfo && (
@@ -458,10 +459,9 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
           ) : (
             <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 1fr' }}>
               {submissions.map((s) => {
-                // Khung màu: cam = chưa chấm, xanh lá = đã chấm (ít nhất 1 giám khảo với
-                // viewer; chính họ với Judge).
+                // Viền màu: cam = chưa chấm, xanh lá = đã chấm (ít nhất 1 giám khảo với
+                // viewer; chính họ với Judge). Nền bài nộp luôn màu trắng.
                 const borderColor = s.scored ? '#76b900' : '#df6500';
-                const bgTint = s.scored ? 'rgba(118,185,0,.04)' : 'rgba(223,101,0,.04)';
                 // Judge LUÔN dùng điểm của chính mình. Ưu tiên `totalScore` backend đã tính
                 // sẵn (đúng theo value/maxScore thật của từng tiêu chí) — chỉ fallback về
                 // calcScore() (giả định maxScore=10) khi chưa có totalScore (bài chưa chấm).
@@ -474,28 +474,22 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
                   <div
                     key={s.id}
                     className="card-hover p-6"
-                    style={{ background: bgTint, border: `1.5px solid ${borderColor}`, borderRadius: 2, animationDelay: `${s.index * 0.06}s` }}
+                    style={{ background: '#ffffff', border: `1.5px solid ${borderColor}`, borderRadius: 2, animationDelay: `${s.index * 0.06}s` }}
                   >
                     <div className="flex justify-between items-start mb-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         {/* Trước đây ẩn danh theo "Bài nộp #i" — giờ hiện 8 ký tự đầu teamId
                             theo yêu cầu, không còn ẩn danh hoàn toàn nữa. */}
                         <span className="text-sm font-bold" style={{ color: '#000' }}>{teamLabel(s)}</span>
-                        <span
-                          className="text-[10px] font-bold px-1.5 py-0.5"
-                          style={{ background: s.scored ? 'rgba(118,185,0,.15)' : 'rgba(223,101,0,.15)', color: s.scored ? '#5a8d00' : '#df6500', borderRadius: 2 }}
-                        >
-                          {s.scored ? '● Đã chấm' : '● Chưa chấm'}
-                        </span>
+                        <StatusBadge tone={s.scored ? 'success' : 'pending'}>
+                          {s.scored ? 'Đã chấm' : 'Chưa chấm'}
+                        </StatusBadge>
                         {/* Chỉ xuất hiện khi xem gộp toàn sự kiện (nhiều track) — giúp phân biệt
                             bài nộp thuộc hạng mục nào. */}
                         {s.trackName && (
-                          <span
-                            className="text-[10px] font-bold px-1.5 py-0.5"
-                            style={{ background: '#f0f0f0', color: '#757575', borderRadius: 2 }}
-                          >
+                          <StatusBadge tone="neutral">
                             {s.trackName}
-                          </span>
+                          </StatusBadge>
                         )}
                       </div>
                       {/* Điểm tổng luôn hiện ra ngoài (không chỉ riêng Judge nữa) — Judge đang
@@ -512,7 +506,7 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
                     <div className="grid gap-2.5 my-3" style={{ gridTemplateColumns: '1fr 1fr' }}>
                       <div className="p-3" style={{ background: '#f7f7f7', borderRadius: 2 }}>
                         <div className="text-[10px] tracking-widest mb-1 font-bold uppercase" style={{ color: '#757575' }}>Trạng thái</div>
-                        <div className="text-sm font-bold" style={{ color: '#000' }}>{s.status}</div>
+                        <StatusBadge tone="processing">{s.status}</StatusBadge>
                       </div>
                       <div className="p-3" style={{ background: '#f7f7f7', borderRadius: 2 }}>
                         <div className="text-[10px] tracking-widest mb-1 font-bold uppercase" style={{ color: '#757575' }}>Thời gian nộp</div>

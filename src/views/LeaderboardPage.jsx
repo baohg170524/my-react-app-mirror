@@ -1,4 +1,4 @@
-import { calcScore, getRankColor, getRankBg, getRankIcon } from '../utils.jsx';
+import { calcScore, getRankColor, getRankBg } from '../utils.jsx';
 
 export default function LeaderboardPage({ teams, criteria, sortBy, setSortBy, onEdit, onExport }) {
   const sorted = [...teams].sort((a, b) =>
@@ -59,7 +59,7 @@ export default function LeaderboardPage({ teams, criteria, sortBy, setSortBy, on
               borderRadius: 2,
               animationDelay: `${i * 0.05}s`,
             }}>
-            <div className="font-bold" style={{ fontSize: t.rank <= 3 ? 20 : 13, color: getRankColor(t.rank) }}>{getRankIcon(t.rank)}</div>
+            <div className="text-sm font-bold" style={{ color: '#000' }}>{t.rank}</div>
             <div>
               <div className="text-sm font-bold" style={{ color: '#000' }}>{t.name}</div>
               <div className="text-xs" style={{ color: '#757575' }}>{t.id}</div>
