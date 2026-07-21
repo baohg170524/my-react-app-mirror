@@ -54,6 +54,8 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
   // user không phải Judge/không có track nào.
   const [myTracks, setMyTracks] = useState([]); // [{ trackId, roleId, trackName }]
   const [selectedTrackId, setSelectedTrackId] = useState(null);
+  // Dropdown lọc danh sách bài nộp theo 1 đội cụ thể (teamId) — rỗng nghĩa là hiện tất cả.
+  const [selectedFilterTeamId, setSelectedFilterTeamId] = useState('');
   const [lock, setLock] = useState({ locked: false, message: null });
   // Tách riêng khỏi `lock` — lock.locked còn bật vì lý do "chưa tới hạn chấm", không chỉ
   // vì đã công bố. Chỉ dùng cờ này để quyết định ẩn nút "Chấm/Sửa" → "Xem chi tiết".
@@ -427,6 +429,15 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
   // 8 ký tự đầu của teamId, dùng thay cho nhãn ẩn danh "Bài nộp #i" cũ.
   const teamLabel = (s) => `Đội: ${String(s.teamId || s.id || '').slice(0, 8).toUpperCase()}`;
 
+  // Danh sách teamId duy nhất có bài nộp — dùng cho dropdown lọc theo đội.
+  const teamOptions = [...new Map(
+    submissions.map((s) => [s.teamId ?? s.id, { teamId: s.teamId ?? s.id, label: teamLabel(s) }]),
+  ).values()];
+
+  const filteredSubmissions = selectedFilterTeamId
+    ? submissions.filter((s) => (s.teamId ?? s.id) === selectedFilterTeamId)
+    : submissions;
+
   // Điểm trung bình của mọi giám khảo đã chấm (từ breakdown) — dùng khi không phải
   // Judge đang ở chế độ sửa (viewer, hoặc Judge sau khi đã công bố kết quả).
   const avgBreakdownScore = (breakdown) => {
@@ -534,13 +545,36 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
             </div>
           )}
 
+          {submissions.length > 0 && (
+            <div className="mb-5">
+              <label className="text-xs font-bold uppercase tracking-widest" style={{ color: '#757575' }}>
+                Lọc theo đội
+              </label>
+              <select
+                value={selectedFilterTeamId}
+                onChange={(e) => setSelectedFilterTeamId(e.target.value)}
+                className="block mt-1 border rounded-sm px-3 py-2 text-sm"
+                style={{ borderColor: '#e0e0e0' }}
+              >
+                <option value="">Tất cả đội</option>
+                {teamOptions.map((t) => (
+                  <option key={t.teamId} value={t.teamId}>{t.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {submissions.length === 0 ? (
             <div className="text-center py-20">
               <p className="text-sm" style={{ color: '#757575' }}>Chưa có đội nào nộp bài.</p>
             </div>
+          ) : filteredSubmissions.length === 0 ? (
+            <div className="text-center py-20">
+              <p className="text-sm" style={{ color: '#757575' }}>Không có bài nộp nào cho đội đã chọn.</p>
+            </div>
           ) : (
             <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 1fr' }}>
-              {submissions.map((s) => {
+              {filteredSubmissions.map((s) => {
                 // Khung màu: cam = chưa chấm, xanh lá = đã chấm (ít nhất 1 giám khảo với
                 // viewer; chính họ với Judge).
                 const borderColor = s.scored ? '#76b900' : '#df6500';

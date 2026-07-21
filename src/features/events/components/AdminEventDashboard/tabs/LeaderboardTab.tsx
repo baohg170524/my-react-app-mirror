@@ -80,7 +80,9 @@ export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
     }
     const ok = await dialog.confirm({
       title: 'Tính kết quả',
-      message: `Tính kết quả (bản nháp) cho "${selectedRound?.roundName ?? 'vòng thi'}"? Sau khi tính, bạn có thể rà soát trước khi bấm "Công bố" riêng.`,
+      message: roundEnded
+        ? `Tính kết quả (bản nháp) cho "${selectedRound?.roundName ?? 'vòng thi'}"? Sau khi tính, bạn có thể rà soát trước khi bấm "Công bố" riêng.`
+        : `Vòng thi hoặc (các) hạng mục CHƯA kết thúc nộp bài/chấm điểm. Tính kết quả bây giờ chỉ dựa trên dữ liệu hiện có và CÓ THỂ thay đổi nếu có bài nộp/điểm chấm mới sau đó. Vẫn muốn tính trước kết quả (bản nháp) cho "${selectedRound?.roundName ?? 'vòng thi'}"?`,
       confirmText: 'Tính kết quả',
     });
     if (!ok) return;
