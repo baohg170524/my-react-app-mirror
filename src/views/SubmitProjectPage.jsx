@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { StatusBadge } from '../components/StatusBadge';
 
 export default function SubmitProjectPage({ myTeam, submissions, onSubmit }) {
   const myS = submissions.find(s => s.teamId === myTeam?.id);
@@ -24,7 +25,7 @@ export default function SubmitProjectPage({ myTeam, submissions, onSubmit }) {
               <div className="text-base font-bold" style={{ color: '#76b900' }}>Bài đã được nộp thành công</div>
               <div className="text-xs mt-0.5" style={{ color: '#757575' }}>Nộp lúc {myS.submittedAt}</div>
             </div>
-            <span className="badge-accent ml-auto">{myS.status}</span>
+            <StatusBadge tone="success" className="ml-auto">{myS.status}</StatusBadge>
           </div>
           {[['TÊN DỰ ÁN', myS.projectName], ['TÊN NHÓM', myS.teamName]].map(([k, v]) => (
             <div key={k} className="p-3.5 mb-2.5 grid items-center" style={{ background: '#f7f7f7', gridTemplateColumns: '120px 1fr', borderRadius: 2 }}>

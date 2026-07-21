@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useUserRole } from "@/hooks/useUserRole";
+import { StatusBadge, type StatusTone } from "@/components/StatusBadge";
 import type { Event } from "../types/event.types";
 
 interface Props {
@@ -27,16 +28,16 @@ function formatDate(iso: string) {
 function roleLabel(roleName?: string | null): string | null {
   switch ((roleName ?? "").toLowerCase()) {
     case "eventcoordinator":
-      return "EC";
+      return "Ban tổ chức";
     case "judge":
       return "Giám khảo";
     case "mentor":
-      return "Người hướng dẫn";
+      return "Cố vấn";
     case "teamleader":
-      return "Team Leader";
+      return "Trưởng nhóm";
     case "teammember":
     case "member":
-      return "Team Member";
+      return "Thành viên";
     default:
       return null;
   }
@@ -55,24 +56,18 @@ function eventPhase(event: Event): EventPhase {
 }
 
 /** Nhãn + màu badge cho từng giai đoạn (inline style theo phong cách card). */
-const PHASE_BADGE: Record<EventPhase, { label: string; bg: string; color: string; border: string }> = {
+const PHASE_BADGE: Record<EventPhase, { label: string; tone: StatusTone }> = {
   active: {
     label: "Đang diễn ra",
-    bg: "rgba(255,255,255,0.95)",
-    color: "var(--color-primary)",
-    border: "var(--color-primary)",
+    tone: "success",
   },
   upcoming: {
     label: "Sắp tới",
-    bg: "rgba(255,255,255,0.95)",
-    color: "var(--color-ink)",
-    border: "var(--color-hairline)",
+    tone: "upcoming",
   },
   ended: {
     label: "Đã kết thúc",
-    bg: "rgba(255,255,255,0.95)",
-    color: "var(--color-stone)",
-    border: "var(--color-hairline)",
+    tone: "inactive",
   },
 };
 
@@ -100,25 +95,17 @@ export function EventCard({ event, onJoin, isJoining, joinError }: Props) {
         style={{ display: "block", width: "100%", height: 160, borderRadius: "var(--radius-sm)", overflow: "hidden", position: "relative", flexShrink: 0, marginTop: "var(--space-xs)", cursor: "pointer" }}
       >
         {/* Status badge — góc trên trái ảnh: Sắp tới / Đang diễn ra / Đã kết thúc */}
-        <span
+        <StatusBadge
+          tone={PHASE_BADGE[phase].tone}
           style={{
             position: "absolute",
             top: 8,
             left: 8,
             zIndex: 2,
-            background: PHASE_BADGE[phase].bg,
-            color: PHASE_BADGE[phase].color,
-            border: `1px solid ${PHASE_BADGE[phase].border}`,
-            fontSize: "var(--fs-caption-sm)",
-            fontWeight: 700,
-            letterSpacing: "0.4px",
-            padding: "3px 10px",
-            borderRadius: 0,
-            boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
           }}
         >
           {PHASE_BADGE[phase].label}
-        </span>
+        </StatusBadge>
         {myRoleLabel && (
           <span
             style={{

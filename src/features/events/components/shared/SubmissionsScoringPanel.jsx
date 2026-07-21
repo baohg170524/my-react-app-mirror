@@ -549,24 +549,22 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
 
                     <div className="flex justify-end mt-4">
                       {isJudge ? (
-                        <button className="btn-hover flex items-center gap-2 px-4 py-2 text-xs font-bold"
+                        <button className={`btn btn-sm ${resultsPublished ? 'btn-view' : 'btn-update'}`}
                           onClick={() => setEditT(s)}
                           // Chỉ disable khi bị khóa vì lý do KHÁC "đã công bố" (vd chưa tới
                           // hạn chấm) — nếu đã công bố, vẫn cho mở modal ở chế độ chỉ xem.
                           disabled={lock.locked && !resultsPublished}
                           style={{
-                            background: '#f7f7f7', border: '1px solid #cccccc',
-                            color: (lock.locked && !resultsPublished) ? '#aaaaaa' : '#000', borderRadius: 2,
                             cursor: (lock.locked && !resultsPublished) ? 'not-allowed' : 'pointer',
                             opacity: (lock.locked && !resultsPublished) ? 0.6 : 1,
                           }}>
-                          {resultsPublished ? '🔍 Xem chi tiết' : '⚡ Chấm / Sửa'}
+                          {resultsPublished ? 'Xem chi tiết' : 'Chấm / Sửa'}
                         </button>
                       ) : (
-                        <button className="btn-hover flex items-center gap-2 px-4 py-2 text-xs font-bold"
+                        <button className="btn btn-view btn-sm"
                           onClick={() => setViewT(s)}
-                          style={{ background: '#f7f7f7', border: '1px solid #cccccc', color: '#000', borderRadius: 2, cursor: 'pointer' }}>
-                          🔍 Xem chi tiết
+                          style={{ cursor: 'pointer' }}>
+                          Xem chi tiết
                         </button>
                       )}
                     </div>

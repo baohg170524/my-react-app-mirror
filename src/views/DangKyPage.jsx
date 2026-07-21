@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { StatusBadge } from '../components/StatusBadge';
 
 const emptyMember = () => ({ name: '', id: '' });
 
@@ -26,7 +27,7 @@ function FptForm({ onSubmit }) {
           <div className="font-bold text-sm" style={{ color: '#5a8d00' }}>Sinh viên FPT University</div>
           <div className="text-xs mt-0.5" style={{ color: '#757575' }}>Hệ thống xác nhận tự động · Duyệt ngay lập tức</div>
         </div>
-        <span className="badge-accent ml-auto">Tự động duyệt</span>
+        <StatusBadge tone="success" className="ml-auto">Tự động duyệt</StatusBadge>
       </div>
 
       <div className="mb-4">
@@ -96,7 +97,7 @@ function ExternalForm({ onSubmit }) {
           <div className="font-bold text-sm" style={{ color: '#000' }}>Trường ngoài FPT</div>
           <div className="text-xs mt-0.5" style={{ color: '#757575' }}>Cần chờ quản trị viên xét duyệt</div>
         </div>
-        <span className="badge-warn ml-auto">Chờ xét duyệt</span>
+        <StatusBadge tone="pending" className="ml-auto">Chờ xét duyệt</StatusBadge>
       </div>
 
       <div className="mb-4">

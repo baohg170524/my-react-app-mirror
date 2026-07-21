@@ -165,10 +165,10 @@ https://typescript-eslint.io/rules/no-explicit-any      // 403 = đang đăng nh
       actions = (
         <div className="inv-actions">
           <button onClick={() => doRespond(false)} className="inv-btn inv-btn--ghost">
-            <X size={16} /> Từ chối
+            Từ chối
           </button>
           <button onClick={() => doRespond(true)} className="inv-btn">
-            <Check size={16} /> Đồng ý
+            Đồng ý
           </button>
         </div>
       );

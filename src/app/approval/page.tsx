@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, X, Search } from 'lucide-react';
+import { X, Search } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { usersApi, schoolsApi, type UserSummary } from '@/services/api';
 import { Navbar } from '@/components/Navbar';
@@ -241,7 +241,7 @@ export default function ApprovalRoute() {
                         className="flex items-center gap-1 t-caption-sm font-bold text-ink disabled:opacity-40 hover:bg-black/5 px-3 py-1.5 rounded-sm transition-colors"
                         style={{ border: '1px solid var(--color-hairline-strong)' }}
                       >
-                        <ChevronLeft size={14} aria-hidden="true" /> Trước
+                        Trước
                       </button>
                       <button
                         type="button"
@@ -250,7 +250,7 @@ export default function ApprovalRoute() {
                         className="flex items-center gap-1 t-caption-sm font-bold text-ink disabled:opacity-40 hover:bg-black/5 px-3 py-1.5 rounded-sm transition-colors"
                         style={{ border: '1px solid var(--color-hairline-strong)' }}
                       >
-                        Sau <ChevronRight size={14} aria-hidden="true" />
+                        Sau
                       </button>
                     </div>
                   </div>

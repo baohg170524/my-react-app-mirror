@@ -3,7 +3,7 @@
 import React from 'react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'danger';
+  variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'create' | 'view' | 'update' | 'delete';
   size?: 'sm' | 'md' | 'lg';
   children: React.ReactNode;
   isLoading?: boolean;
@@ -26,7 +26,11 @@ export function Button({
     outline: 'bg-transparent text-ink border border-hairline hover:bg-surface-soft active:bg-hairline',
     // Nút nguy hiểm (xóa, từ chối): viền đỏ + chữ đỏ; hover đảo thành nền đỏ, chữ trắng.
     danger:
-      'bg-transparent text-error border-2 border-error hover:bg-[var(--color-error)] hover:text-on-primary active:bg-[var(--color-error)] active:text-on-primary',
+      'bg-transparent text-ink border-2 border-error active:bg-error/15',
+    create: 'bg-transparent text-ink border-2 border-primary active:bg-primary/15',
+    view: 'bg-primary text-on-primary hover:bg-primary-dark active:bg-primary-dark',
+    update: 'bg-primary text-on-primary hover:bg-primary-dark active:bg-primary-dark',
+    delete: 'bg-transparent text-ink border-2 border-error active:bg-error/15',
   };
 
   const sizes = {

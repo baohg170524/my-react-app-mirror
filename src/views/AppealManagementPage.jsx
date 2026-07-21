@@ -38,11 +38,9 @@ export default function AppealManagementPage({ appeals, teams, criteria, onUpdat
             <div className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: '#757575' }}>LÝ DO PHÚC KHẢO</div>
             <div className="text-sm leading-relaxed mb-4" style={{ color: '#1a1a1a' }}>{a.reason}</div>
             <div className="flex justify-end gap-2.5">
-              <button className="btn-hover flex items-center gap-1.5 px-4 py-2 text-xs font-bold"
-                style={{ background: 'rgba(118,185,0,.1)', border: '1px solid rgba(118,185,0,.3)', color: '#5a8d00', borderRadius: 2 }}
+              <button className="btn btn-view btn-sm flex items-center gap-1.5"
                 onClick={() => setView(a)}>Xem</button>
-              <button className="btn-hover flex items-center gap-1.5 px-4 py-2 text-xs font-bold"
-                style={{ background: 'rgba(229,32,32,.08)', border: '1px solid rgba(229,32,32,.25)', color: '#e52020', borderRadius: 2 }}
+              <button className="btn btn-delete btn-sm flex items-center gap-1.5"
                 onClick={() => onDel(a.id)}>Xóa</button>
             </div>
           </div>

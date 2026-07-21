@@ -85,9 +85,12 @@ export function NotificationBell() {
 
   const roleLabel = (role: string) => {
     switch (role) {
-      case 'EventCoordinator': return 'Điều phối viên (EC)';
+      case 'EventCoordinator': return 'Ban tổ chức';
       case 'Judge': return 'Giám khảo';
-      case 'Mentor': return 'Mentor';
+      case 'Mentor': return 'Cố vấn';
+      case 'TeamLeader': return 'Trưởng nhóm';
+      case 'TeamMember':
+      case 'Member': return 'Thành viên';
       default: return role;
     }
   };
@@ -224,14 +227,14 @@ export function NotificationBell() {
                           disabled={isPending}
                           className="btn-hover px-2 py-1 text-xs flex items-center gap-1 border border-error/50 text-error rounded-sm hover:bg-error/10 disabled:opacity-50"
                         >
-                          <X size={14} /> Từ chối
+                          Từ chối
                         </button>
                         <button
                           onClick={() => handleRespond(inv.invitationId, inv.type, true)}
                           disabled={isPending}
                           className="btn-hover px-2 py-1 text-xs flex items-center gap-1 bg-primary text-white rounded-sm hover:bg-primary-dark disabled:opacity-50"
                         >
-                          <Check size={14} /> Đồng ý
+                          Đồng ý
                         </button>
                       </div>
                     </div>

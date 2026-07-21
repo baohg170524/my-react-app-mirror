@@ -89,7 +89,7 @@ export function EventStructureView({ eventId }: Props) {
                       <div className="flex items-center justify-between gap-3 flex-wrap">
                         <span className="t-body-strong text-ink">{track.trackName ?? '—'}</span>
                         <span className="t-caption-sm text-mute">
-                          Template: {templateName(track.templateId)}
+                          Bộ tiêu chí: {templateName(track.templateId)}
                         </span>
                       </div>
                       {track.description && (
@@ -97,10 +97,10 @@ export function EventStructureView({ eventId }: Props) {
                       )}
                       <div className="flex gap-6 flex-wrap">
                         <span className="t-caption-sm text-mute">
-                          Judge: {track.judges?.length ?? 0}
+                          Giám khảo: {track.judges?.length ?? 0}
                         </span>
                         <span className="t-caption-sm text-mute">
-                          Mentor: {track.mentors?.length ?? 0}
+                          Cố vấn: {track.mentors?.length ?? 0}
                         </span>
                       </div>
                     </div>

@@ -236,19 +236,45 @@ button, input, select, textarea {
 
 .btn-outline-danger {
   background: transparent;
-  color: var(--color-error);
+  color: var(--color-ink);
   border: 1px solid var(--color-error);
   padding: 10px 23px;
 }
-.btn-outline-danger:hover {
-  background: var(--color-error);
-  color: #fff;
-}
 .btn-outline-danger:active,
 .btn-outline-danger.is-active {
-  background: var(--color-error-deep);
-  color: #fff;
+  background: rgba(229,32,32,.15);
+  color: var(--color-ink);
 }
+
+/* Semantic CRUD actions. */
+.btn-create {
+  background: transparent;
+  color: var(--color-ink);
+  border: var(--border-primary-2);
+  padding: 9px 23px;
+}
+.btn-create:active,
+.btn-create.is-active { background: rgba(118,185,0,.15); }
+
+.btn-view,
+.btn-update {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  padding: 11px 24px;
+}
+.btn-view:hover,
+.btn-update:hover,
+.btn-view:active,
+.btn-update:active { background: var(--color-primary-dark); }
+
+.btn-delete {
+  background: transparent;
+  color: var(--color-ink);
+  border: 1px solid var(--color-error);
+  padding: 10px 23px;
+}
+.btn-delete:active,
+.btn-delete.is-active { background: rgba(229,32,32,.15); }
 
 .btn-ghost-link {
   background: transparent;
@@ -311,6 +337,39 @@ button, input, select, textarea {
   border-radius: var(--radius-sm);
 }
 
+/* Nút thao tác gọn đặt cạnh status label trong bảng. */
+.btn-label-size {
+  height: auto;
+  min-height: 0;
+  padding: 4px 10px;
+  font-size: var(--fs-utility-xs);
+  line-height: 1.2;
+}
+
+/* Trạng thái: nền trắng, màu chữ và viền luôn cùng tông. */
+.status-label {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 4px 10px;
+  background: var(--color-canvas);
+  color: var(--status-color);
+  border: 1px solid var(--status-color);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-utility-xs);
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.status-success { --status-color: #5a8d00; }
+.status-pending { --status-color: #b45309; }
+.status-processing { --status-color: #0046a4; }
+.status-danger { --status-color: var(--color-error); }
+.status-neutral { --status-color: var(--color-mute); }
+.status-inactive { --status-color: var(--color-stone); }
+.status-upcoming { --status-color: var(--color-ink); }
+
 /* ============ INPUTS ============ */
 
 .text-input,
@@ -330,6 +389,16 @@ button, input, select, textarea {
 .input:focus {
   border: var(--border-primary-2);
   padding: 11px 15px;
+}
+
+/* Input/select và button chuẩn trong cùng một hàng luôn cao bằng nhau. */
+input.text-input,
+select.text-input,
+input.input,
+select.input {
+  height: var(--h-control);
+  min-height: var(--h-control);
+  box-sizing: border-box;
 }
 
 /* Form tạo/sửa sự kiện: viền các input màu đen (đậm hơn hairline mặc định). */
@@ -775,9 +844,9 @@ textarea.input-field { height: auto; }
 .btn-ghost:active { border-color: #76b900; }
 
 .btn-danger {
-  background: rgba(229,32,32,.08);
-  color: #e52020;
-  border: 1px solid rgba(229,32,32,.3);
+  background: transparent;
+  color: #000000;
+  border: 1px solid #e52020;
   border-radius: 2px;
   padding: 11px 24px;
   font-size: 14px;

@@ -202,7 +202,7 @@ export default function EditModal({ team, criteria, onClose, onSave, readOnly = 
           <button className="btn btn-outline" onClick={onClose}>{readOnly ? 'Đóng' : 'Hủy'}</button>
           {!readOnly && (
             <button
-              className="btn btn-primary"
+              className="btn btn-update"
               onClick={() => onSave({
                 // Ghép điểm với đúng tiêu chí bằng criteriaId (không dùng index mảng) để tránh
                 // lệch dữ liệu nếu thứ tự `criteria` phía component cha đổi giữa lúc mở modal và

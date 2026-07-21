@@ -229,8 +229,8 @@ export function SubmissionTab({ teamId, eventId }: Props) {
                 }}
                 className="input w-full mt-1" disabled={!roundId}
               >
-                <option value="">— Chọn track —</option>
-                {tracksForRound.map((t) => <option key={t.id} value={t.id}>{t.trackName ?? 'Track ' + t.id.slice(0, 4)}</option>)}
+                <option value="">— Chọn hạng mục —</option>
+                {tracksForRound.map((t) => <option key={t.id} value={t.id}>{t.trackName ?? 'Hạng mục ' + t.id.slice(0, 4)}</option>)}
               </select>
             </label>
           </>
@@ -262,7 +262,7 @@ export function SubmissionTab({ teamId, eventId }: Props) {
         {mutError ? <p className="t-body-sm text-error">{submitErrorMessage(mutError)}</p> : null}
 
         <div className="flex gap-2">
-          <button type="submit" disabled={pending || (!editing && selectedClosed)} className="btn btn-primary">
+          <button type="submit" disabled={pending || (!editing && selectedClosed)} className={`btn ${editing ? 'btn-update' : 'btn-create'}`}>
             {pending ? 'Đang lưu…' : editing ? 'Lưu thay đổi' : 'Nộp bài'}
           </button>
           {editing && (
@@ -298,7 +298,7 @@ export function SubmissionTab({ teamId, eventId }: Props) {
                       {r && <span className="t-body-sm text-mute">· {r.roundName ?? 'Vòng thi'}</span>}
                     </div>
                     {canEdit ? (
-                      <button type="button" onClick={() => startEdit(s)} className="btn btn-primary shrink-0 text-xs px-3 py-1">
+                      <button type="button" onClick={() => startEdit(s)} className="btn btn-update shrink-0 text-xs px-3 py-1">
                         Sửa bài
                       </button>
                     ) : (

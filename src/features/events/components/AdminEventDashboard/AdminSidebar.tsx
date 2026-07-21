@@ -25,6 +25,18 @@ interface AdminSidebarProps {
 }
 
 export function AdminSidebar({ activeTab, setActiveTab, role = 'Admin' }: AdminSidebarProps) {
+  const displayRole = (() => {
+    switch (role.toLowerCase()) {
+      case 'eventcoordinator': return 'Ban tổ chức';
+      case 'judge': return 'Giám khảo';
+      case 'mentor': return 'Cố vấn';
+      case 'teamleader': return 'Trưởng nhóm';
+      case 'teammember':
+      case 'member': return 'Thành viên';
+      default: return role;
+    }
+  })();
+
   return (
     <aside
       className="fixed left-0 top-0 h-screen w-16 md:w-60 bg-surface-dark border-r border-hairline-strong flex flex-col lg:w-60 z-50"
@@ -71,7 +83,7 @@ export function AdminSidebar({ activeTab, setActiveTab, role = 'Admin' }: AdminS
         <div className="hidden md:flex flex-col flex-1 min-w-0">
           <p className="text-on-dark text-body-sm font-bold truncate text-opacity-100">Quản trị viên</p>
           <span className="inline-block bg-primary/20 text-primary text-caption-xs px-2 py-1 rounded-full text-xs mt-1 w-fit font-semibold">
-            {role.toLowerCase() === 'eventcoordinator' ? 'Ban tổ chức sự kiện' : role}
+            {displayRole}
           </span>
         </div>
       </div>

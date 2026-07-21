@@ -8,25 +8,25 @@ describe('resolveEventRole', () => {
   });
 
   test('team member/leader → participant / "Người tham gia"', () => {
-    expect(resolveEventRole([TeamMember])).toEqual({ role: 'participant', label: 'Người tham gia' });
-    expect(resolveEventRole([TeamLeader])).toEqual({ role: 'participant', label: 'Người tham gia' });
+    expect(resolveEventRole([TeamMember])).toEqual({ role: 'participant', label: 'Thành viên' });
+    expect(resolveEventRole([TeamLeader])).toEqual({ role: 'participant', label: 'Trưởng nhóm' });
   });
 
   test('judge → judge dashboard / "Giám khảo"', () => {
     expect(resolveEventRole([Judge])).toEqual({ role: 'judge', label: 'Giám khảo' });
   });
 
-  test('mentor → participant dashboard but "Người hướng dẫn" label', () => {
-    expect(resolveEventRole([Mentor])).toEqual({ role: 'participant', label: 'Người hướng dẫn' });
+  test('mentor → participant dashboard but "Cố vấn" label', () => {
+    expect(resolveEventRole([Mentor])).toEqual({ role: 'participant', label: 'Cố vấn' });
   });
 
-  test('event coordinator → participant dashboard but "Ban tổ chức sự kiện" label', () => {
-    expect(resolveEventRole([EventCoordinator])).toEqual({ role: 'participant', label: 'Ban tổ chức sự kiện' });
+  test('event coordinator → participant dashboard but "Ban tổ chức" label', () => {
+    expect(resolveEventRole([EventCoordinator])).toEqual({ role: 'participant', label: 'Ban tổ chức' });
   });
 
   test('multiple roles: judge takes the dashboard, coordinator wins the label', () => {
     expect(resolveEventRole([TeamMember, Judge])).toEqual({ role: 'judge', label: 'Giám khảo' });
-    expect(resolveEventRole([EventCoordinator, Judge])).toEqual({ role: 'judge', label: 'Ban tổ chức sự kiện' });
+    expect(resolveEventRole([EventCoordinator, Judge])).toEqual({ role: 'judge', label: 'Ban tổ chức' });
   });
 });
 

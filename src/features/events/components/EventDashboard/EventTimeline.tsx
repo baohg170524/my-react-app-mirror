@@ -285,7 +285,7 @@ function TrackCard({ track, now }: { track: TrackCardData; now: number }) {
           <div className="flex flex-col gap-1 min-w-0 flex-1">
             <p className="t-caption-sm m-0">
               <span className={track.admin.template ? 'text-ink' : 'text-error font-bold'}>
-                {track.admin.template ? `Template: ${track.admin.template}` : 'Chưa gán template'}
+                {track.admin.template ? `Bộ tiêu chí: ${track.admin.template}` : 'Chưa gán bộ tiêu chí'}
               </span>
             </p>
             {track.admin.submissionRules.length > 0 && (
@@ -306,7 +306,7 @@ function TrackCard({ track, now }: { track: TrackCardData; now: number }) {
               Đội: <span className="text-ink">{track.admin.stats.teams}</span>
             </p>
             <p className="t-caption-sm text-mute m-0 whitespace-nowrap">
-              Mentor: <span className="text-ink">{track.admin.stats.mentors}</span>
+              Cố vấn: <span className="text-ink">{track.admin.stats.mentors}</span>
             </p>
             <p className="t-caption-sm text-mute m-0 whitespace-nowrap">
               Giám khảo: <span className="text-ink">{track.admin.stats.judges}</span>

@@ -155,7 +155,7 @@ export function TemplateCriteriaModal({
               type="button"
               onClick={onDerive}
               disabled={deriveBusy}
-              className="btn btn-primary btn-sm"
+              className="btn btn-update btn-sm"
               style={{ cursor: deriveBusy ? "not-allowed" : "pointer", opacity: deriveBusy ? 0.6 : 1, whiteSpace: "nowrap" }}
             >
               {deriveBusy ? "Đang mở…" : "Chỉnh sửa tiêu chí"}

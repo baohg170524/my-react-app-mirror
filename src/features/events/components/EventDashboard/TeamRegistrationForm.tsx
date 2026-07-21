@@ -134,7 +134,7 @@ export function TeamRegistrationForm({ eventId, userId }: TeamRegistrationFormPr
 
           {/* Current User (Leader) */}
           <div className="mb-3 p-3 bg-surface-soft rounded-sm">
-            <p className="t-body-sm text-mute uppercase font-bold text-xs">Team Leader (You)</p>
+            <p className="t-body-sm text-mute uppercase font-bold text-xs">Trưởng nhóm (Bạn)</p>
             <p className="t-body-strong text-ink">Current User</p>
           </div>
 
@@ -209,6 +209,7 @@ export function TeamRegistrationForm({ eventId, userId }: TeamRegistrationFormPr
         </Button>
         <Button
           type="submit"
+          variant="create"
           isLoading={createTeamMutation.isPending}
           disabled={!teamName.trim() || selectedMembers.length === 0}
         >

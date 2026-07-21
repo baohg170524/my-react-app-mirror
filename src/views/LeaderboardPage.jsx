@@ -68,8 +68,7 @@ export default function LeaderboardPage({ teams, criteria, sortBy, setSortBy, on
               <div key={ci} className="text-center text-sm font-bold" style={{ color: '#1a1a1a' }}>{(t.scores[ci] || 0).toFixed(1)}</div>
             ))}
             <div className="text-center text-xl font-black" style={{ color: '#76b900' }}>{score.toFixed(2)}</div>
-            <button className="btn-hover px-2.5 py-1.5 text-xs font-bold" onClick={() => onEdit(t)}
-              style={{ background: 'rgba(118,185,0,.1)', border: '1px solid rgba(118,185,0,.3)', color: '#5a8d00', borderRadius: 2 }}>
+            <button className="btn btn-update btn-sm" onClick={() => onEdit(t)}>
               Sửa điểm
             </button>
           </div>
