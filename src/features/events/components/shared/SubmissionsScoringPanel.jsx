@@ -223,26 +223,45 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
       });
 
       // 7) Khóa/mở form chấm (chỉ áp dụng cho Judge — viewer không chấm nên không cần khóa).
-      // Ưu tiên dùng hạn chót của Hạng mục (Track.endDate — mốc kết thúc nộp bài, cũng là
-      // lúc mở chấm điểm). Chỉ fallback về Round.endDate nếu Track không có (round.endDate
-      // là mốc đóng TOÀN BỘ vòng thi, sau cả chấm điểm + công bố — dùng nó để mở form là sai,
-      // xem scoring-timeline-explanation.md).
+      // Ưu tiên dùng Track.scoringStartDate/scoringEndDate (cửa sổ chấm điểm thật của Hạng
+      // mục). Chỉ fallback về Track.endDate/Round.endDate nếu Track chưa cấu hình
+      // scoringStartDate (dữ liệu cũ) — round.endDate là mốc đóng TOÀN BỘ vòng thi, sau cả
+      // chấm điểm + công bố, dùng nó để mở form chỉ là phương án dự phòng cuối cùng.
       let lockState = { locked: false, message: null };
       if (judge) {
         const now = new Date();
-        const endDate = track?.endDate
+        const scoringStart = track?.scoringStartDate ? new Date(track.scoringStartDate) : null;
+        const scoringEnd = track?.scoringEndDate ? new Date(track.scoringEndDate) : null;
+        const fallbackDate = track?.endDate
           ? new Date(track.endDate)
           : (round?.endDate ? new Date(round.endDate) : null);
-        const notEnded = endDate ? now < endDate : false;
+        const startDate = scoringStart ?? fallbackDate;
+        const notStarted = startDate ? now < startDate : false;
+        const scoringOver = scoringEnd ? now > scoringEnd : false;
         if (published) {
           lockState = { locked: true, message: 'Vòng thi này đã chốt kết quả, không thể chấm điểm thêm.' };
-        } else if (notEnded) {
-          const when = endDate.toLocaleString('vi-VN', {
+        } else if (scoringOver) {
+          lockState = { locked: true, message: 'Đã hết thời gian chấm điểm cho hạng mục này.' };
+        } else if (notStarted) {
+          const when = startDate.toLocaleString('vi-VN', {
             day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
           });
-          lockState = { locked: true, message: `Form chấm điểm sẽ được mở sau khi kết thúc nộp bài vào lúc ${when}.` };
+          lockState = { locked: true, message: `Form chấm điểm sẽ được mở vào lúc ${when}.` };
         }
       }
+
+      console.log('[SubmissionsScoringPanel] Judge scoring lock check', {
+        trackId: effectiveTrackId,
+        trackName: track?.trackName,
+        now: new Date().toISOString(),
+        scoringStartDate: track?.scoringStartDate ?? null,
+        scoringEndDate: track?.scoringEndDate ?? null,
+        trackEndDate: track?.endDate ?? null,
+        roundEndDate: round?.endDate ?? null,
+        published,
+        locked: lockState.locked,
+        message: lockState.message,
+      });
 
       setIsJudge(judge);
       setEventRoleId(roleId);
