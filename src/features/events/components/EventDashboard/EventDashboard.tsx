@@ -86,7 +86,9 @@ export function EventDashboard({ eventId, userId }: EventDashboardProps) {
         : <div className="t-body-md text-mute p-6">Chưa có kết quả.</div>;
       case 'leaderboard':   return <LeaderboardTab        eventId={eventId} userId={userId} />;
       case 'judgeAssigned': return <JudgeAssignedTeamsTab eventId={eventId} userId={userId} />;
-      case 'reviewSubmission': return <SubmissionsScoringPanel eventId={eventId} trackId={eventRole?.trackId ?? null} />;
+      // Không ép trackId ở đây — SubmissionsScoringPanel tự tra tất cả track được giao
+      // (1 user/Judge có thể có nhiều track trong cùng event) và cho chọn qua dropdown.
+      case 'reviewSubmission': return <SubmissionsScoringPanel eventId={eventId} />;
       default: return null;
     }
   };

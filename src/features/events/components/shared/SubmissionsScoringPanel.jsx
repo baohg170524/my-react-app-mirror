@@ -47,6 +47,13 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
   const [submissions, setSubmissions] = useState([]);
   const [eventRoleId, setEventRoleId] = useState(null);
   const [roundInfo, setRoundInfo] = useState(null); // { roundName, startDate, endDate }
+  // Judge có thể được giao chấm NHIỀU track cùng lúc (nhiều bản ghi EventRole, mỗi bản
+  // 1 track). `GET /EventRoles/user-role` chỉ trả 1 bản ghi nên không đủ — dùng
+  // `listMyRoles` (lọc client-side từ listByEvent) để lấy hết, rồi cho Judge chọn track
+  // đang muốn chấm qua dropdown. `myTracks` rỗng nghĩa là chưa xác định (đang tải) hoặc
+  // user không phải Judge/không có track nào.
+  const [myTracks, setMyTracks] = useState([]); // [{ trackId, roleId, trackName }]
+  const [selectedTrackId, setSelectedTrackId] = useState(null);
   const [lock, setLock] = useState({ locked: false, message: null });
   // Tách riêng khỏi `lock` — lock.locked còn bật vì lý do "chưa tới hạn chấm", không chỉ
   // vì đã công bố. Chỉ dùng cờ này để quyết định ẩn nút "Chấm/Sửa" → "Xem chi tiết".
@@ -83,14 +90,51 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
         //    khác (Admin/EC/Mentor/TeamLead/Member) có thể không gắn với 1 track cụ thể nào
         //    (vd Admin quản lý toàn sự kiện) — khi đó xem TOÀN BỘ mọi track trong sự kiện,
         //    không báo lỗi chặn như trước.
-        const role = await eventRolesApi.getUserRole(currentUser.id, eventId);
-        const roleId = role?.id ?? null;
-        const roleName = role?.roleName ?? null;
-        const judge = roleName === 'Judge';
-        const effectiveTrackId = trackId ?? role?.trackId ?? null;
+        //
+        //    Judge có thể được giao NHIỀU track cùng lúc (nhiều bản ghi EventRole).
+        //    `getUserRole` (GET /EventRoles/user-role) chỉ trả về 1 bản ghi nên không đủ —
+        //    dùng `listMyRoles` để lấy hết các role Judge của user trong event này, cho
+        //    phép chọn track đang muốn chấm qua dropdown (xem UI bên dưới). Chỉ áp dụng khi
+        //    `trackId` KHÔNG được component cha ép cứng (giữ nguyên hành vi cũ nếu có).
+        let judge = false;
+        let roleId = null;
+        let effectiveTrackId = trackId ?? null;
+        let judgeTracks = [];
 
-        if (judge && (!role || !effectiveTrackId)) {
+        if (trackId) {
+          const role = await eventRolesApi.getUserRole(currentUser.id, eventId);
+          roleId = role?.id ?? null;
+          judge = role?.roleName === 'Judge';
+        } else {
+          const allRoles = await eventRolesApi.listMyRoles(currentUser.id, eventId);
+          const judgeRoles = allRoles.filter((r) => r.roleName === 'Judge' && r.trackId);
+          judge = judgeRoles.length > 0;
+
+          if (judge) {
+            judgeTracks = judgeRoles.map((r) => ({
+              trackId: r.trackId,
+              roleId: r.id,
+              trackName: r.trackName ?? null,
+            }));
+            const picked =
+              judgeTracks.find((t) => t.trackId === selectedTrackId) ?? judgeTracks[0];
+            effectiveTrackId = picked.trackId;
+            roleId = picked.roleId;
+          } else {
+            // Không phải Judge — vai trò khác (nếu có) chỉ dùng để biết trackId gán sẵn.
+            const role = allRoles[0] ?? null;
+            roleId = role?.id ?? null;
+            effectiveTrackId = role?.trackId ?? null;
+          }
+        }
+
+        if (judge && (!roleId || !effectiveTrackId)) {
           throw new Error('Bạn chưa được phân công chấm hạng mục nào trong sự kiện này.');
+        }
+
+        if (!cancelled) setMyTracks(judgeTracks);
+        if (!cancelled && judge && !selectedTrackId && effectiveTrackId) {
+          setSelectedTrackId(effectiveTrackId);
         }
 
         if (effectiveTrackId) {
@@ -329,7 +373,7 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
 
     load();
     return () => { cancelled = true; };
-  }, [currentUser?.id, eventId, trackId, reloadKey]);
+  }, [currentUser?.id, eventId, trackId, reloadKey, selectedTrackId]);
 
   const saveEdit = async (submitResultId, { details, comment }) => {
     if (lock.locked) {
@@ -441,6 +485,26 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
             </div>
             <div className="badge-accent px-4 py-2 text-sm">{submissions.length} bài nộp</div>
           </div>
+
+          {myTracks.length > 1 && (
+            <div className="mb-5">
+              <label className="text-xs font-bold uppercase tracking-widest" style={{ color: '#757575' }}>
+                Hạng mục đang chấm
+              </label>
+              <select
+                value={selectedTrackId ?? ''}
+                onChange={(e) => setSelectedTrackId(e.target.value)}
+                className="block mt-1 border rounded-sm px-3 py-2 text-sm"
+                style={{ borderColor: '#e0e0e0' }}
+              >
+                {myTracks.map((t) => (
+                  <option key={t.trackId} value={t.trackId}>
+                    {t.trackName ?? t.trackId}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {roundInfo && (
             <div
