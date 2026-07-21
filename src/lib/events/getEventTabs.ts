@@ -4,7 +4,7 @@ import type { RegistrationStatus } from '@/features/registration/types';
 export type EventTabId =
   | 'detail' | 'register' | 'createTeam' | 'myTeam' | 'submission'
   | 'results' | 'leaderboard' | 'judgeAssigned' | 'manage'
-  | 'reviewSubmission';
+  | 'reviewSubmission' | 'appeal';
 
 export interface EventTab { id: EventTabId; label: string; }
 
@@ -15,6 +15,7 @@ const TAB: Record<EventTabId, EventTab> = {
   myTeam:           { id: 'myTeam',            label: 'Đội của tôi' },
   submission:       { id: 'submission',        label: 'Nộp bài' },
   results:          { id: 'results',           label: 'Kết quả' },
+  appeal:           { id: 'appeal',            label: 'Phúc khảo' },
   leaderboard:      { id: 'leaderboard',       label: 'Bảng xếp hạng' },
   judgeAssigned:    { id: 'judgeAssigned',     label: 'Đội được phân công' },
   manage:           { id: 'manage',            label: 'Quản lý' },
@@ -49,7 +50,7 @@ export function getEventTabs(args: {
 
   // 4. Có vai trò đội (Thí sinh đã có đội)
   if (eventRoleName === 'TeamLeader' || eventRoleName === 'TeamMember' || hasTeam) {
-    return [TAB.detail, TAB.register, TAB.myTeam, TAB.submission, TAB.results, TAB.leaderboard];
+    return [TAB.detail, TAB.register, TAB.myTeam, TAB.submission, TAB.results, TAB.appeal, TAB.leaderboard];
   }
 
   // 5. Thí sinh tự do hoặc người dùng thông thường chưa có đội

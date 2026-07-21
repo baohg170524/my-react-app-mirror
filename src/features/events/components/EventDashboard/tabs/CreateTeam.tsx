@@ -8,6 +8,7 @@ import { useCurrentUser } from '@/hooks/useAuth';
 import { useRegistration } from '@/features/registration/hooks/useRegistration';
 import { useUserRole } from '@/hooks/useUserRole';
 import Link from 'next/link';
+import { getErrorMessage } from '@/lib/apiError';
 
 interface Props { eventId: string; userId: string; }
 
@@ -93,7 +94,7 @@ export function CreateTeamTab({ eventId, userId }: Props) {
         />
       </label>
 
-      {create.error ? <p className="t-body-sm text-error">Tạo đội thất bại. Vui lòng thử lại.</p> : null}
+      {create.error ? <p className="t-body-sm text-error">{getErrorMessage(create.error, 'Không thể tạo đội.')}</p> : null}
 
       <button type="submit" disabled={create.isPending} className="btn btn-primary">
         {create.isPending ? 'Đang tạo…' : 'Tạo đội'}

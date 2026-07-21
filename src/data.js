@@ -60,11 +60,6 @@ export const INIT_TEAMS = [
   { id:'T-006', name:'Team Zeta',       email:'zeta@gmail.com',          scores:[5,5.5,5,5,6],   comments:['','','','',''] },
 ];
 
-export const INIT_APPEALS = [
-  { id:'A-001', teamId:'T-003', teamName:'Nhóm Đại Dương', email:'daiduong@gmail.com',       reason:'Chúng tôi cho rằng phần kỹ thuật chưa được đánh giá đúng vì hệ thống đã chạy demo thành công nhưng điểm kỹ thuật khá thấp.', status:'Chờ xử lý', date:'08/06/2026' },
-  { id:'A-002', teamId:'T-004', teamName:'Phoenix Coders',  email:'phoenix.coders@gmail.com', reason:'Phần ý tưởng của nhóm mang tính sáng tạo cao, mong ban giám khảo xem xét lại điểm tiêu chí ý tưởng.',                        status:'Đang xét',   date:'07/06/2026' },
-];
-
 export const INIT_SUBMISSIONS = [
   { id:'S-001', teamId:'T-001', teamName:'Team Alpha',    projectName:'SmartFarm AI',   repo:'https://github.com/team-alpha/smartfarm-ai',   submittedAt:'07/06/2026 14:32', status:'Đã nhận' },
   { id:'S-002', teamId:'T-002', teamName:'Team Beta',     projectName:'EduBot Platform',repo:'https://github.com/team-beta/edubot-platform',  submittedAt:'07/06/2026 15:10', status:'Đã nhận' },

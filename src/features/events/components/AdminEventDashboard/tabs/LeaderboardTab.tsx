@@ -104,7 +104,9 @@ export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
     const ok = await dialog.confirm({
       title: nextPublished ? 'Công bố kết quả' : 'Thu hồi về nháp',
       message: nextPublished
-        ? `Công bố bảng xếp hạng của "${selectedRound?.roundName ?? 'vòng thi'}"? Sau khi công bố, mọi người (không chỉ EC/Admin) sẽ xem được kết quả này.`
+        ? (!roundEnded
+            ? `Vòng thi vẫn đang diễn ra, bạn có chắc chắn muốn chốt kết quả và công bố luôn không? Mọi người sẽ xem được kết quả của "${selectedRound?.roundName ?? 'vòng thi'}" ngay lập tức.`
+            : `Công bố bảng xếp hạng của "${selectedRound?.roundName ?? 'vòng thi'}"? Sau khi công bố, mọi người (không chỉ EC/Admin) sẽ xem được kết quả này.`)
         : `Thu hồi bảng xếp hạng của "${selectedRound?.roundName ?? 'vòng thi'}" về bản nháp? Chỉ EC/Admin xem được, người ngoài sẽ không thấy nữa. Dữ liệu Rank/Điểm vẫn được giữ nguyên, có thể công bố lại bất cứ lúc nào.`,
       confirmText: nextPublished ? 'Công bố' : 'Thu hồi',
     });

@@ -1,29 +1,16 @@
-'use client';
-import { useState, useCallback } from 'react';
+import Link from 'next/link';
 import { Navbar } from '@/components/Navbar';
-import Notif from '@/components/Notif';
-import TeamAppealPage from '@/views/TeamAppealPage';
-import { INIT_TEAMS, MY_TEAM_ID } from '@/data';
 
 export default function TeamAppealRoute() {
-  const myTeam = INIT_TEAMS.find(t => t.id === MY_TEAM_ID);
-  const [notif, setNotif] = useState(null);
-
-  const sn = useCallback((m, t = 's') => {
-    setNotif({ m, t });
-    setTimeout(() => setNotif(null), 3000);
-  }, []);
-
-  const handleSubmit = () => {
-    sn('Đơn phúc khảo đã được gửi thành công!');
-  };
-
   return (
     <>
       <Navbar />
-      <Notif n={notif} />
-      <main style={{ minHeight: '100vh', background: '#f7f7f7', padding: '28px 32px', fontFamily: 'Inter, sans-serif' }}>
-        <TeamAppealPage myTeam={myTeam} onSubmit={handleSubmit} />
+      <main className="min-h-screen bg-surface-soft p-6 flex items-center justify-center">
+        <div className="card max-w-xl text-center">
+          <h1 className="t-heading-md m-0">Phúc khảo của đội</h1>
+          <p className="t-body-sm text-mute">Hãy mở sự kiện đội đang tham gia và chọn tab Phúc khảo để gửi hoặc theo dõi đơn.</p>
+          <Link href="/" className="btn btn-primary self-center">Về danh sách sự kiện</Link>
+        </div>
       </main>
     </>
   );

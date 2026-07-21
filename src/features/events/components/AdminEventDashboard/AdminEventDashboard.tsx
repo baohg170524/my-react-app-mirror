@@ -73,7 +73,7 @@ export function AdminEventDashboard({ eventId, role = 'Admin' }: AdminEventDashb
       case 'submission':
         return <SubmissionsScoringPanel eventId={eventId} />;
       case 'appeal':
-        return <AppealsPanel />;
+        return <AppealsPanel eventId={eventId} mode="manager" />;
       case 'leaderboard':
         return <LeaderboardTab eventId={eventId} />;
       default:

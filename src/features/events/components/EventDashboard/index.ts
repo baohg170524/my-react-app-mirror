@@ -4,7 +4,6 @@ export { Modal } from './Modal';
 export { Card } from './Card';
 export { Button } from './Button';
 export { Badge } from './Badge';
-export { TeamRegistrationForm } from './TeamRegistrationForm';
 export { EventDashboard } from './EventDashboard';
 export { DashboardTab } from './tabs/Dashboard';
 export { SubmissionTab } from './tabs/Submission';

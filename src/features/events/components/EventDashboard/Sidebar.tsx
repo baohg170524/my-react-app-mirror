@@ -4,6 +4,7 @@ import React from 'react';
 import {
   BarChart3, Upload, Trophy, Users, UserPlus, ClipboardList, FileText, Settings, ClipboardCheck,
   Inbox,
+  Scale,
 } from 'lucide-react';
 import { useEventDashboard } from '@/features/events/contexts/EventDashboardContext';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -24,6 +25,7 @@ const ICON: Record<EventTabId, React.ComponentType<{ size?: number; className?: 
   myTeam:        Users,
   submission:    Upload,
   results:       FileText,
+  appeal:        Scale,
   leaderboard:   Trophy,
   judgeAssigned: ClipboardList,
   manage:        Settings,

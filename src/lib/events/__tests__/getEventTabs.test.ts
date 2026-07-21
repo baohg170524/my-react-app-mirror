@@ -1,8 +1,8 @@
 import { getEventTabs } from '../getEventTabs';
 
 describe('getEventTabs', () => {
-  test('guest → detail only', () => {
-    expect(getEventTabs({ role: null, hasTeam: false }).map((t) => t.id)).toEqual(['detail']);
+  test('guest → detail + create-team guidance', () => {
+    expect(getEventTabs({ role: null, hasTeam: false }).map((t) => t.id)).toEqual(['detail', 'createTeam']);
   });
 
   test('student not approved → detail + register (no createTeam)', () => {
@@ -19,9 +19,9 @@ describe('getEventTabs', () => {
       .toEqual(['detail', 'register', 'createTeam', 'leaderboard']);
   });
 
-  test('student with team → detail + register + myTeam + submission + results + leaderboard', () => {
+  test('student with team → includes appeal between results and leaderboard', () => {
     expect(getEventTabs({ role: 'student', hasTeam: true, registrationStatus: 'approved' }).map((t) => t.id))
-      .toEqual(['detail', 'register', 'myTeam', 'submission', 'results', 'leaderboard']);
+      .toEqual(['detail', 'register', 'myTeam', 'submission', 'results', 'appeal', 'leaderboard']);
   });
 
   test('judge event role → detail + reviewSubmission + leaderboard', () => {
@@ -34,6 +34,12 @@ describe('getEventTabs', () => {
       .toEqual(['detail', 'reviewSubmission', 'leaderboard']);
   });
 
+  test('judge and mentor never receive the appeal tab', () => {
+    for (const eventRoleName of ['Judge', 'Mentor']) {
+      expect(getEventTabs({ role: 'student', eventRoleName, hasTeam: true }).some((t) => t.id === 'appeal')).toBe(false);
+    }
+  });
+
   test('admin or EC event role → detail + manage', () => {
     expect(getEventTabs({ role: 'student', eventRoleName: 'EventCoordinator', hasTeam: false }).map((t) => t.id))
       .toEqual(['detail', 'manage']);
@@ -41,8 +47,8 @@ describe('getEventTabs', () => {
       .toEqual(['detail', 'manage']);
   });
 
-  test('global mentor but no event role → detail only', () => {
+  test('global mentor but no event role → detail + create-team guidance', () => {
     expect(getEventTabs({ role: 'judge', hasTeam: false }).map((t) => t.id))
-      .toEqual(['detail']);
+      .toEqual(['detail', 'createTeam']);
   });
 });

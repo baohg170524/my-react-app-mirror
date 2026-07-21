@@ -11,6 +11,7 @@ import { ResultsTab } from './tabs/Results';
 import { LeaderboardTab } from './tabs/Leaderboard';
 import { JudgeAssignedTeamsTab } from './tabs/JudgeAssignedTeams';
 import SubmissionsScoringPanel from '../shared/SubmissionsScoringPanel';
+import AppealsPanel from '../shared/AppealsPanel';
 import { CompetitionRegistrationTab } from '@/features/registration/components/CompetitionRegistrationTab';
 import { useEventDashboard } from '@/features/events/contexts/EventDashboardContext';
 import { useEvent, useUserEventRole } from '@/features/events/hooks/useEvents';
@@ -84,6 +85,9 @@ export function EventDashboard({ eventId, userId }: EventDashboardProps) {
       case 'results':       return teamId
         ? <ResultsTab teamId={teamId} eventId={eventId} />
         : <div className="t-body-md text-mute p-6">Chưa có kết quả.</div>;
+      case 'appeal':        return teamId
+        ? <AppealsPanel eventId={eventId} teamId={teamId} isLeader={team?.members.some((member) => member.userId === userId && member.isLeader) ?? false} mode="team" />
+        : <div className="t-body-md text-mute p-6">Bạn cần tham gia đội trước.</div>;
       case 'leaderboard':   return <LeaderboardTab        eventId={eventId} userId={userId} />;
       case 'judgeAssigned': return <JudgeAssignedTeamsTab eventId={eventId} userId={userId} />;
       // Không ép trackId ở đây — SubmissionsScoringPanel tự tra tất cả track được giao
