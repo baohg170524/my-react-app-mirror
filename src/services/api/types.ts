@@ -126,6 +126,8 @@ export interface ApiError {
   message: string;
   statusCode: number;
   errors?: Record<string, string[]>;
+  /** Field-level validation payload returned by the backend BaseResponse. */
+  details?: unknown;
 }
 
 export interface UserRejectionModel {

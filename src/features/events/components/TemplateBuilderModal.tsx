@@ -51,7 +51,7 @@ function CriteriaRow({
         <input className="text-input" style={numInput} type="number" min="0" max="100" value={weight}
           onChange={(e) => setWeight(e.target.value)} onBlur={commit} disabled={busy} />
       </td>
-      <td className="t-body-sm" style={{ ...cell, textAlign: "center", color: "var(--color-mute)" }}>10</td>
+      <td className="t-body-sm" style={{ ...cell, textAlign: "center", color: "var(--color-mute)" }}>{c.maxScore}</td>
       <td style={{ ...cell, textAlign: "right" }}>
         <button type="button" onClick={onRemove} disabled={busy} aria-label={`Gỡ ${c.criteriaName}`}
           style={{ background: "none", border: "1px solid var(--color-hairline-strong)", borderRadius: "var(--radius-sm)", color: "var(--color-error)", cursor: busy ? "not-allowed" : "pointer", padding: "2px 8px", fontWeight: 700 }}>
@@ -140,7 +140,7 @@ export function TemplateBuilderModal({
   // đóng góp vào điểm cuối; tổng trọng số cả bộ ≤ 100.
   const updateM = useMutation({
     mutationFn: (v: { criteriaId: string; weight: number }) =>
-      templatesApi.updateCriteria(templateId as string, v.criteriaId, { weight: v.weight, maxScore: 10 }),
+      templatesApi.updateCriteria(templateId as string, v.criteriaId, { weight: v.weight, maxScore: v.weight / 10 }),
     onSuccess: invalidateDetail,
     onError: () => setError("Không lưu được trọng số."),
   });
@@ -150,7 +150,7 @@ export function TemplateBuilderModal({
     onError: () => setError("Không gỡ được tiêu chí."),
   });
   const addM = useMutation({
-    mutationFn: (v: { criteriaId: string; weight: number }) => templatesApi.addCriteria(templateId as string, { ...v, maxScore: 10 }),
+    mutationFn: (v: { criteriaId: string; weight: number }) => templatesApi.addCriteria(templateId as string, { ...v, maxScore: v.weight / 10 }),
     onSuccess: () => { setAddId(""); setAddWeight("1"); invalidateDetail(); },
     onError: () => setError("Không thêm được tiêu chí."),
   });

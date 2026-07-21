@@ -3,6 +3,10 @@ export type EventStatus = "open" | "closed";
 export interface Event {
   id: string;
   title: string;
+  /** Mùa học (Spring/Summer/Fall) — suy từ ngày bắt đầu, chỉ để hiển thị. */
+  season?: string | null;
+  /** Năm tổ chức. */
+  year?: number | null;
   startDate: string; // ISO 8601
   endDate: string;
   registrationStartDate?: string | null;

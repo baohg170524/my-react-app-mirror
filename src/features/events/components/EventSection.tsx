@@ -55,7 +55,7 @@ export function EventSection() {
         style={{
           padding: "var(--space-xxl)",
           gap: "var(--space-xl)",
-          ...(mode === "create" ? { border: "1px solid var(--color-ink)" } : {}),
+          ...(mode === "create" ? { border: "none" } : {}),
         }}
       >
         {/* Header row */}

@@ -110,6 +110,11 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
           <h1 className="text-ink text-center font-bold m-0 leading-tight text-4xl md:text-5xl">
             {event.title}
           </h1>
+          {(event.season || event.year) && (
+            <p className="text-ink text-center m-0 font-bold text-lg md:text-xl">
+              {[event.season, event.year].filter(Boolean).join(' · ')}
+            </p>
+          )}
           <p className="text-body whitespace-pre-line leading-relaxed max-w-2xl mx-auto text-center font-normal text-base md:text-lg">
             {event.description || 'Chưa có mô tả.'}
           </p>

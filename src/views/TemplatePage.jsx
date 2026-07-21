@@ -11,6 +11,7 @@ import {
 } from '../services/templateService';
 import { getCriteria } from '../services/criteriaService';
 import { useNotify } from '@/components/NotificationProvider';
+import { getErrorMessage } from '@/lib/apiError';
 
 const BLANK_TMPL = { templateName: '', description: '' };
 const BLANK_CRIT = { criteriaId: '', weight: 0, maxScore: 10 };
@@ -78,8 +79,8 @@ export default function TemplatePage({ sn }) {
       setTemplates(p => p.filter(t => t.id !== id));
       if (expanded === id) setExpanded(null);
       notify.success('Đã xóa bộ tiêu chí thành công!');
-    } catch {
-      notify.error('Lỗi khi xóa bộ tiêu chí. Vui lòng thử lại.');
+    } catch (err) {
+      notify.error(getErrorMessage(err, 'Lỗi khi xóa bộ tiêu chí. Vui lòng thử lại.'));
     }
   };
 
@@ -134,11 +135,11 @@ export default function TemplatePage({ sn }) {
         await addCriteriaToTemplate(templateId, {
           criteriaId: critF.criteriaId,
           weight:     Number(critF.weight),
-          maxScore:   10, // hệ 100: mọi tiêu chí luôn chấm trên thang điểm 10
+          maxScore:   Number(critF.weight) / 10,
         });
         sn('Đã thêm tiêu chí vào bộ!');
       } else {
-        await updateTemplateCriteria(templateId, editId, { weight: Number(critF.weight), maxScore: 10 }); // hệ 100
+        await updateTemplateCriteria(templateId, editId, { weight: Number(critF.weight), maxScore: Number(critF.weight) / 10 });
         sn('Đã cập nhật cấu hình tiêu chí!');
       }
       const detail = await getTemplateDetail(templateId);
@@ -546,11 +547,9 @@ export default function TemplatePage({ sn }) {
                           </span>
                         </div>
                         <div style={{ width: 110, textAlign: 'center' }}>
-                          {/* Chỉ hiển thị tham khảo (weight/10) — KHÔNG phải maxScore thật dùng để
-                              giới hạn ô nhập điểm (maxScore thật luôn = 10, xem saveCrit bên dưới).
-                              Giám khảo vẫn chấm tự do 0–10 cho mọi tiêu chí bất kể trọng số. */}
+                          {/* Chỉ hiển thị trung thực maxScore lấy từ backend lên */}
                           <span className="text-sm" style={{ color: '#000' }}>
-                            {(Number(tc.weight ?? 0) / 10).toFixed(1)}
+                            {tc.maxScore}
                           </span>
                         </div>
                         <div className="flex gap-2 justify-end" style={{ width: 110 }}>
