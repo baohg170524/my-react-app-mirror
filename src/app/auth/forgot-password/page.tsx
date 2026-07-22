@@ -2,7 +2,6 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { authApi } from "@/services/api";
 import { useNotify } from "@/components/NotificationProvider";
 import { getErrorMessage } from "@/lib/apiError";
@@ -70,7 +69,7 @@ export default function ForgotPasswordPage() {
         )}
 
         <Link href="/auth" className="t-body-sm inline-flex items-center gap-1" style={{ color: "var(--color-primary)", textDecoration: "none" }}>
-          <ArrowLeft size={14} /> Quay lại đăng nhập
+          Quay lại đăng nhập
         </Link>
       </div>
     </main>

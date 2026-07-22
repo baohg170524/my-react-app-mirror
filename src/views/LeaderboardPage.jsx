@@ -6,10 +6,10 @@ export default function LeaderboardPage({ teams, criteria, sortBy, setSortBy, on
 
   const sorted = [...teams].sort((a, b) =>
     sortBy === 'score' ? calcScore(b.scores, criteria) - calcScore(a.scores, criteria) :
-    sortBy === 'id'    ? a.id.localeCompare(b.id) : a.name.localeCompare(b.name)
+      sortBy === 'id' ? a.id.localeCompare(b.id) : a.name.localeCompare(b.name)
   );
   const byScore = [...teams].sort((a, b) => calcScore(b.scores, criteria) - calcScore(a.scores, criteria));
-  const ranked  = sorted.map(t => ({ ...t, rank: byScore.findIndex(x => x.id === t.id) + 1 }));
+  const ranked = sorted.map(t => ({ ...t, rank: byScore.findIndex(x => x.id === t.id) + 1 }));
   const visibleRanked = selectedTeamId ? ranked.filter(t => t.id === selectedTeamId) : ranked;
 
   return (
@@ -38,9 +38,9 @@ export default function LeaderboardPage({ teams, criteria, sortBy, setSortBy, on
       {/* ── Stat cards ── */}
       <div className="grid gap-4 mb-6" style={{ gridTemplateColumns: 'repeat(3,1fr)' }}>
         {[
-          { l: 'Điểm cao nhất',   v: Math.max(...teams.map(t => calcScore(t.scores, criteria))).toFixed(2) },
+          { l: 'Điểm cao nhất', v: Math.max(...teams.map(t => calcScore(t.scores, criteria))).toFixed(2) },
           { l: 'Điểm trung bình', v: (teams.reduce((a, t) => a + calcScore(t.scores, criteria), 0) / teams.length).toFixed(2) },
-          { l: 'Tổng đội thi',    v: `${teams.length} đội` },
+          { l: 'Tổng đội thi', v: `${teams.length} đội` },
         ].map((s, i) => (
           <div key={i} className="callout-stat">
             <span className="callout-stat__number">{s.v}</span>
@@ -69,7 +69,7 @@ export default function LeaderboardPage({ teams, criteria, sortBy, setSortBy, on
               borderRadius: 2,
               animationDelay: `${i * 0.05}s`,
             }}>
-            <div className="font-bold" style={{ fontSize: t.rank <= 3 ? 20 : 13, color: getRankColor(t.rank) }}>{getRankIcon(t.rank)}</div>
+            <div className="text-sm font-bold" style={{ color: '#000' }}>{t.rank}</div>
             <div>
               <div className="text-sm font-bold" style={{ color: '#000' }}>{t.name}</div>
               <div className="text-xs" style={{ color: '#757575' }}>{t.id}</div>
@@ -78,8 +78,7 @@ export default function LeaderboardPage({ teams, criteria, sortBy, setSortBy, on
               <div key={ci} className="text-center text-sm font-bold" style={{ color: '#1a1a1a' }}>{(t.scores[ci] || 0).toFixed(1)}</div>
             ))}
             <div className="text-center text-xl font-black" style={{ color: '#76b900' }}>{score.toFixed(2)}</div>
-            <button className="btn-hover px-2.5 py-1.5 text-xs font-bold" onClick={() => onEdit(t)}
-              style={{ background: 'rgba(118,185,0,.1)', border: '1px solid rgba(118,185,0,.3)', color: '#5a8d00', borderRadius: 2 }}>
+            <button className="btn btn-update btn-sm" onClick={() => onEdit(t)}>
               Sửa điểm
             </button>
           </div>

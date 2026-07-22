@@ -5,16 +5,18 @@ import { useMyTeamForEvent, useInviteToTeam, useLeaveTeam, useTeamInvitations, u
 import { useEventDashboard } from '@/features/events/contexts/EventDashboardContext';
 import { useNotify } from '@/components/NotificationProvider';
 import { useDialog } from '@/components/ConfirmDialogProvider';
+import { EventRoleBadge } from '@/components/EventRoleBadge';
+import { StatusBadge, type StatusTone } from '@/components/StatusBadge';
 
 interface Props { eventId: string; userId: string; }
 
 /** Màu badge theo trạng thái lời mời (phía người gửi). Nhãn chữ lấy từ BE (`statusLabel`);
  *  `label` ở đây chỉ là fallback khi BE bản cũ chưa trả statusLabel. */
-const INVITE_BADGE: Record<string, { label: string; cls: string }> = {
-  PendingAccept: { label: 'Đang chờ xác nhận', cls: 'bg-amber-50 text-amber-700 border border-amber-200' },
-  Accepted:      { label: 'Đã tham gia',       cls: 'bg-green-50 text-green-700 border border-green-200' },
-  Declined:      { label: 'Đã từ chối',        cls: 'bg-red-50 text-red-700 border border-red-200' },
-  Expired:       { label: 'Hết hạn',           cls: 'bg-gray-100 text-gray-500 border border-gray-200' },
+const INVITE_BADGE: Record<string, { label: string; tone: StatusTone }> = {
+  PendingAccept: { label: 'Đang chờ xác nhận', tone: 'pending' },
+  Accepted: { label: 'Đã tham gia', tone: 'success' },
+  Declined: { label: 'Đã từ chối', tone: 'danger' },
+  Expired: { label: 'Hết hạn', tone: 'inactive' },
 };
 
 export function MyTeamTab({ eventId, userId }: Props) {
@@ -137,7 +139,7 @@ export function MyTeamTab({ eventId, userId }: Props) {
                         Mời rời đội
                       </button>
                     )}
-                    <span className="text-xs font-bold whitespace-nowrap">{m.isLeader ? 'Trưởng nhóm' : 'Thành viên'}</span>
+                    <EventRoleBadge roleName={m.isLeader ? 'TeamLeader' : 'TeamMember'} />
                   </span>
                 </li>
               ))
@@ -195,8 +197,8 @@ export function MyTeamTab({ eventId, userId }: Props) {
                 // -> hiển thị "Đã rời đội" thay vì "Đã tham gia" gây hiểu nhầm.
                 const hasLeft = inv.status === 'Accepted';
                 const badge = hasLeft
-                  ? { label: 'Đã rời đội', cls: 'bg-gray-100 text-gray-600 border border-gray-300' }
-                  : (INVITE_BADGE[inv.status] ?? { label: inv.status, cls: 'bg-gray-100 text-gray-500 border border-gray-200' });
+                  ? { label: 'Đã rời đội', tone: 'inactive' as StatusTone }
+                  : (INVITE_BADGE[inv.status] ?? { label: inv.status, tone: 'neutral' as StatusTone });
                 // Ưu tiên nhãn tiếng Việt từ BE; fallback về map cục bộ nếu BE cũ chưa trả.
                 const statusText = hasLeft ? 'Đã rời đội' : (inv.statusLabel || badge.label);
                 return (
@@ -225,9 +227,7 @@ export function MyTeamTab({ eventId, userId }: Props) {
                           Mời lại
                         </button>
                       )}
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-sm whitespace-nowrap ${badge.cls}`}>
-                        {statusText}
-                      </span>
+                      <StatusBadge tone={badge.tone}>{statusText}</StatusBadge>
                     </span>
                   </li>
                 );

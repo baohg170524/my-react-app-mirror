@@ -881,14 +881,14 @@ function TrackFormCard({
             disabled={templatesLoading}
             onChange={(e) => onChange({ templateId: e.target.value })}
           >
-            <option value="">{templatesLoading ? "Đang tải template…" : "— Chọn template chấm điểm —"}</option>
+            <option value="">{templatesLoading ? "Đang tải bộ tiêu chí…" : "— Chọn bộ tiêu chí chấm điểm —"}</option>
             {templates.map((t) => (
               <option key={t.id} value={t.id}>{t.templateName}</option>
             ))}
           </select>
           <button
             type="button"
-            className="btn btn-outline btn-sm shrink-0"
+            className={`btn btn-sm shrink-0 ${track.templateId ? 'btn-view' : 'btn-create'}`}
             style={{ height: "auto", alignSelf: "stretch", cursor: "pointer", whiteSpace: "nowrap" }}
             onClick={() => (track.templateId ? setShowCriteria(true) : openCreateBlank())}
           >
@@ -1813,7 +1813,7 @@ function EventFormBody({
               open={openSections.has(`round-${round.uid}`)}
               onToggle={() => toggleSection(`round-${round.uid}`)}
               actions={form.rounds.length > 1 ? (
-                <button type="button" className="btn btn-outline btn-sm" style={{ cursor: "pointer" }} onClick={() => removeRound(ri)}>Xóa vòng</button>
+                <button type="button" className="btn btn-delete btn-sm" style={{ cursor: "pointer" }} onClick={() => removeRound(ri)}>Xóa vòng</button>
               ) : undefined}
             >
               <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 sm:pl-5 sm:pr-4.25">
@@ -1854,7 +1854,7 @@ function EventFormBody({
                     open={openSections.has(`track-${track.uid}`)}
                     onToggle={() => toggleSection(`track-${track.uid}`)}
                     actions={round.tracks.length > 1 ? (
-                      <button type="button" className="btn btn-outline btn-sm" style={{ cursor: "pointer" }} onClick={() => removeTrack(ri, ti)}>Xóa</button>
+                      <button type="button" className="btn btn-delete btn-sm" style={{ cursor: "pointer" }} onClick={() => removeTrack(ri, ti)}>Xóa</button>
                     ) : undefined}
                   >
                     <TrackFormCard
@@ -1866,7 +1866,7 @@ function EventFormBody({
                     />
                   </AccordionSection>
                 ))}
-                <button type="button" className="btn btn-outline btn-sm" style={{ alignSelf: "flex-start", cursor: "pointer" }} onClick={() => addTrack(ri)}>
+                <button type="button" className="btn btn-create btn-sm" style={{ alignSelf: "flex-start", cursor: "pointer" }} onClick={() => addTrack(ri)}>
                   + Thêm hạng mục
                 </button>
               </div>
@@ -1875,7 +1875,7 @@ function EventFormBody({
         })}
 
         {/* + Thêm vòng */}
-        <button type="button" className="btn btn-outline btn-sm" style={{ alignSelf: "flex-start", cursor: "pointer" }} onClick={addRound}>
+        <button type="button" className="btn btn-create btn-sm" style={{ alignSelf: "flex-start", cursor: "pointer" }} onClick={addRound}>
           + Thêm vòng
         </button>
       </div>
@@ -1884,7 +1884,7 @@ function EventFormBody({
       <div style={{ display: "flex", gap: "var(--space-md)" }}>
         <button
           type="submit"
-          className="btn btn-primary"
+          className={`btn ${isEdit ? 'btn-update' : 'btn-create'}`}
           disabled={activeMutation.isPending}
           style={{
             cursor: activeMutation.isPending ? "not-allowed" : "pointer",

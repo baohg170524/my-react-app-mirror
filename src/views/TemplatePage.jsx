@@ -234,7 +234,7 @@ export default function TemplatePage({ sn }) {
 
             <div className="flex justify-end gap-3">
               <button className="btn btn-outline" onClick={closeTmpl}>Hủy</button>
-              <button className="btn btn-primary" onClick={saveTmpl} disabled={saving}>
+              <button className={`btn ${tmplModal === 'new' ? 'btn-create' : 'btn-update'}`} onClick={saveTmpl} disabled={saving}>
                 {saving ? 'Đang lưu...' : tmplModal === 'new' ? 'Tạo bộ tiêu chí' : 'Lưu thay đổi'}
               </button>
             </div>
@@ -371,7 +371,7 @@ export default function TemplatePage({ sn }) {
 
             <div className="flex justify-end gap-3">
               <button className="btn btn-outline" onClick={closeCrit}>Hủy</button>
-              <button className="btn btn-primary" onClick={saveCrit} disabled={saving}>
+              <button className={`btn ${critModal.mode === 'add' ? 'btn-create' : 'btn-update'}`} onClick={saveCrit} disabled={saving}>
                 {saving ? 'Đang lưu...' : critModal.mode === 'add' ? 'Thêm vào bộ' : 'Lưu thay đổi'}
               </button>
             </div>
@@ -388,7 +388,7 @@ export default function TemplatePage({ sn }) {
             Mỗi bộ tiêu chí gồm các tiêu chí với trọng số và điểm tối đa riêng.
           </p>
         </div>
-        <button className="btn btn-primary" onClick={openNewTmpl}>+ Tạo bộ tiêu chí</button>
+        <button className="btn btn-create" onClick={openNewTmpl}>Tạo bộ tiêu chí</button>
       </div>
 
       {/* ── Thanh tìm kiếm ──────────────────────────────────────────────────── */}
@@ -460,14 +460,14 @@ export default function TemplatePage({ sn }) {
 
               {/* Actions – stop propagation để không toggle expand */}
               <div className="flex gap-2 ml-4 shrink-0" onClick={e => e.stopPropagation()}>
-                <button className="btn-hover px-3 py-1.5 text-xs font-bold"
+                <button className="btn btn-update btn-sm"
                   onClick={() => openEditTmpl(t)}
-                  style={{ background: 'rgba(118,185,0,.1)', border: '1px solid rgba(118,185,0,.3)', color: '#5a8d00', borderRadius: 2 }}>
+                  >
                   Sửa
                 </button>
-                <button className="btn-hover px-3 py-1.5 text-xs font-bold"
+                <button className="btn btn-delete btn-sm"
                   onClick={() => delTmpl(t.id)}
-                  style={{ background: 'rgba(229,32,32,.08)', border: '1px solid rgba(229,32,32,.25)', color: '#e52020', borderRadius: 2 }}>
+                  >
                   Xóa
                 </button>
               </div>
@@ -553,14 +553,14 @@ export default function TemplatePage({ sn }) {
                           </span>
                         </div>
                         <div className="flex gap-2 justify-end" style={{ width: 110 }}>
-                          <button className="btn-hover px-2.5 py-1 text-xs font-bold"
+                          <button className="btn btn-update btn-sm"
                             onClick={() => openEditCrit(t.id, tc)}
-                            style={{ background: 'rgba(118,185,0,.1)', border: '1px solid rgba(118,185,0,.3)', color: '#5a8d00', borderRadius: 2 }}>
+                            >
                             Sửa
                           </button>
-                          <button className="btn-hover px-2.5 py-1 text-xs font-bold"
+                          <button className="btn btn-delete btn-sm"
                             onClick={() => removeCrit(t.id, tc.criteriaId)}
-                            style={{ background: 'rgba(229,32,32,.08)', border: '1px solid rgba(229,32,32,.25)', color: '#e52020', borderRadius: 2 }}>
+                            >
                             Gỡ
                           </button>
                         </div>

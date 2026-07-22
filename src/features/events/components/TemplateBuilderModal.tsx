@@ -54,7 +54,8 @@ function CriteriaRow({
       <td className="t-body-sm" style={{ ...cell, textAlign: "center", color: "var(--color-mute)" }}>{c.maxScore}</td>
       <td style={{ ...cell, textAlign: "right" }}>
         <button type="button" onClick={onRemove} disabled={busy} aria-label={`Gỡ ${c.criteriaName}`}
-          style={{ background: "none", border: "1px solid var(--color-hairline-strong)", borderRadius: "var(--radius-sm)", color: "var(--color-error)", cursor: busy ? "not-allowed" : "pointer", padding: "2px 8px", fontWeight: 700 }}>
+          className="btn btn-delete btn-sm"
+          style={{ cursor: busy ? "not-allowed" : "pointer" }}>
           Gỡ
         </button>
       </td>
@@ -236,7 +237,7 @@ export function TemplateBuilderModal({
                 onBlur={templateId ? handleRename : undefined}
               />
               {!templateId && (
-                <button type="button" className="btn btn-primary btn-sm shrink-0" onClick={handleCreate} disabled={busy || !name.trim()}
+                <button type="button" className="btn btn-create btn-sm shrink-0" onClick={handleCreate} disabled={busy || !name.trim()}
                   style={{ cursor: busy || !name.trim() ? "not-allowed" : "pointer", opacity: busy || !name.trim() ? 0.6 : 1, whiteSpace: "nowrap" }}>
                   {createM.isPending ? "Đang tạo…" : "Tạo bộ tiêu chí"}
                 </button>
@@ -304,7 +305,7 @@ export function TemplateBuilderModal({
                       {available.map((p) => (<option key={p.id} value={p.id}>{p.criteriaName}</option>))}
                     </select>
                     <input className="text-input" style={numInput} type="number" min="0" max="100" value={addWeight} onChange={(e) => setAddWeight(e.target.value)} disabled={busy} aria-label="Trọng số (%)" placeholder="TS %" />
-                    <button type="button" className="btn btn-primary btn-sm" onClick={handleAdd} disabled={busy || !addId} style={{ cursor: busy || !addId ? "not-allowed" : "pointer", opacity: busy || !addId ? 0.6 : 1 }}>
+                    <button type="button" className="btn btn-create btn-sm" onClick={handleAdd} disabled={busy || !addId} style={{ cursor: busy || !addId ? "not-allowed" : "pointer", opacity: busy || !addId ? 0.6 : 1 }}>
                       Thêm
                     </button>
                   </div>

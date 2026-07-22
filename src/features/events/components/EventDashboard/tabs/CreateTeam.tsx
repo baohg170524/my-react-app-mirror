@@ -96,7 +96,7 @@ export function CreateTeamTab({ eventId, userId }: Props) {
 
       {create.error ? <p className="t-body-sm text-error">{getErrorMessage(create.error, 'Không thể tạo đội.')}</p> : null}
 
-      <button type="submit" disabled={create.isPending} className="btn btn-primary">
+      <button type="submit" disabled={create.isPending} className="btn btn-create">
         {create.isPending ? 'Đang tạo…' : 'Tạo đội'}
       </button>
     </form>

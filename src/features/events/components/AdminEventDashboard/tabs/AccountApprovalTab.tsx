@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { usersApi, schoolsApi, type UserSummary } from '@/services/api';
 import { useNotify } from '@/components/NotificationProvider';
@@ -211,7 +211,7 @@ export function AccountApprovalTab({ eventId }: AccountApprovalTabProps) {
                     className="flex items-center gap-1 t-caption-sm font-bold text-ink disabled:opacity-40"
                     style={{ border: '1px solid var(--color-hairline-strong)', borderRadius: 'var(--radius-sm)', padding: '4px 10px', cursor: currentPage <= 1 ? 'not-allowed' : 'pointer' }}
                   >
-                    <ChevronLeft size={14} aria-hidden="true" /> Trước
+                    Trước
                   </button>
                   <button
                     type="button"
@@ -220,7 +220,7 @@ export function AccountApprovalTab({ eventId }: AccountApprovalTabProps) {
                     className="flex items-center gap-1 t-caption-sm font-bold text-ink disabled:opacity-40"
                     style={{ border: '1px solid var(--color-hairline-strong)', borderRadius: 'var(--radius-sm)', padding: '4px 10px', cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer' }}
                   >
-                    Sau <ChevronRight size={14} aria-hidden="true" />
+                    Sau
                   </button>
                 </div>
               </div>

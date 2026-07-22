@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { useCurrentUser } from '@/hooks/useAuth';
 
 export function HeroSection() {
@@ -197,13 +197,12 @@ export function HeroSection() {
           </h1>
 
           <p className="hero-desc">
-            Sân chơi lập trình đỉnh cao dành cho sinh viên FPT University. Tham gia tranh tài, xây dựng những dự án đột phá, nhận cố vấn từ các Mentor hàng đầu và khẳng định bản thân.
+            Sân chơi lập trình đỉnh cao dành cho sinh viên FPT University. Tham gia tranh tài, xây dựng những dự án đột phá, nhận hỗ trợ từ các cố vấn hàng đầu và khẳng định bản thân.
           </p>
 
           <div className="hero-actions">
             <button className="hero-btn-primary" onClick={scrollToEvents}>
               Khám phá sự kiện
-              <ArrowRight size={16} />
             </button>
 
             {!isLoggedIn && (

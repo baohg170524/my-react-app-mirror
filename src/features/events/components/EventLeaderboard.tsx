@@ -7,6 +7,7 @@ import { useEventRounds, useTeams } from '@/features/events/hooks/useEvents';
 import { manageApi, type FinalResult } from '@/features/events/api/manage';
 import { Card } from './EventDashboard/Card';
 import { CardSkeleton } from './EventDashboard/SkeletonLoaders';
+import { StatusBadge } from '@/components/StatusBadge';
 
 interface Props { eventId: string; }
 
@@ -54,13 +55,6 @@ export function EventLeaderboard({ eventId }: Props) {
   const ranked = [...results].sort(
     (a, b) => (a.rank || 9999) - (b.rank || 9999) || b.finalScore - a.finalScore,
   );
-
-  const rankStyle = (rank: number) => {
-    if (rank === 1) return 'bg-primary text-on-primary';
-    if (rank === 2) return 'bg-stone text-on-dark';
-    if (rank === 3) return 'bg-ash text-on-dark';
-    return 'bg-surface-soft text-ink border border-hairline';
-  };
 
   if (roundsError) {
     return (
@@ -122,20 +116,14 @@ export function EventLeaderboard({ eventId }: Props) {
                   return (
                     <tr key={row.id} className="border-b border-hairline last:border-b-0">
                       <td className="py-3 px-2 text-center">
-                        <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full t-body-strong font-bold ${rankStyle(rank)}`}>
-                          {rank}
-                        </span>
+                        <span className="t-body-strong font-bold text-ink">{rank}</span>
                       </td>
                       <td className="t-body-sm font-bold text-ink py-3 px-2">{teamName(row.teamId)}</td>
                       <td className="t-heading-sm text-primary font-bold py-3 px-2 text-center">{row.finalScore}</td>
                       <td className="py-3 px-2 text-right">
-                        <span
-                          className={`inline-block px-3 py-1 rounded-sm t-caption-sm font-bold uppercase ${
-                            row.isAdvanced ? 'bg-primary text-on-primary' : 'bg-surface-soft text-warning border border-warning'
-                          }`}
-                        >
-                          {row.isAdvanced ? 'Có' : 'Không'}
-                        </span>
+                        <StatusBadge tone={row.isAdvanced ? 'success' : 'pending'}>
+                          {row.isAdvanced ? 'Đi tiếp' : 'Dừng lại'}
+                        </StatusBadge>
                       </td>
                     </tr>
                   );

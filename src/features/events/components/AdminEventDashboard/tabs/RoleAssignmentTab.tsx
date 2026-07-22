@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import { UserPlus, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEventRoles, useEventTracks } from '@/features/events/hooks/useEvents';
 import { isEventCoordinatorRole, isJudgeRole, isMentorRole, manageApi, EVENT_ROLE } from '@/features/events/api/manage';
@@ -19,9 +19,9 @@ interface RoleAssignmentTabProps {
 
 /** The 3 roles an admin can assign. Ban tổ chức is event-level; the rest are per-track. */
 const ASSIGNABLE_ROLES = [
-  { value: EVENT_ROLE.EventCoordinator, label: 'Ban tổ chức sự kiện', needsTrack: false },
+  { value: EVENT_ROLE.EventCoordinator, label: 'Ban tổ chức', needsTrack: false },
   { value: EVENT_ROLE.Judge, label: 'Giám khảo', needsTrack: true },
-  { value: EVENT_ROLE.Mentor, label: 'Người hướng dẫn', needsTrack: true },
+  { value: EVENT_ROLE.Mentor, label: 'Cố vấn', needsTrack: true },
 ] as const;
 
 export function RoleAssignmentTab({ eventId }: RoleAssignmentTabProps) {
@@ -83,9 +83,9 @@ export function RoleAssignmentTab({ eventId }: RoleAssignmentTabProps) {
   const total = coordinators.length + judges.length + mentors.length;
 
   const groups = [
-    { key: 'coordinator' as const, label: 'Ban tổ chức sự kiện', rows: coordinators, showTrack: false },
+    { key: 'coordinator' as const, label: 'Ban tổ chức', rows: coordinators, showTrack: false },
     { key: 'judge' as const, label: 'Giám khảo', rows: judges, showTrack: true },
-    { key: 'mentor' as const, label: 'Người hướng dẫn', rows: mentors, showTrack: true },
+    { key: 'mentor' as const, label: 'Cố vấn', rows: mentors, showTrack: true },
   ];
   const activeGroup = groups.find((g) => g.key === activeKey) ?? groups[0];
 
@@ -115,14 +115,13 @@ export function RoleAssignmentTab({ eventId }: RoleAssignmentTabProps) {
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <span className="t-body-sm text-mute">{total} lượt phân quyền</span>
           <Button
-            variant="primary"
+            variant="create"
             size="sm"
             onClick={() => {
               setActionError(null);
               setAdding((v) => !v);
             }}
           >
-            <UserPlus size={16} aria-hidden="true" />
             {adding ? 'Đóng' : 'Phân quyền'}
           </Button>
         </div>
@@ -229,8 +228,8 @@ function RoleTable({
                     type="button"
                     disabled={busy}
                     onClick={() => onRemove(row.roleId, row.name)}
-                    className="t-body-sm font-bold text-error disabled:opacity-50"
-                    style={{ background: 'none', border: '1px solid var(--color-error)', borderRadius: 'var(--radius-sm)', padding: '4px 20px', minHeight: 32, cursor: busy ? 'not-allowed' : 'pointer' }}
+                    className="btn btn-delete btn-sm disabled:opacity-50"
+                    style={{ minHeight: 32, cursor: busy ? 'not-allowed' : 'pointer' }}
                   >
                     Gỡ
                   </button>
@@ -413,7 +412,7 @@ function AssignRolePanel({
       {/* 4. Submit */}
       <div className="flex justify-end">
         <Button
-          variant="primary"
+          variant="create"
           size="sm"
           disabled={!canAssign}
           onClick={() => {

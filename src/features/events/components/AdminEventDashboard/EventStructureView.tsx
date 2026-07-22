@@ -5,6 +5,7 @@ import { useEventRounds, useEventTracks } from '@/features/events/hooks/useEvent
 import { templatesApi } from '../../api/templates';
 import { Card } from '../EventDashboard/Card';
 import { CardSkeleton } from '../EventDashboard/SkeletonLoaders';
+import { formatAdvancementRule } from '@/lib/events/advancementRule';
 
 interface Props {
   eventId: string;
@@ -66,7 +67,9 @@ export function EventStructureView({ eventId }: Props) {
                 </div>
                 <div className="bg-surface-soft border border-hairline rounded-sm px-4 py-3">
                   <p className="t-caption-xs text-mute uppercase font-bold m-0">Quy tắc lên vòng</p>
-                  <p className="t-body-sm text-ink m-0 mt-1">{round.advancementRule || '—'}</p>
+                  <p className="t-body-sm text-ink m-0 mt-1">
+                    {formatAdvancementRule(round.advancementRule)}
+                  </p>
                 </div>
               </div>
 
@@ -86,7 +89,7 @@ export function EventStructureView({ eventId }: Props) {
                       <div className="flex items-center justify-between gap-3 flex-wrap">
                         <span className="t-body-strong text-ink">{track.trackName ?? '—'}</span>
                         <span className="t-caption-sm text-mute">
-                          Template: {templateName(track.templateId)}
+                          Bộ tiêu chí: {templateName(track.templateId)}
                         </span>
                       </div>
                       {track.description && (
@@ -94,10 +97,10 @@ export function EventStructureView({ eventId }: Props) {
                       )}
                       <div className="flex gap-6 flex-wrap">
                         <span className="t-caption-sm text-mute">
-                          Judge: {track.judges?.length ?? 0}
+                          Giám khảo: {track.judges?.length ?? 0}
                         </span>
                         <span className="t-caption-sm text-mute">
-                          Mentor: {track.mentors?.length ?? 0}
+                          Cố vấn: {track.mentors?.length ?? 0}
                         </span>
                       </div>
                     </div>

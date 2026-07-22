@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { schoolsApi, authApi, type UserSummary } from '@/services/api';
+import { StatusBadge, type StatusTone } from '@/components/StatusBadge';
 
 interface Props {
   status: 'unregistered' | 'pending' | 'approved' | 'rejected';
@@ -14,11 +15,11 @@ interface Props {
   rejectionCount?: number;
 }
 
-const BADGE: Record<Props['status'], { label: string; bg: string; fg: string; bd: string }> = {
-  unregistered: { label: 'Chưa đăng ký hồ sơ', bg: 'var(--color-surface-soft)', fg: 'var(--color-mute)',    bd: 'var(--color-hairline-strong)' },
-  pending:  { label: 'Chờ xét duyệt',        bg: 'var(--color-surface-soft)', fg: 'var(--color-stone)',   bd: 'var(--color-hairline-strong)' },
-  approved: { label: 'Đã được duyệt',         bg: 'rgba(118,185,0,0.1)',       fg: 'var(--color-primary)', bd: 'var(--color-primary)' },
-  rejected: { label: 'Tài khoản bị từ chối',  bg: 'rgba(229,32,32,0.08)',      fg: 'var(--color-error)',   bd: 'var(--color-error)' },
+const BADGE: Record<Props['status'], { label: string; tone: StatusTone }> = {
+  unregistered: { label: 'Chưa đăng ký hồ sơ', tone: 'neutral' },
+  pending: { label: 'Chờ xét duyệt', tone: 'pending' },
+  approved: { label: 'Đã được duyệt', tone: 'success' },
+  rejected: { label: 'Tài khoản bị từ chối', tone: 'danger' },
 };
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -68,7 +69,7 @@ export function RegistrationStatusCard({
   };
 
   return (
-    <div className="card flex flex-col gap-4" style={{ padding: 'var(--space-xl)', maxWidth: '40rem' }}>
+    <div className="card flex w-full max-w-[40rem] flex-col gap-4 mx-auto" style={{ padding: 'var(--space-xl)' }}>
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h2 className="t-heading-md m-0">Hồ sơ cá nhân</h2>
         <div className="flex items-center gap-2">
@@ -84,12 +85,7 @@ export function RegistrationStatusCard({
               Bị từ chối {rejectionCount} lần
             </span>
           )}
-          <span
-            className="badge-tag"
-            style={{ background: badge.bg, color: badge.fg, border: `1px solid ${badge.bd}` }}
-          >
-            {badge.label}
-          </span>
+          <StatusBadge tone={badge.tone}>{badge.label}</StatusBadge>
         </div>
       </div>
 
@@ -123,7 +119,7 @@ export function RegistrationStatusCard({
           <p className="t-body-sm m-0 text-mute">
             Bạn chưa đăng ký hồ sơ cá nhân. Hãy đăng ký để có thể tham gia sự kiện.
           </p>
-          <button type="button" className="btn btn-primary w-fit" onClick={onEdit}>
+          <button type="button" className="btn btn-update w-fit" onClick={onEdit}>
             Đăng ký hồ sơ
           </button>
         </>
@@ -135,7 +131,7 @@ export function RegistrationStatusCard({
       )}
       {status === 'approved' && (
         <div className="flex gap-2">
-          <button type="button" className="btn btn-primary w-fit" onClick={onEdit}>
+          <button type="button" className="btn btn-update w-fit" onClick={onEdit}>
             Cập nhật hồ sơ
           </button>
           <button type="button" className="btn btn-secondary w-fit" onClick={onChangePassword}>

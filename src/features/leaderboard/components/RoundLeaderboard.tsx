@@ -3,22 +3,12 @@
 import React, { useState } from 'react';
 import { useEventRounds, useTeams } from '@/features/events/hooks/useEvents';
 import { useRoundLeaderboard } from '@/features/results/hooks/useResults';
+import { StatusBadge } from '@/components/StatusBadge';
 
 interface Props { eventId: string; }
 
 const roundLabel = (r: { id: string; roundName: string | null }) =>
   r.roundName?.trim() || `Vòng ${r.id.slice(0, 4)}`;
-
-// Cùng bảng màu/nhãn hạng với LeaderboardTab.tsx (trang Admin) — 2 nơi hiển thị
-// bảng xếp hạng của cùng 1 hệ thống nên dùng chung quy ước để nhất quán.
-const rankStyle = (rank: number) => {
-  if (rank === 1) return 'bg-primary text-on-primary';
-  if (rank === 2) return 'bg-stone text-on-dark';
-  if (rank === 3) return 'bg-ash text-on-dark';
-  return 'bg-surface-soft text-ink border border-hairline';
-};
-const rankIcon = (rank: number) =>
-  rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : String(rank);
 
 export function RoundLeaderboard({ eventId }: Props) {
   const { data: rounds = [] } = useEventRounds(eventId);
@@ -80,11 +70,7 @@ export function RoundLeaderboard({ eventId }: Props) {
                 return (
                   <tr key={r.id} className="border-b border-hairline last:border-b-0">
                     <td className="py-3 px-2 text-center">
-                      <span
-                        className={`inline-flex items-center justify-center w-8 h-8 rounded-full t-body-strong font-bold ${rankStyle(rank)}`}
-                      >
-                        {rankIcon(rank)}
-                      </span>
+                      <span className="t-body-strong font-bold text-ink">{rank}</span>
                     </td>
                     <td className="t-body-sm font-bold text-ink py-3 px-2">{teamName(r)}</td>
                     <td className="py-3 px-2 text-center">
@@ -92,13 +78,9 @@ export function RoundLeaderboard({ eventId }: Props) {
                       <span className="t-caption-sm text-mute"> /10</span>
                     </td>
                     <td className="py-3 px-2 text-center">
-                      <span
-                        className={`inline-block px-3 py-1 rounded-sm t-caption-sm font-bold uppercase ${
-                          r.isAdvanced ? 'bg-primary/10 text-primary' : 'bg-surface-soft text-mute border border-hairline'
-                        }`}
-                      >
+                      <StatusBadge tone={r.isAdvanced ? 'success' : 'pending'}>
                         {r.isAdvanced ? 'Đi tiếp' : 'Dừng lại'}
-                      </span>
+                      </StatusBadge>
                     </td>
                   </tr>
                 );

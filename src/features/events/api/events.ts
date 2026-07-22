@@ -1,6 +1,7 @@
 import { apiClient } from "@/services/api";
 import type { PagedResult } from "@/services/api";
 import type { Event } from "../types/event.types";
+import { normalizeSeason } from "@/lib/events/season";
 
 // ─── Backend list model (CreateEventResponse / EventModel) ─────────────────────
 
@@ -28,7 +29,7 @@ function toUiEvent(e: EventModel): Event {
   return {
     id: e.id,
     title: e.eventName?.trim() || "(Chưa đặt tên)",
-    season: e.season ?? null,
+    season: normalizeSeason(e.season),
     year: e.year ?? null,
     startDate: e.startDate,
     endDate: e.endDate,
@@ -141,7 +142,7 @@ export const eventsApi = {
     const { data } = await apiClient.get<EventModel>(
       `/Events/${encodeURIComponent(id)}`,
     );
-    return data;
+    return { ...data, season: normalizeSeason(data.season) };
   },
 
   /** PUT /api/Events/{id} — update event-level fields. */
@@ -150,7 +151,7 @@ export const eventsApi = {
       `/Events/${encodeURIComponent(id)}`,
       payload,
     );
-    return data;
+    return { ...data, season: normalizeSeason(data.season) };
   },
 
   join: (id: string): Promise<void> =>

@@ -130,7 +130,7 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
       <div className="w-full max-w-7xl mx-auto pt-2 flex flex-wrap items-center gap-3 pl-7 md:pl-9">
         {canManage && (
           <Button
-            variant="primary"
+            variant="update"
             size="md"
             style={{ color: "#fff" }}
             disabled={isEnded}
@@ -141,7 +141,7 @@ export function EventDetailTab({ eventId }: EventDetailTabProps) {
           </Button>
         )}
         <Button
-          variant="danger"
+          variant="delete"
           size="md"
           onClick={handleDelete}
           isLoading={deleteMutation.isPending}

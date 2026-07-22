@@ -13,6 +13,7 @@ import { submitResultsApi } from '@/features/events/api/submitResults';
 import { parseSubmissionLinks } from '@/features/submissions/utils/submissionLinks';
 import { getErrorMessage } from '@/lib/apiError';
 import { calcScoreNormalized } from '@/utils.jsx';
+import { StatusBadge } from '@/components/StatusBadge';
 
 /**
  * Panel gộp "Bài nộp" + "Chấm điểm" — thay thế ScoringPanel.jsx + SubmissionsPanel.jsx.
@@ -178,7 +179,7 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
       setRoundInfo(round ? {
         roundName: round.roundName ?? `Vòng ${round.roundNumber ?? '?'}`,
         startDate: round.startDate ?? null,
-        endDate:   round.endDate   ?? null,
+        endDate: round.endDate ?? null,
       } : null);
 
       // 4) Bộ tiêu chí: hệ 100 — dùng maxScore/weight thật từ backend, không hardcode
@@ -241,8 +242,8 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
         const rawUrl = s.submissionUrl ?? s.repoUrl ?? '';
         const submittedAt = s.createdTime
           ? new Date(s.createdTime.replace('+00:00', 'Z')).toLocaleString('vi-VN', {
-              day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-            })
+            day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+          })
           : '—';
         const breakdown = breakdownBySubmission[s.id] ?? null;
         const scoredByJudge = judge
@@ -343,8 +344,8 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
         const rawUrl = s.submissionUrl ?? s.repoUrl ?? '';
         const submittedAt = s.createdTime
           ? new Date(s.createdTime.replace('+00:00', 'Z')).toLocaleString('vi-VN', {
-              day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-            })
+            day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+          })
           : '—';
         const breakdown = breakdownBySubmission[s.id] ?? null;
 
@@ -422,8 +423,8 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
 
   const fmt = (iso) => iso
     ? new Date(iso).toLocaleString('vi-VN', {
-        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-      })
+      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    })
     : '—';
 
   // 8 ký tự đầu của teamId, dùng thay cho nhãn ẩn danh "Bài nộp #i" cũ.
@@ -494,7 +495,7 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
                   : 'Xem bài nộp và kết quả chấm điểm từ các đội thi.'}
               </p>
             </div>
-            <div className="badge-accent px-4 py-2 text-sm">{submissions.length} bài nộp</div>
+            <StatusBadge tone="success">{submissions.length} bài nộp</StatusBadge>
           </div>
 
           {myTracks.length > 1 && (
@@ -578,12 +579,11 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
                 // Khung màu: cam = chưa chấm, xanh lá = đã chấm (ít nhất 1 giám khảo với
                 // viewer; chính họ với Judge).
                 const borderColor = s.scored ? '#76b900' : '#df6500';
-                const bgTint = s.scored ? 'rgba(118,185,0,.04)' : 'rgba(223,101,0,.04)';
                 // Judge LUÔN dùng điểm của chính mình. Ưu tiên `totalScore` backend đã tính
                 // sẵn (đúng theo value/maxScore thật của từng tiêu chí) — chỉ fallback về
                 // calcScore() (giả định maxScore=10) khi chưa có totalScore (bài chưa chấm).
                 // Chỉ viewer (không phải Judge) mới dùng điểm trung bình từ breakdown.
-               const score = isJudge
+                const score = isJudge
                   ? (s.totalScore ?? calcScoreNormalized(s.scores, criteria))
                   : avgBreakdownScore(s.breakdown);
 
@@ -591,28 +591,22 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
                   <div
                     key={s.id}
                     className="card-hover p-6"
-                    style={{ background: bgTint, border: `1.5px solid ${borderColor}`, borderRadius: 2, animationDelay: `${s.index * 0.06}s` }}
+                    style={{ background: '#ffffff', border: `1.5px solid ${borderColor}`, borderRadius: 2, animationDelay: `${s.index * 0.06}s` }}
                   >
                     <div className="flex justify-between items-start mb-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         {/* Trước đây ẩn danh theo "Bài nộp #i" — giờ hiện 8 ký tự đầu teamId
                             theo yêu cầu, không còn ẩn danh hoàn toàn nữa. */}
                         <span className="text-sm font-bold" style={{ color: '#000' }}>{teamLabel(s)}</span>
-                        <span
-                          className="text-[10px] font-bold px-1.5 py-0.5"
-                          style={{ background: s.scored ? 'rgba(118,185,0,.15)' : 'rgba(223,101,0,.15)', color: s.scored ? '#5a8d00' : '#df6500', borderRadius: 2 }}
-                        >
-                          {s.scored ? '● Đã chấm' : '● Chưa chấm'}
-                        </span>
+                        <StatusBadge tone={s.scored ? 'success' : 'pending'}>
+                          {s.scored ? 'Đã chấm' : 'Chưa chấm'}
+                        </StatusBadge>
                         {/* Chỉ xuất hiện khi xem gộp toàn sự kiện (nhiều track) — giúp phân biệt
                             bài nộp thuộc hạng mục nào. */}
                         {s.trackName && (
-                          <span
-                            className="text-[10px] font-bold px-1.5 py-0.5"
-                            style={{ background: '#f0f0f0', color: '#757575', borderRadius: 2 }}
-                          >
+                          <StatusBadge tone="neutral">
                             {s.trackName}
-                          </span>
+                          </StatusBadge>
                         )}
                       </div>
                       {/* Điểm tổng luôn hiện ra ngoài (không chỉ riêng Judge nữa) — Judge đang
@@ -629,7 +623,7 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
                     <div className="grid gap-2.5 my-3" style={{ gridTemplateColumns: '1fr 1fr' }}>
                       <div className="p-3" style={{ background: '#f7f7f7', borderRadius: 2 }}>
                         <div className="text-[10px] tracking-widest mb-1 font-bold uppercase" style={{ color: '#757575' }}>Trạng thái</div>
-                        <div className="text-sm font-bold" style={{ color: '#000' }}>{s.status}</div>
+                        <StatusBadge tone="processing">{s.status}</StatusBadge>
                       </div>
                       <div className="p-3" style={{ background: '#f7f7f7', borderRadius: 2 }}>
                         <div className="text-[10px] tracking-widest mb-1 font-bold uppercase" style={{ color: '#757575' }}>Thời gian nộp</div>
@@ -666,24 +660,22 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
 
                     <div className="flex justify-end mt-4">
                       {isJudge ? (
-                        <button className="btn-hover flex items-center gap-2 px-4 py-2 text-xs font-bold"
+                        <button className={`btn btn-sm ${resultsPublished ? 'btn-view' : 'btn-update'}`}
                           onClick={() => setEditT(s)}
                           // Chỉ disable khi bị khóa vì lý do KHÁC "đã công bố" (vd chưa tới
                           // hạn chấm) — nếu đã công bố, vẫn cho mở modal ở chế độ chỉ xem.
                           disabled={lock.locked && !resultsPublished}
                           style={{
-                            background: '#f7f7f7', border: '1px solid #cccccc',
-                            color: (lock.locked && !resultsPublished) ? '#aaaaaa' : '#000', borderRadius: 2,
                             cursor: (lock.locked && !resultsPublished) ? 'not-allowed' : 'pointer',
                             opacity: (lock.locked && !resultsPublished) ? 0.6 : 1,
                           }}>
-                          {resultsPublished ? '🔍 Xem chi tiết' : '⚡ Chấm / Sửa'}
+                          {resultsPublished ? 'Xem chi tiết' : 'Chấm / Sửa'}
                         </button>
                       ) : (
-                        <button className="btn-hover flex items-center gap-2 px-4 py-2 text-xs font-bold"
+                        <button className="btn btn-view btn-sm"
                           onClick={() => setViewT(s)}
-                          style={{ background: '#f7f7f7', border: '1px solid #cccccc', color: '#000', borderRadius: 2, cursor: 'pointer' }}>
-                          🔍 Xem chi tiết
+                          style={{ cursor: 'pointer' }}>
+                          Xem chi tiết
                         </button>
                       )}
                     </div>

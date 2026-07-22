@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
+import { EventRoleBadge } from '@/components/EventRoleBadge';
+import { StatusBadge, type StatusTone } from '@/components/StatusBadge';
 import { Search } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useEventRoles, useTeams } from '@/features/events/hooks/useEvents';
@@ -25,15 +27,18 @@ interface TeamMember {
   roles: string[];
 }
 
-/** Map roleName tự do của backend sang nhãn tiếng Việt hiển thị. */
-const roleLabelOf = (roleName: string | null): string => {
+/** Chuẩn hóa roleName tự do của backend để dùng chung bảng màu và nhãn vai trò. */
+const roleNameOf = (roleName: string | null): string => {
   switch ((roleName ?? '').toLowerCase()) {
-    case 'mentor':           return 'Mentor';
-    case 'judge':            return 'Giám khảo';
-    case 'participant':      return 'Thành viên';
-    case 'admin':            return 'Admin';
-    case 'eventcoordinator': return 'Ban tổ chức sự kiện';
-    default:                 return roleName || '';
+    case 'mentor': return 'Mentor';
+    case 'judge': return 'Judge';
+    case 'participant':
+    case 'member':
+    case 'teammember': return 'TeamMember';
+    case 'teamleader': return 'TeamLeader';
+    case 'admin': return 'Admin';
+    case 'eventcoordinator': return 'EventCoordinator';
+    default: return roleName || '';
   }
 };
 
@@ -104,7 +109,7 @@ export function TeamListTab({ eventId }: TeamListTabProps) {
     if (!role.teamId || !role.userId) continue;
     if (!membersByTeam.has(role.teamId)) membersByTeam.set(role.teamId, new Map());
     const byUser = membersByTeam.get(role.teamId)!;
-    const label = roleLabelOf(role.roleName);
+    const label = roleNameOf(role.roleName);
     const existing = byUser.get(role.userId);
     if (existing) {
       if (label && !existing.roles.includes(label)) existing.roles.push(label);
@@ -199,74 +204,74 @@ export function TeamListTab({ eventId }: TeamListTabProps) {
                   const rejectBusy = rejectMutation.isPending && rejectMutation.variables?.teamId === team.id;
                   return (
                     <React.Fragment key={team.id}>
-                    <tr
-                      className="border-b border-hairline last:border-b-0"
-                      style={isPending ? { background: 'rgba(245,158,11,0.06)' } : undefined}
-                    >
-                      <td className="t-body-sm font-bold text-ink py-3 px-2">{team.name}</td>
-                      <td className="t-body-sm text-body py-3 px-2">
-                        {team.description || <span className="text-mute">—</span>}
-                      </td>
-                      <td className="t-body-sm text-body py-3 px-2 text-center">{team.memberCount}</td>
-                      <td className="py-3 px-2">
-                        <TeamStatusBadge status={team.status} />
-                      </td>
-                      <td className="py-3 px-2">
-                        <div className="flex justify-end gap-2 flex-wrap">
-                          {isPending && (
-                            <>
-                              <button
-                                type="button"
-                                disabled={approveBusy || rejectBusy}
-                                onClick={() => handleApprove(team)}
-                                className="t-caption-sm font-bold"
-                                style={{
-                                  background: 'none', border: '1px solid var(--color-primary)',
-                                  color: 'var(--color-primary)', borderRadius: 'var(--radius-sm)',
-                                  padding: '4px 10px', whiteSpace: 'nowrap',
-                                  cursor: (approveBusy || rejectBusy) ? 'not-allowed' : 'pointer',
-                                  opacity: (approveBusy || rejectBusy) ? 0.5 : 1,
-                                }}
-                              >
-                                {approveBusy ? 'Đang lưu…' : 'Duyệt đội'}
-                              </button>
-                              <button
-                                type="button"
-                                disabled={approveBusy || rejectBusy}
-                                onClick={() => handleReject(team)}
-                                className="t-caption-sm font-bold"
-                                style={{
-                                  background: 'none', border: '1px solid var(--color-error)',
-                                  color: 'var(--color-error)', borderRadius: 'var(--radius-sm)',
-                                  padding: '4px 10px', whiteSpace: 'nowrap',
-                                  cursor: (approveBusy || rejectBusy) ? 'not-allowed' : 'pointer',
-                                  opacity: (approveBusy || rejectBusy) ? 0.5 : 1,
-                                }}
-                              >
-                                {rejectBusy ? 'Đang xử lý…' : 'Từ chối'}
-                              </button>
-                            </>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setViewTeamId((cur) => (cur === team.id ? null : team.id))
-                            }
-                            className="t-caption-sm font-bold text-ink disabled:opacity-50"
-                            style={{ background: 'none', border: '1px solid var(--color-hairline-strong)', borderRadius: 'var(--radius-sm)', padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                          >
-                            {expanded ? 'Ẩn thành viên' : 'Xem thành viên'}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                    {expanded && (
-                      <tr className="bg-surface-soft">
-                        <td colSpan={5} className="px-2 py-3 align-top">
-                          <TeamMembersPanel teamName={team.name} members={members} />
+                      <tr
+                        className="border-b border-hairline last:border-b-0"
+                        style={isPending ? { background: 'rgba(245,158,11,0.06)' } : undefined}
+                      >
+                        <td className="t-body-sm font-bold text-ink py-3 px-2">{team.name}</td>
+                        <td className="t-body-sm text-body py-3 px-2">
+                          {team.description || <span className="text-mute">—</span>}
+                        </td>
+                        <td className="t-body-sm text-body py-3 px-2 text-center">{team.memberCount}</td>
+                        <td className="py-3 px-2">
+                          <TeamStatusBadge status={team.status} />
+                        </td>
+                        <td className="py-3 px-2">
+                          <div className="flex justify-end gap-2 flex-wrap">
+                            {isPending && (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={approveBusy || rejectBusy}
+                                  onClick={() => handleApprove(team)}
+                                  className="t-caption-sm font-bold"
+                                  style={{
+                                    background: 'none', border: '1px solid var(--color-primary)',
+                                    color: 'var(--color-primary)', borderRadius: 'var(--radius-sm)',
+                                    padding: '4px 10px', whiteSpace: 'nowrap',
+                                    cursor: (approveBusy || rejectBusy) ? 'not-allowed' : 'pointer',
+                                    opacity: (approveBusy || rejectBusy) ? 0.5 : 1,
+                                  }}
+                                >
+                                  {approveBusy ? 'Đang lưu…' : 'Duyệt đội'}
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={approveBusy || rejectBusy}
+                                  onClick={() => handleReject(team)}
+                                  className="t-caption-sm font-bold"
+                                  style={{
+                                    background: 'none', border: '1px solid var(--color-error)',
+                                    color: 'var(--color-error)', borderRadius: 'var(--radius-sm)',
+                                    padding: '4px 10px', whiteSpace: 'nowrap',
+                                    cursor: (approveBusy || rejectBusy) ? 'not-allowed' : 'pointer',
+                                    opacity: (approveBusy || rejectBusy) ? 0.5 : 1,
+                                  }}
+                                >
+                                  {rejectBusy ? 'Đang xử lý…' : 'Từ chối'}
+                                </button>
+                              </>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setViewTeamId((cur) => (cur === team.id ? null : team.id))
+                              }
+                              className="btn btn-view btn-sm disabled:opacity-50"
+                              style={{ cursor: 'pointer', whiteSpace: 'nowrap' }}
+                            >
+                              {expanded ? 'Ẩn thành viên' : 'Xem thành viên'}
+                            </button>
+                          </div>
                         </td>
                       </tr>
-                    )}
+                      {expanded && (
+                        <tr className="bg-surface-soft">
+                          <td colSpan={5} className="px-2 py-3 align-top">
+                            <TeamMembersPanel teamName={team.name} members={members} />
+                          </td>
+                        </tr>
+                      )}
                     </React.Fragment>
                   );
                 })}
@@ -287,36 +292,25 @@ export function TeamListTab({ eventId }: TeamListTabProps) {
  *  PendingApproval dùng tông vàng/cam riêng (đã chốt UX), khác hẳn Registered (xanh)
  *  và Forming (trung tính). */
 function TeamStatusBadge({ status }: { status?: TeamStatus | string }) {
-  const map: Record<string, { label: string; bg: string; fg: string; bd: string }> = {
+  const map: Record<string, { label: string; tone: StatusTone }> = {
     Forming: {
       label: 'Đang lập đội',
-      bg: 'var(--color-surface-soft)', fg: 'var(--color-mute)', bd: 'var(--color-hairline)',
+      tone: 'neutral',
     },
     PendingApproval: {
       label: 'Đang chờ duyệt',
-      bg: 'rgba(245,158,11,0.14)', fg: '#b45309', bd: 'rgba(245,158,11,0.55)',
+      tone: 'pending',
     },
     Registered: {
       label: 'Đã duyệt',
-      bg: 'rgba(118,185,0,0.1)', fg: 'var(--color-primary)', bd: 'var(--color-primary)',
+      tone: 'success',
     },
   };
   const s = (status && map[status]) || {
     label: status || '—',
-    bg: 'var(--color-surface-soft)', fg: 'var(--color-mute)', bd: 'var(--color-hairline)',
+    tone: 'neutral' as StatusTone,
   };
-  return (
-    <span
-      className="t-caption-sm font-bold"
-      style={{
-        display: 'inline-block',
-        background: s.bg, color: s.fg, border: `1px solid ${s.bd}`,
-        borderRadius: 'var(--radius-sm)', padding: '2px 8px', whiteSpace: 'nowrap',
-      }}
-    >
-      {s.label}
-    </span>
-  );
+  return <StatusBadge tone={s.tone}>{s.label}</StatusBadge>;
 }
 
 // ─── Team members panel ───────────────────────────────────────────────────────────
@@ -345,15 +339,7 @@ function TeamMembersPanel({
                 {m.email && <span className="t-caption-sm text-mute">{m.email}</span>}
               </div>
               <div className="flex flex-wrap justify-end gap-1">
-                {m.roles.map((r) => (
-                  <span
-                    key={r}
-                    className="t-caption-sm text-mute"
-                    style={{ border: '1px solid var(--color-hairline-strong)', borderRadius: 'var(--radius-sm)', padding: '2px 8px' }}
-                  >
-                    {r}
-                  </span>
-                ))}
+                {m.roles.map((r) => <EventRoleBadge key={r} roleName={r} />)}
               </div>
             </li>
           ))}

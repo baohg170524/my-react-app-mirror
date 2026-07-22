@@ -96,7 +96,7 @@ export default function CriteriaPage({ criteria, setCriteria, sn }) {
                   {ed === 'new' ? 'Thêm tiêu chí mới' : 'Chỉnh sửa tiêu chí'}
                 </div>
                 <div className="text-xs mt-1" style={{ color: '#757575' }}>
-                  Tên và mô tả lưu trên backend. Trọng số được quản lý qua Template.
+                  Tên và mô tả lưu trên backend. Trọng số được quản lý qua bộ tiêu chí.
                 </div>
               </div>
               <button className="btn-hover" onClick={close}
@@ -125,7 +125,7 @@ export default function CriteriaPage({ criteria, setCriteria, sn }) {
 
             <div className="flex justify-end gap-3">
               <button className="btn btn-outline" onClick={close}>Hủy</button>
-              <button className="btn btn-primary" onClick={save} disabled={saving}>
+              <button className={`btn ${ed === 'new' ? 'btn-create' : 'btn-update'}`} onClick={save} disabled={saving}>
                 {saving ? 'Đang lưu...' : ed === 'new' ? 'Thêm tiêu chí' : 'Lưu thay đổi'}
               </button>
             </div>
@@ -141,7 +141,7 @@ export default function CriteriaPage({ criteria, setCriteria, sn }) {
             Quản lý bộ tiêu chí. Tất cả điểm chấm sẽ dựa theo bộ này.
           </p>
         </div>
-        <button className="btn btn-primary" onClick={openNew}>+ Thêm tiêu chí</button>
+        <button className="btn btn-create" onClick={openNew}>Thêm tiêu chí</button>
       </div>
 
       {/* ── Thanh tìm kiếm + lọc ────────────────────────────────────────────── */}
@@ -180,7 +180,7 @@ export default function CriteriaPage({ criteria, setCriteria, sn }) {
       {hasWeight && (
         <div className="p-5 mb-6" style={{ background: '#f7f7f7', border: '1px solid #cccccc', borderRadius: 2 }}>
           <div className="flex justify-between mb-2.5">
-            <span className="text-sm" style={{ color: '#757575' }}>Tổng trọng số (từ Template)</span>
+            <span className="text-sm" style={{ color: '#757575' }}>Tổng trọng số (từ bộ tiêu chí)</span>
             <span className="text-sm font-bold" style={{ color: totalW === 10 ? '#76b900' : '#df6500' }}>
               {totalW} / 10
             </span>
@@ -256,21 +256,19 @@ export default function CriteriaPage({ criteria, setCriteria, sn }) {
 
             <div className="flex gap-2 ml-4 shrink-0">
               <button
-                className="btn-hover px-3 py-1.5 text-xs font-bold"
+                className="btn btn-update btn-sm"
                 onClick={() => toggle(c.id, c.isActive !== false)}
                 style={{ background: '#f7f7f7', border: '1px solid #cccccc', color: '#000', borderRadius: 2 }}
               >
                 {c.isActive === false ? 'Bật' : 'Tắt'}
               </button>
               <button
-                className="btn-hover px-3 py-1.5 text-xs font-bold"
+                className="btn btn-update btn-sm"
                 onClick={() => openEdit(c)}
-                style={{ background: 'rgba(118,185,0,.1)', border: '1px solid rgba(118,185,0,.3)', color: '#5a8d00', borderRadius: 2 }}
               >Sửa</button>
               <button
-                className="btn-hover px-3 py-1.5 text-xs font-bold"
+                className="btn btn-delete btn-sm"
                 onClick={() => del(c.id)}
-                style={{ background: 'rgba(229,32,32,.08)', border: '1px solid rgba(229,32,32,.25)', color: '#e52020', borderRadius: 2 }}
               >Xóa</button>
             </div>
           </div>

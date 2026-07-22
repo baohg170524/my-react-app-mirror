@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Search, Plus, Pencil, Trash2 } from 'lucide-react';
+import { X, Search } from 'lucide-react';
 import type { AxiosError } from 'axios';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { schoolsApi } from '@/services/api';
@@ -137,9 +137,9 @@ export default function SchoolsPage() {
               <button
                 type="button"
                 onClick={openCreate}
-                className="btn btn-primary flex items-center gap-2"
+                className="btn btn-create flex items-center gap-2"
               >
-                <Plus size={16} /> Thêm trường
+                Thêm trường
               </button>
             </div>
           </div>
@@ -200,28 +200,16 @@ export default function SchoolsPage() {
                             <button
                               type="button"
                               onClick={() => openEdit({ id: s.id, schoolName: s.schoolName, address: s.address })}
-                              className="flex items-center gap-1.5 t-caption-sm font-bold text-primary btn-hover"
-                              style={{
-                                background: 'var(--color-primary-soft)',
-                                border: '1px solid var(--color-primary-soft)',
-                                borderRadius: 'var(--radius-sm)',
-                                padding: '6px 14px',
-                              }}
+                              className="btn btn-update btn-sm flex items-center gap-1.5"
                             >
-                              <Pencil size={13} /> Sửa
+                              Sửa
                             </button>
                             <button
                               type="button"
                               onClick={() => setDeleteTarget({ id: s.id, name: s.schoolName })}
-                              className="flex items-center gap-1.5 t-caption-sm font-bold text-error btn-hover"
-                              style={{
-                                background: 'var(--color-error-soft)',
-                                border: '1px solid var(--color-error-soft)',
-                                borderRadius: 'var(--radius-sm)',
-                                padding: '6px 14px',
-                              }}
+                              className="btn btn-delete btn-sm flex items-center gap-1.5"
                             >
-                              <Trash2 size={13} /> Xóa
+                              Xóa
                             </button>
                           </div>
                         </td>
@@ -302,7 +290,7 @@ export default function SchoolsPage() {
                 type="button"
                 onClick={handleSubmit}
                 disabled={isSaving || !form.schoolName.trim()}
-                className="btn btn-primary flex-1 disabled:opacity-50"
+                className={`btn flex-1 disabled:opacity-50 ${modal.mode === 'create' ? 'btn-create' : 'btn-update'}`}
               >
                 {isSaving
                   ? 'Đang lưu...'
@@ -346,14 +334,7 @@ export default function SchoolsPage() {
                 type="button"
                 disabled={deleteMutation.isPending}
                 onClick={() => deleteMutation.mutate(deleteTarget.id)}
-                className="btn flex-1 font-bold disabled:opacity-50"
-                style={{
-                  background: 'var(--color-error)',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 'var(--radius-sm)',
-                  padding: '10px 20px',
-                }}
+                className="btn btn-delete flex-1 font-bold disabled:opacity-50"
               >
                 {deleteMutation.isPending ? 'Đang xóa...' : 'Xóa trường'}
               </button>

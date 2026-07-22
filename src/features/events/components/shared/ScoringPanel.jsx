@@ -272,7 +272,7 @@ export default function ScoringPanel({ eventId, trackId = null }) {
 
           {teams.length === 0 ? (
             <div className="text-center py-20">
-              <p className="text-sm" style={{ color: '#757575' }}>Chưa có đội nào nộp bài trong track của bạn.</p>
+              <p className="text-sm" style={{ color: '#757575' }}>Chưa có đội nào nộp bài trong hạng mục của bạn.</p>
             </div>
           ) : (
             <>

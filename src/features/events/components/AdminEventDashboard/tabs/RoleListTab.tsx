@@ -1,18 +1,18 @@
 'use client';
 
 import React, { useRef, useState, useMemo } from 'react';
-import { Plus } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEventRoles, useEventTracks } from '@/features/events/hooks/useEvents';
 import { manageApi, EVENT_ROLE } from '@/features/events/api/manage';
 import type { TrackItem } from '@/features/events/api/manage';
-import { usersApi, type UserSummary } from '@/services/api';
+import { usersApi } from '@/services/api';
 import { useNotify } from '@/components/NotificationProvider';
 import { useDialog } from '@/components/ConfirmDialogProvider';
 import { getErrorMessage } from '@/lib/apiError';
 import { Card } from '../../EventDashboard/Card';
 import { Button } from '../../EventDashboard/Button';
 import { CardSkeleton } from '../../EventDashboard/SkeletonLoaders';
+import { EventRoleBadge } from '@/components/EventRoleBadge';
 
 interface RoleListTabProps {
   eventId: string;
@@ -28,18 +28,18 @@ interface RoleRow {
 }
 
 const ROLE_LABELS: Record<string, string> = {
-  EventCoordinator: 'Ban tổ chức sự kiện',
-  Judge: 'Giám khảo (Judge)',
-  Mentor: 'Cố vấn (Mentor)',
+  EventCoordinator: 'Ban tổ chức',
+  Judge: 'Giám khảo',
+  Mentor: 'Cố vấn',
   TeamLeader: 'Trưởng nhóm',
   TeamMember: 'Thành viên',
 };
 
 const FILTER_OPTIONS = [
   { label: 'Tất cả vai trò', value: 'all' },
-  { label: 'Ban tổ chức sự kiện', value: EVENT_ROLE.EventCoordinator },
-  { label: 'Giám khảo (Judge)', value: EVENT_ROLE.Judge },
-  { label: 'Cố vấn (Mentor)', value: EVENT_ROLE.Mentor },
+  { label: 'Ban tổ chức', value: EVENT_ROLE.EventCoordinator },
+  { label: 'Giám khảo', value: EVENT_ROLE.Judge },
+  { label: 'Cố vấn', value: EVENT_ROLE.Mentor },
   { label: 'Trưởng nhóm', value: EVENT_ROLE.TeamLeader },
   { label: 'Thành viên', value: EVENT_ROLE.TeamMember },
 ];
@@ -158,15 +158,14 @@ export function RoleListTab({ eventId }: RoleListTabProps) {
           </div>
           
           <Button
-            variant="primary"
+            variant="create"
             size="sm"
             onClick={() => {
               setActionError(null);
               setAdding((v) => !v);
             }}
           >
-            <Plus size={16} aria-hidden="true" />
-            {adding ? 'Đóng' : 'Thêm vai trò'}
+            {adding ? 'Đóng' : '+ Thêm vai trò'}
           </Button>
         </div>
 
@@ -201,9 +200,7 @@ export function RoleListTab({ eventId }: RoleListTabProps) {
                     <td className="t-body-sm font-bold text-ink py-3 px-2">{row.name}</td>
                     <td className="t-body-sm text-body py-3 px-2">{row.email}</td>
                     <td className="py-3 px-2">
-                      <span className="inline-block bg-primary/10 text-primary text-caption-xs px-2 py-1 rounded-full font-semibold">
-                        {ROLE_LABELS[row.roleName] ?? row.roleName}
-                      </span>
+                      <EventRoleBadge roleName={row.roleName} />
                     </td>
                     <td className="t-body-sm text-body py-3 px-2">
                       {row.trackName ?? <span className="text-mute">—</span>}
@@ -214,8 +211,8 @@ export function RoleListTab({ eventId }: RoleListTabProps) {
                           type="button"
                           disabled={busy}
                           onClick={() => handleRemoveRole(row)}
-                          className="t-caption-sm font-bold text-error disabled:opacity-50"
-                          style={{ background: 'none', border: '1px solid var(--color-error)', borderRadius: 'var(--radius-sm)', padding: '4px 10px', cursor: busy ? 'not-allowed' : 'pointer' }}
+                          className="btn btn-delete btn-sm disabled:opacity-50"
+                          style={{ cursor: busy ? 'not-allowed' : 'pointer' }}
                         >
                           Xóa
                         </button>
@@ -277,7 +274,7 @@ function AddRolePanel({
   const inviteCoordinatorMutation = useMutation({
     mutationFn: manageApi.inviteEventCoordinator,
     onSuccess: () => {
-      notify.success('Đã mời Ban tổ chức sự kiện (EC) thành công!');
+      notify.success('Đã mời Ban tổ chức thành công!');
       onSuccess();
     },
     onError: onInviteError,
@@ -286,7 +283,7 @@ function AddRolePanel({
   const inviteJudgeMutation = useMutation({
     mutationFn: manageApi.inviteJudge,
     onSuccess: () => {
-      notify.success('Đã mời Giám khảo (Judge) thành công!');
+      notify.success('Đã mời Giám khảo thành công!');
       onSuccess();
     },
     onError: onInviteError,
@@ -295,7 +292,7 @@ function AddRolePanel({
   const inviteMentorMutation = useMutation({
     mutationFn: manageApi.inviteMentor,
     onSuccess: () => {
-      notify.success('Đã mời Cố vấn (Mentor) thành công!');
+      notify.success('Đã mời Cố vấn thành công!');
       onSuccess();
     },
     onError: onInviteError,
@@ -306,7 +303,7 @@ function AddRolePanel({
   const handleInvite = (email: string, fullName: string) => {
     setActionError(null);
     if (selectedRole !== EVENT_ROLE.EventCoordinator && !selectedTrackId) {
-      setActionError("Vui lòng chọn một hạng mục (track).");
+      setActionError("Vui lòng chọn một hạng mục.");
       return;
     }
 
@@ -365,15 +362,15 @@ function AddRolePanel({
             value={selectedRole}
             onChange={(e) => setSelectedRole(Number(e.target.value))}
           >
-            <option value={EVENT_ROLE.EventCoordinator}>Ban tổ chức sự kiện</option>
-            <option value={EVENT_ROLE.Judge}>Judge</option>
-            <option value={EVENT_ROLE.Mentor}>Mentor</option>
+            <option value={EVENT_ROLE.EventCoordinator}>Ban tổ chức</option>
+            <option value={EVENT_ROLE.Judge}>Giám khảo</option>
+            <option value={EVENT_ROLE.Mentor}>Cố vấn</option>
           </select>
         </div>
         
         {requiresTrack && (
           <div className="flex-1">
-            <label className="block t-caption-sm font-bold text-mute mb-1">Hạng mục (Track)</label>
+            <label className="block t-caption-sm font-bold text-mute mb-1">Hạng mục</label>
             {tracks.length === 0 ? (
               <p className="t-caption-sm text-error m-0" style={{ marginTop: '8px' }}>
                 Sự kiện chưa có hạng mục nào. Hãy tạo hạng mục trước.
@@ -447,7 +444,7 @@ function AddRolePanel({
                   className="inline-flex items-center gap-1 t-caption-sm font-bold text-primary disabled:opacity-50"
                   style={{ background: 'none', border: 'none', cursor: busy ? 'not-allowed' : 'pointer' }}
                 >
-                  <Plus size={14} aria-hidden="true" /> {busy ? 'Đang xử lý...' : 'Gửi lời mời'}
+                  {busy ? 'Đang xử lý...' : 'Gửi lời mời'}
                 </button>
               </div>
             ))

@@ -1,3 +1,5 @@
+import { StatusBadge as SharedStatusBadge } from './components/StatusBadge';
+
 // Hệ 100: tổng weight tất cả tiêu chí = 100, mỗi tiêu chí chấm 0-maxScore,
 // quy đổi theo trọng số (weight/100) rồi cộng lại → tổng tối đa luôn = 10.
 export const calcScore = (scores, criteria) => {
@@ -14,15 +16,15 @@ export const getRankBg    = (r) => r === 1 ? 'rgba(255,215,0,.08)' : r === 2 ? '
 export const getRankIcon  = (r) => r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : `#${r}`;
 
 export const STATUS_MAP = {
-  'Chờ xử lý': { cls: 'badge-warn',   label: 'Chờ xử lý' },
-  'Đang xét':  { cls: 'badge-blue',   label: 'Đang xét'  },
-  'Đã duyệt':  { cls: 'badge-accent', label: 'Đã duyệt'  },
-  'Từ chối':   { cls: 'badge-danger', label: 'Từ chối'   },
+  'Chờ xử lý': { tone: 'pending', label: 'Chờ xử lý' },
+  'Đang xét': { tone: 'processing', label: 'Đang xét' },
+  'Đã duyệt': { tone: 'success', label: 'Đã duyệt' },
+  'Từ chối': { tone: 'danger', label: 'Từ chối' },
 };
 
 export const StatusBadge = ({ status }) => {
   const s = STATUS_MAP[status] || STATUS_MAP['Chờ xử lý'];
-  return <span className={s.cls}>{status}</span>;
+  return <SharedStatusBadge tone={s.tone}>{status}</SharedStatusBadge>;
 };
 
 export const calcScoreNormalized = (scores, criteria) => {

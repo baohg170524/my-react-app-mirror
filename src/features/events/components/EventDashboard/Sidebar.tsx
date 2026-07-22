@@ -40,7 +40,8 @@ export function Sidebar({ eventId }: SidebarProps) {
   const { data: eventRole } = useUserEventRole(user?.id ?? '', eventId);
   const { data: team } = useMyTeamForEvent(eventId, user?.id ?? '');
   const { status: registrationStatus } = useRegistration(user?.id ?? '');
-  const tabs = getEventTabs({ role, eventRoleName: eventRole?.roleName, hasTeam: !!team, registrationStatus });
+  const isAuthenticated = !!user;
+  const tabs = getEventTabs({ isAuthenticated, role, eventRoleName: eventRole?.roleName, hasTeam: !!team, registrationStatus });
 
   const getDisplayRoleLabel = () => {
     if (role === 'admin') return 'Admin';

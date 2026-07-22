@@ -170,7 +170,7 @@ export function TeamInvitationView({ teamId }: Props) {
                 >
                   {respondMutation.isPending ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" /> Đang xử lý...
+                      Đang xử lý...
                     </>
                   ) : (
                     'Xác nhận'
@@ -185,14 +185,14 @@ export function TeamInvitationView({ teamId }: Props) {
                 className="btn btn-outline-danger flex-1 flex items-center justify-center gap-2"
                 onClick={() => setConfirmingAction('reject')}
               >
-                <X className="w-4 h-4" /> Từ chối
+                Từ chối
               </button>
               <button
                 type="button"
                 className="btn btn-primary flex-1 flex items-center justify-center gap-2"
                 onClick={() => setConfirmingAction('accept')}
               >
-                <Check className="w-4 h-4" /> Tham gia
+                Tham gia
               </button>
             </div>
           )}

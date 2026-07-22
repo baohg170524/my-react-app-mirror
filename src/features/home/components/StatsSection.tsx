@@ -17,7 +17,7 @@ const STATS = [
   {
     icon: Briefcase,
     value: '30+',
-    label: 'Mentor & Giám khảo',
+    label: 'Cố vấn & Giám khảo',
   },
   {
     icon: Award,

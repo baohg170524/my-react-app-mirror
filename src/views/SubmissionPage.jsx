@@ -1,3 +1,5 @@
+import { StatusBadge } from '../components/StatusBadge';
+
 export default function SubmissionPage({ submissions, teams }) {
   const done    = new Set(submissions.map(s => s.teamId));
   const total   = teams.length || submissions.length || 1;
@@ -34,7 +36,7 @@ export default function SubmissionPage({ submissions, teams }) {
           <div className="flex items-center gap-2.5 mb-3">
             {/* Ẩn danh phía chấm: giám khảo chỉ thấy mã bài, không thấy đội/thí sinh nào. */}
             <span className="text-sm font-bold" style={{ color: '#000' }}>Bài nộp #{i + 1}</span>
-            <span className="badge-accent">{s.status}</span>
+            <StatusBadge tone="success">{s.status}</StatusBadge>
           </div>
           <div className="grid gap-2.5 mb-2.5" style={{ gridTemplateColumns: '1fr 1fr' }}>
             {[['ID NHÓM', s.projectName], ['THỜI GIAN NỘP', s.submittedAt]].map(([k, v]) => (
@@ -66,7 +68,7 @@ export default function SubmissionPage({ submissions, teams }) {
               style={{ background: '#f7f7f7', border: '1px solid #e5e5e5', opacity: .65, borderRadius: 2 }}>
               <span className="text-xs font-bold" style={{ color: '#757575' }}>{t.id}</span>
               <span className="text-sm" style={{ color: '#000' }}>{t.name}</span>
-              <span className="badge-warn ml-auto">Chưa nộp</span>
+              <StatusBadge tone="neutral" className="ml-auto">Chưa nộp</StatusBadge>
             </div>
           ))}
         </div>

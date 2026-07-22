@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
-import { ChevronLeft, ChevronRight, X, MoreHorizontal } from "lucide-react";
+import { X, MoreHorizontal } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { StatusBadge } from '@/components/StatusBadge';
 import {
   usersApi,
   schoolsApi,
@@ -17,58 +18,11 @@ import { useAllEvents } from "@/features/events/hooks/useEvents";
 import { useNotify } from "@/components/NotificationProvider";
 import { useDialog } from "@/components/ConfirmDialogProvider";
 import { getErrorMessage } from "@/lib/apiError";
+import { EventRoleBadge } from "@/components/EventRoleBadge";
 
 const PAGE_SIZE = 20;
 
 const errMsg = getErrorMessage;
-
-// ─── RoleBadge: hiển thị vai trò trong sự kiện ───────────────────────────────────
-
-const ROLE_STYLE: Record<string, { label: string; bg: string; fg: string; bd: string }> = {
-  Judge: {
-    label: "Judge",
-    bg: "rgba(0,70,164,0.08)", fg: "#0046a4", bd: "rgba(0,70,164,0.3)",
-  },
-  EventCoordinator: {
-    label: "Coordinator",
-    bg: "rgba(149,47,198,0.08)", fg: "#952fc6", bd: "rgba(149,47,198,0.3)",
-  },
-  TeamLeader: {
-    label: "Team Leader",
-    bg: "rgba(118,185,0,0.1)", fg: "var(--color-primary)", bd: "var(--color-primary)",
-  },
-  Member: {
-    label: "Member",
-    bg: "var(--color-surface-soft)", fg: "var(--color-mute)", bd: "var(--color-hairline)",
-  },
-  Mentor: {
-    label: "Mentor",
-    bg: "rgba(13,148,136,0.08)", fg: "#0D9488", bd: "rgba(13,148,136,0.3)",
-  },
-};
-
-function RoleBadge({ roleName }: { roleName: string }) {
-  const style = ROLE_STYLE[roleName] ?? {
-    label: roleName,
-    bg: "var(--color-surface-soft)",
-    fg: "var(--color-mute)",
-    bd: "var(--color-hairline)",
-  };
-  return (
-    <span
-      className="badge-tag"
-      style={{
-        background: style.bg,
-        color: style.fg,
-        border: `1px solid ${style.bd}`,
-        fontSize: "var(--fs-utility-xs)",
-        fontWeight: 700,
-      }}
-    >
-      {style.label}
-    </span>
-  );
-}
 
 function Badge({
   children,
@@ -549,14 +503,8 @@ export function UsersList() {
                     setActionError(null);
                     setShowCreate(true);
                   }}
-                  className="t-body-sm"
+                  className="btn btn-create"
                   style={{
-                    fontWeight: 700,
-                    background: "var(--color-primary)",
-                    color: "#fff",
-                    border: "none",
-                    borderRadius: "var(--radius-sm)",
-                    padding: "9px 16px",
                     cursor: "pointer",
                     whiteSpace: "nowrap",
                   }}
@@ -722,10 +670,10 @@ export function UsersList() {
                           </td>
                           <td style={td}>
                             {eventId && userEventRoleMap[u.id] ? (
-                              <RoleBadge roleName={userEventRoleMap[u.id]} />
+                              <EventRoleBadge roleName={userEventRoleMap[u.id]} />
                             ) : (
                               <Badge tone={u.isAdmin ? "primary" : "neutral"}>
-                                {u.isAdmin ? "Admin" : "User"}
+                                {u.isAdmin ? "Quản trị viên" : "Người dùng"}
                               </Badge>
                             )}
                           </td>
@@ -734,9 +682,9 @@ export function UsersList() {
                               {isInvited ? (
                                 <Badge tone="neutral">Được mời</Badge>
                               ) : (
-                                <Badge tone={u.isApproved ? "success" : u.isRejected ? "danger" : "pending"}>
+                                <StatusBadge tone={u.isApproved ? "success" : u.isRejected ? "danger" : "pending"}>
                                   {u.isApproved ? "Đã duyệt" : u.isRejected ? "Bị từ chối" : "Chờ duyệt"}
-                                </Badge>
+                                </StatusBadge>
                               )}
                             </td>
                           )}
@@ -746,14 +694,8 @@ export function UsersList() {
                                 <button
                                   type="button"
                                   onClick={() => { setActionError(null); setViewUser(u); }}
-                                  className="t-caption-sm"
+                                  className="btn btn-view btn-label-size"
                                   style={{
-                                    fontWeight: 700,
-                                    background: "none",
-                                    border: "1px solid var(--color-hairline-strong)",
-                                    color: "var(--color-ink)",
-                                    borderRadius: "var(--radius-sm)",
-                                    padding: "4px 10px",
                                     cursor: "pointer",
                                     whiteSpace: "nowrap",
                                   }}
@@ -767,14 +709,13 @@ export function UsersList() {
                                     setActionError(null);
                                     approveMutation.mutate(u);
                                   }}
-                                  className="t-caption-sm"
+                                  className="t-caption-sm btn-label-size"
                                   style={{
                                     fontWeight: 700,
                                     background: "none",
                                     border: "1px solid var(--color-primary)",
                                     color: "var(--color-primary)",
                                     borderRadius: "var(--radius-sm)",
-                                    padding: "4px 10px",
                                     cursor: approveBusy || rejectBusy ? "not-allowed" : "pointer",
                                     opacity: approveBusy || rejectBusy ? 0.5 : 1,
                                     whiteSpace: "nowrap",
@@ -786,14 +727,13 @@ export function UsersList() {
                                   type="button"
                                   disabled={approveBusy || rejectBusy}
                                   onClick={() => handleReject(u)}
-                                  className="t-caption-sm"
+                                  className="t-caption-sm btn-label-size"
                                   style={{
                                     fontWeight: 700,
                                     background: "none",
                                     border: "1px solid var(--color-error)",
                                     color: "var(--color-error)",
                                     borderRadius: "var(--radius-sm)",
-                                    padding: "4px 10px",
                                     cursor: approveBusy || rejectBusy ? "not-allowed" : "pointer",
                                     opacity: approveBusy || rejectBusy ? 0.5 : 1,
                                     whiteSpace: "nowrap",
@@ -838,7 +778,7 @@ export function UsersList() {
                         opacity: currentPage <= 1 ? 0.4 : 1,
                       }}
                     >
-                      <ChevronLeft size={14} aria-hidden="true" /> Trước
+                      Trước
                     </button>
                     <button
                       type="button"
@@ -859,7 +799,7 @@ export function UsersList() {
                         opacity: currentPage >= totalPages ? 0.4 : 1,
                       }}
                     >
-                      Sau <ChevronRight size={14} aria-hidden="true" />
+                      Sau
                     </button>
                   </div>
                 </div>
@@ -1061,14 +1001,8 @@ function PrimaryButton({
     <button
       type="submit"
       disabled={disabled}
-      className="t-body-sm"
+      className="btn btn-create"
       style={{
-        fontWeight: 700,
-        background: "var(--color-primary)",
-        color: "#fff",
-        border: "none",
-        borderRadius: "var(--radius-sm)",
-        padding: "10px 16px",
         cursor: disabled ? "not-allowed" : "pointer",
         opacity: disabled ? 0.6 : 1,
       }}
@@ -1143,7 +1077,7 @@ function CreateUserModal({
         <Field label="Vai trò">
           <select className="text-input" value={role} onChange={(e) => setRole(e.target.value as "student" | "admin")}>
             <option value="student">Sinh viên</option>
-            <option value="admin">Admin</option>
+            <option value="admin">Quản trị viên</option>
           </select>
         </Field>
 
@@ -1282,7 +1216,7 @@ function UserDetailModal({
                   border: `1px solid ${user.isAdmin ? "var(--color-primary)" : "var(--color-hairline)"}`,
                 }}
               >
-                {user.isAdmin ? "Admin" : "User"}
+                {user.isAdmin ? "Quản trị viên" : "Người dùng"}
               </span>
             }
           />
@@ -1395,14 +1329,8 @@ function UserDetailModal({
             <button
               type="submit"
               disabled={busy}
-              className="t-body-sm"
+              className="btn btn-update"
               style={{
-                fontWeight: 700,
-                background: "var(--color-primary)",
-                color: "#fff",
-                border: "none",
-                borderRadius: "var(--radius-sm)",
-                padding: "8px 20px",
                 cursor: busy ? "not-allowed" : "pointer",
                 opacity: busy ? 0.6 : 1,
               }}

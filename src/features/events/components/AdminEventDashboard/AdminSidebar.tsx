@@ -25,15 +25,17 @@ interface AdminSidebarProps {
 }
 
 export function AdminSidebar({ activeTab, setActiveTab, role = 'Admin' }: AdminSidebarProps) {
-  const { data: user } = useCurrentUser();
-  const displayName = user?.fullName?.trim() || (role.toLowerCase() === 'eventcoordinator' ? 'Ban tổ chức' : 'Quản trị viên');
-  const initials = displayName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(-2)
-    .map((part) => part[0])
-    .join('')
-    .toUpperCase();
+  const displayRole = (() => {
+    switch (role.toLowerCase()) {
+      case 'eventcoordinator': return 'Ban tổ chức';
+      case 'judge': return 'Giám khảo';
+      case 'mentor': return 'Cố vấn';
+      case 'teamleader': return 'Trưởng nhóm';
+      case 'teammember':
+      case 'member': return 'Thành viên';
+      default: return role;
+    }
+  })();
 
   return (
     <aside
@@ -53,11 +55,10 @@ export function AdminSidebar({ activeTab, setActiveTab, role = 'Admin' }: AdminS
                   role="tab"
                   aria-selected={isActive}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`w-full px-4 py-4 flex items-center gap-3 border-b border-hairline-strong transition-colors duration-150 cursor-pointer min-h-12 ${
-                    isActive
+                  className={`w-full px-4 py-4 flex items-center gap-3 border-b border-hairline-strong transition-colors duration-150 cursor-pointer min-h-12 ${isActive
                       ? 'bg-surface-dark text-on-dark border-l-4 border-l-primary'
                       : 'bg-surface-dark text-on-dark hover:bg-[rgba(255,255,255,0.08)] border-l-4 border-l-transparent'
-                  } focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary`}
+                    } focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary`}
                   aria-label={`${tab.label} tab`}
                 >
                   <Icon
@@ -81,7 +82,7 @@ export function AdminSidebar({ activeTab, setActiveTab, role = 'Admin' }: AdminS
         <div className="hidden md:flex flex-col flex-1 min-w-0">
           <p className="text-on-dark text-body-sm font-bold truncate text-opacity-100">{displayName}</p>
           <span className="inline-block bg-primary/20 text-primary text-caption-xs px-2 py-1 rounded-full text-xs mt-1 w-fit font-semibold">
-            {role.toLowerCase() === 'eventcoordinator' ? 'Ban tổ chức sự kiện' : role}
+            {displayRole}
           </span>
         </div>
       </div>

@@ -25,12 +25,17 @@ const TAB: Record<EventTabId, EventTab> = {
 };
 
 export function getEventTabs(args: {
+  isAuthenticated: boolean;
   role: AppRole | null;
   eventRoleName?: string;
   hasTeam: boolean;
   registrationStatus?: RegistrationStatus | null;
 }): EventTab[] {
-  const { role, eventRoleName, hasTeam, registrationStatus = null } = args;
+  const { isAuthenticated, role, eventRoleName, hasTeam, registrationStatus = null } = args;
+
+  if (!isAuthenticated) {
+    return [TAB.detail];
+  }
 
   // 1. Admin hệ thống, hoặc được phân công làm EventCoordinator/Admin trong event
   if (role === 'admin' || eventRoleName === 'EventCoordinator' || eventRoleName === 'Admin') {
