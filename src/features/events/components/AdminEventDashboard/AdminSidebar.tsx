@@ -25,6 +25,16 @@ interface AdminSidebarProps {
 }
 
 export function AdminSidebar({ activeTab, setActiveTab, role = 'Admin' }: AdminSidebarProps) {
+  const { data: user } = useCurrentUser();
+  const displayName = user?.fullName?.trim() || (role.toLowerCase() === 'eventcoordinator' ? 'Ban tổ chức' : 'Quản trị viên');
+  const initials = displayName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(-2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase();
+
   const displayRole = (() => {
     switch (role.toLowerCase()) {
       case 'eventcoordinator': return 'Ban tổ chức';

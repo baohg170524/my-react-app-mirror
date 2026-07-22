@@ -36,7 +36,7 @@ describe('getEventTabs', () => {
 
   test('judge and mentor never receive the appeal tab', () => {
     for (const eventRoleName of ['Judge', 'Mentor']) {
-      expect(getEventTabs({ role: 'student', eventRoleName, hasTeam: true }).some((t) => t.id === 'appeal')).toBe(false);
+      expect(getEventTabs({ isAuthenticated: true, role: 'student', eventRoleName, hasTeam: true }).some((t) => t.id === 'appeal')).toBe(false);
     }
   });
 
