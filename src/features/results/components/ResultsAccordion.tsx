@@ -32,12 +32,17 @@ function RoundRow({ teamId, roundId, roundName, finalScore, rank, isAdvanced }: 
           {(breakdown ?? []).length === 0 && !isLoading ? (
             <p className="t-body-sm text-mute">Chưa có phiếu chấm cho vòng này.</p>
           ) : null}
-          {(breakdown ?? []).map(({ score, details }) => {
+          {(breakdown ?? []).map(({ score, details, trackName }) => {
             const weightedSum = details.reduce((acc, d) => acc + d.value * ((d.weight ?? 10) / 10), 0);
             return (
               <div key={score.id} className="space-y-1">
                 <p className="t-body-sm">
                   Giám khảo <b>{score.judgeName}</b> — tổng <b>{score.totalScore.toFixed(2)}</b>/10
+                  {trackName && (
+                    <span className="text-mute ml-2">
+                      (Hạng mục: {trackName})
+                    </span>
+                  )}
                 </p>
                 <table className="w-full text-sm">
                   <thead className="text-left">

@@ -1,12 +1,16 @@
-import { calcScore, getRankColor, getRankBg } from '../utils.jsx';
+import { useState } from 'react';
+import { calcScore, getRankColor, getRankBg, getRankIcon } from '../utils.jsx';
 
 export default function LeaderboardPage({ teams, criteria, sortBy, setSortBy, onEdit, onExport }) {
+  const [selectedTeamId, setSelectedTeamId] = useState('');
+
   const sorted = [...teams].sort((a, b) =>
     sortBy === 'score' ? calcScore(b.scores, criteria) - calcScore(a.scores, criteria) :
-    sortBy === 'id'    ? a.id.localeCompare(b.id) : a.name.localeCompare(b.name)
+      sortBy === 'id' ? a.id.localeCompare(b.id) : a.name.localeCompare(b.name)
   );
   const byScore = [...teams].sort((a, b) => calcScore(b.scores, criteria) - calcScore(a.scores, criteria));
-  const ranked  = sorted.map(t => ({ ...t, rank: byScore.findIndex(x => x.id === t.id) + 1 }));
+  const ranked = sorted.map(t => ({ ...t, rank: byScore.findIndex(x => x.id === t.id) + 1 }));
+  const visibleRanked = selectedTeamId ? ranked.filter(t => t.id === selectedTeamId) : ranked;
 
   return (
     <div className="animate-fadeUp">
@@ -16,6 +20,12 @@ export default function LeaderboardPage({ teams, criteria, sortBy, setSortBy, on
           <p className="text-sm mt-1" style={{ color: '#757575' }}>Tổng hợp điểm số & thứ hạng các đội thi.</p>
         </div>
         <div className="flex gap-2.5">
+          <select value={selectedTeamId} onChange={e => setSelectedTeamId(e.target.value)} className="input-field" style={{ width: 'auto', height: 44 }}>
+            <option value="">Tất cả đội</option>
+            {[...teams].sort((a, b) => a.id.localeCompare(b.id)).map(t => (
+              <option key={t.id} value={t.id}>{t.id} — {t.name}</option>
+            ))}
+          </select>
           <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="input-field" style={{ width: 'auto', height: 44 }}>
             <option value="score">Sắp xếp: Điểm số</option>
             <option value="id">Sắp xếp: Mã đội</option>
@@ -28,9 +38,9 @@ export default function LeaderboardPage({ teams, criteria, sortBy, setSortBy, on
       {/* ── Stat cards ── */}
       <div className="grid gap-4 mb-6" style={{ gridTemplateColumns: 'repeat(3,1fr)' }}>
         {[
-          { l: 'Điểm cao nhất',   v: Math.max(...teams.map(t => calcScore(t.scores, criteria))).toFixed(2) },
+          { l: 'Điểm cao nhất', v: Math.max(...teams.map(t => calcScore(t.scores, criteria))).toFixed(2) },
           { l: 'Điểm trung bình', v: (teams.reduce((a, t) => a + calcScore(t.scores, criteria), 0) / teams.length).toFixed(2) },
-          { l: 'Tổng đội thi',    v: `${teams.length} đội` },
+          { l: 'Tổng đội thi', v: `${teams.length} đội` },
         ].map((s, i) => (
           <div key={i} className="callout-stat">
             <span className="callout-stat__number">{s.v}</span>
@@ -48,7 +58,7 @@ export default function LeaderboardPage({ teams, criteria, sortBy, setSortBy, on
       </div>
 
       {/* ── Rows ── */}
-      {ranked.map((t, i) => {
+      {visibleRanked.map((t, i) => {
         const score = calcScore(t.scores, criteria);
         return (
           <div key={t.id} className="card-hover grid gap-1.5 px-4 py-3.5 mb-1 items-center"

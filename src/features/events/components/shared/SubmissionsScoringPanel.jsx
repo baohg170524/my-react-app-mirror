@@ -48,6 +48,15 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
   const [submissions, setSubmissions] = useState([]);
   const [eventRoleId, setEventRoleId] = useState(null);
   const [roundInfo, setRoundInfo] = useState(null); // { roundName, startDate, endDate }
+  // Judge có thể được giao chấm NHIỀU track cùng lúc (nhiều bản ghi EventRole, mỗi bản
+  // 1 track). `GET /EventRoles/user-role` chỉ trả 1 bản ghi nên không đủ — dùng
+  // `listMyRoles` (lọc client-side từ listByEvent) để lấy hết, rồi cho Judge chọn track
+  // đang muốn chấm qua dropdown. `myTracks` rỗng nghĩa là chưa xác định (đang tải) hoặc
+  // user không phải Judge/không có track nào.
+  const [myTracks, setMyTracks] = useState([]); // [{ trackId, roleId, trackName }]
+  const [selectedTrackId, setSelectedTrackId] = useState(null);
+  // Dropdown lọc danh sách bài nộp theo 1 đội cụ thể (teamId) — rỗng nghĩa là hiện tất cả.
+  const [selectedFilterTeamId, setSelectedFilterTeamId] = useState('');
   const [lock, setLock] = useState({ locked: false, message: null });
   // Tách riêng khỏi `lock` — lock.locked còn bật vì lý do "chưa tới hạn chấm", không chỉ
   // vì đã công bố. Chỉ dùng cờ này để quyết định ẩn nút "Chấm/Sửa" → "Xem chi tiết".
@@ -84,14 +93,51 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
         //    khác (Admin/EC/Mentor/TeamLead/Member) có thể không gắn với 1 track cụ thể nào
         //    (vd Admin quản lý toàn sự kiện) — khi đó xem TOÀN BỘ mọi track trong sự kiện,
         //    không báo lỗi chặn như trước.
-        const role = await eventRolesApi.getUserRole(currentUser.id, eventId);
-        const roleId = role?.id ?? null;
-        const roleName = role?.roleName ?? null;
-        const judge = roleName === 'Judge';
-        const effectiveTrackId = trackId ?? role?.trackId ?? null;
+        //
+        //    Judge có thể được giao NHIỀU track cùng lúc (nhiều bản ghi EventRole).
+        //    `getUserRole` (GET /EventRoles/user-role) chỉ trả về 1 bản ghi nên không đủ —
+        //    dùng `listMyRoles` để lấy hết các role Judge của user trong event này, cho
+        //    phép chọn track đang muốn chấm qua dropdown (xem UI bên dưới). Chỉ áp dụng khi
+        //    `trackId` KHÔNG được component cha ép cứng (giữ nguyên hành vi cũ nếu có).
+        let judge = false;
+        let roleId = null;
+        let effectiveTrackId = trackId ?? null;
+        let judgeTracks = [];
 
-        if (judge && (!role || !effectiveTrackId)) {
+        if (trackId) {
+          const role = await eventRolesApi.getUserRole(currentUser.id, eventId);
+          roleId = role?.id ?? null;
+          judge = role?.roleName === 'Judge';
+        } else {
+          const allRoles = await eventRolesApi.listMyRoles(currentUser.id, eventId);
+          const judgeRoles = allRoles.filter((r) => r.roleName === 'Judge' && r.trackId);
+          judge = judgeRoles.length > 0;
+
+          if (judge) {
+            judgeTracks = judgeRoles.map((r) => ({
+              trackId: r.trackId,
+              roleId: r.id,
+              trackName: r.trackName ?? null,
+            }));
+            const picked =
+              judgeTracks.find((t) => t.trackId === selectedTrackId) ?? judgeTracks[0];
+            effectiveTrackId = picked.trackId;
+            roleId = picked.roleId;
+          } else {
+            // Không phải Judge — vai trò khác (nếu có) chỉ dùng để biết trackId gán sẵn.
+            const role = allRoles[0] ?? null;
+            roleId = role?.id ?? null;
+            effectiveTrackId = role?.trackId ?? null;
+          }
+        }
+
+        if (judge && (!roleId || !effectiveTrackId)) {
           throw new Error('Bạn chưa được phân công chấm hạng mục nào trong sự kiện này.');
+        }
+
+        if (!cancelled) setMyTracks(judgeTracks);
+        if (!cancelled && judge && !selectedTrackId && effectiveTrackId) {
+          setSelectedTrackId(effectiveTrackId);
         }
 
         if (effectiveTrackId) {
@@ -133,7 +179,7 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
       setRoundInfo(round ? {
         roundName: round.roundName ?? `Vòng ${round.roundNumber ?? '?'}`,
         startDate: round.startDate ?? null,
-        endDate:   round.endDate   ?? null,
+        endDate: round.endDate ?? null,
       } : null);
 
       // 4) Bộ tiêu chí: hệ 100 — dùng maxScore/weight thật từ backend, không hardcode
@@ -196,8 +242,8 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
         const rawUrl = s.submissionUrl ?? s.repoUrl ?? '';
         const submittedAt = s.createdTime
           ? new Date(s.createdTime.replace('+00:00', 'Z')).toLocaleString('vi-VN', {
-              day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-            })
+            day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+          })
           : '—';
         const breakdown = breakdownBySubmission[s.id] ?? null;
         const scoredByJudge = judge
@@ -224,26 +270,45 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
       });
 
       // 7) Khóa/mở form chấm (chỉ áp dụng cho Judge — viewer không chấm nên không cần khóa).
-      // Ưu tiên dùng hạn chót của Hạng mục (Track.endDate — mốc kết thúc nộp bài, cũng là
-      // lúc mở chấm điểm). Chỉ fallback về Round.endDate nếu Track không có (round.endDate
-      // là mốc đóng TOÀN BỘ vòng thi, sau cả chấm điểm + công bố — dùng nó để mở form là sai,
-      // xem scoring-timeline-explanation.md).
+      // Ưu tiên dùng Track.scoringStartDate/scoringEndDate (cửa sổ chấm điểm thật của Hạng
+      // mục). Chỉ fallback về Track.endDate/Round.endDate nếu Track chưa cấu hình
+      // scoringStartDate (dữ liệu cũ) — round.endDate là mốc đóng TOÀN BỘ vòng thi, sau cả
+      // chấm điểm + công bố, dùng nó để mở form chỉ là phương án dự phòng cuối cùng.
       let lockState = { locked: false, message: null };
       if (judge) {
         const now = new Date();
-        const endDate = track?.endDate
+        const scoringStart = track?.scoringStartDate ? new Date(track.scoringStartDate) : null;
+        const scoringEnd = track?.scoringEndDate ? new Date(track.scoringEndDate) : null;
+        const fallbackDate = track?.endDate
           ? new Date(track.endDate)
           : (round?.endDate ? new Date(round.endDate) : null);
-        const notEnded = endDate ? now < endDate : false;
+        const startDate = scoringStart ?? fallbackDate;
+        const notStarted = startDate ? now < startDate : false;
+        const scoringOver = scoringEnd ? now > scoringEnd : false;
         if (published) {
           lockState = { locked: true, message: 'Vòng thi này đã chốt kết quả, không thể chấm điểm thêm.' };
-        } else if (notEnded) {
-          const when = endDate.toLocaleString('vi-VN', {
+        } else if (scoringOver) {
+          lockState = { locked: true, message: 'Đã hết thời gian chấm điểm cho hạng mục này.' };
+        } else if (notStarted) {
+          const when = startDate.toLocaleString('vi-VN', {
             day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
           });
-          lockState = { locked: true, message: `Form chấm điểm sẽ được mở sau khi kết thúc nộp bài vào lúc ${when}.` };
+          lockState = { locked: true, message: `Form chấm điểm sẽ được mở vào lúc ${when}.` };
         }
       }
+
+      console.log('[SubmissionsScoringPanel] Judge scoring lock check', {
+        trackId: effectiveTrackId,
+        trackName: track?.trackName,
+        now: new Date().toISOString(),
+        scoringStartDate: track?.scoringStartDate ?? null,
+        scoringEndDate: track?.scoringEndDate ?? null,
+        trackEndDate: track?.endDate ?? null,
+        roundEndDate: round?.endDate ?? null,
+        published,
+        locked: lockState.locked,
+        message: lockState.message,
+      });
 
       setIsJudge(judge);
       setEventRoleId(roleId);
@@ -279,8 +344,8 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
         const rawUrl = s.submissionUrl ?? s.repoUrl ?? '';
         const submittedAt = s.createdTime
           ? new Date(s.createdTime.replace('+00:00', 'Z')).toLocaleString('vi-VN', {
-              day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-            })
+            day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+          })
           : '—';
         const breakdown = breakdownBySubmission[s.id] ?? null;
 
@@ -311,7 +376,7 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
 
     load();
     return () => { cancelled = true; };
-  }, [currentUser?.id, eventId, trackId, reloadKey]);
+  }, [currentUser?.id, eventId, trackId, reloadKey, selectedTrackId]);
 
   const saveEdit = async (submitResultId, { details, comment }) => {
     if (lock.locked) {
@@ -358,12 +423,21 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
 
   const fmt = (iso) => iso
     ? new Date(iso).toLocaleString('vi-VN', {
-        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-      })
+      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    })
     : '—';
 
   // 8 ký tự đầu của teamId, dùng thay cho nhãn ẩn danh "Bài nộp #i" cũ.
   const teamLabel = (s) => `Đội: ${String(s.teamId || s.id || '').slice(0, 8).toUpperCase()}`;
+
+  // Danh sách teamId duy nhất có bài nộp — dùng cho dropdown lọc theo đội.
+  const teamOptions = [...new Map(
+    submissions.map((s) => [s.teamId ?? s.id, { teamId: s.teamId ?? s.id, label: teamLabel(s) }]),
+  ).values()];
+
+  const filteredSubmissions = selectedFilterTeamId
+    ? submissions.filter((s) => (s.teamId ?? s.id) === selectedFilterTeamId)
+    : submissions;
 
   // Điểm trung bình của mọi giám khảo đã chấm (từ breakdown) — dùng khi không phải
   // Judge đang ở chế độ sửa (viewer, hoặc Judge sau khi đã công bố kết quả).
@@ -424,6 +498,26 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
             <StatusBadge tone="success">{submissions.length} bài nộp</StatusBadge>
           </div>
 
+          {myTracks.length > 1 && (
+            <div className="mb-5">
+              <label className="text-xs font-bold uppercase tracking-widest" style={{ color: '#757575' }}>
+                Hạng mục đang chấm
+              </label>
+              <select
+                value={selectedTrackId ?? ''}
+                onChange={(e) => setSelectedTrackId(e.target.value)}
+                className="block mt-1 border rounded-sm px-3 py-2 text-sm"
+                style={{ borderColor: '#e0e0e0' }}
+              >
+                {myTracks.map((t) => (
+                  <option key={t.trackId} value={t.trackId}>
+                    {t.trackName ?? t.trackId}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {roundInfo && (
             <div
               className="mb-4 flex items-center gap-3 px-4 py-3"
@@ -452,21 +546,44 @@ export default function SubmissionsScoringPanel({ eventId, trackId = null }) {
             </div>
           )}
 
+          {submissions.length > 0 && (
+            <div className="mb-5">
+              <label className="text-xs font-bold uppercase tracking-widest" style={{ color: '#757575' }}>
+                Lọc theo đội
+              </label>
+              <select
+                value={selectedFilterTeamId}
+                onChange={(e) => setSelectedFilterTeamId(e.target.value)}
+                className="block mt-1 border rounded-sm px-3 py-2 text-sm"
+                style={{ borderColor: '#e0e0e0' }}
+              >
+                <option value="">Tất cả đội</option>
+                {teamOptions.map((t) => (
+                  <option key={t.teamId} value={t.teamId}>{t.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {submissions.length === 0 ? (
             <div className="text-center py-20">
               <p className="text-sm" style={{ color: '#757575' }}>Chưa có đội nào nộp bài.</p>
             </div>
+          ) : filteredSubmissions.length === 0 ? (
+            <div className="text-center py-20">
+              <p className="text-sm" style={{ color: '#757575' }}>Không có bài nộp nào cho đội đã chọn.</p>
+            </div>
           ) : (
             <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 1fr' }}>
-              {submissions.map((s) => {
-                // Viền màu: cam = chưa chấm, xanh lá = đã chấm (ít nhất 1 giám khảo với
-                // viewer; chính họ với Judge). Nền bài nộp luôn màu trắng.
+              {filteredSubmissions.map((s) => {
+                // Khung màu: cam = chưa chấm, xanh lá = đã chấm (ít nhất 1 giám khảo với
+                // viewer; chính họ với Judge).
                 const borderColor = s.scored ? '#76b900' : '#df6500';
                 // Judge LUÔN dùng điểm của chính mình. Ưu tiên `totalScore` backend đã tính
                 // sẵn (đúng theo value/maxScore thật của từng tiêu chí) — chỉ fallback về
                 // calcScore() (giả định maxScore=10) khi chưa có totalScore (bài chưa chấm).
                 // Chỉ viewer (không phải Judge) mới dùng điểm trung bình từ breakdown.
-               const score = isJudge
+                const score = isJudge
                   ? (s.totalScore ?? calcScoreNormalized(s.scores, criteria))
                   : avgBreakdownScore(s.breakdown);
 

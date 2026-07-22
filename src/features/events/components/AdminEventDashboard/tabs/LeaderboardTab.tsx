@@ -64,21 +64,11 @@ export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
   const advancementRule = selectedRound?.advancementRule?.trim() ?? '';
   const hasRule = advancementRule !== '';
 
-  const endDateText = selectedRound?.endDate
-    ? new Date(selectedRound.endDate).toLocaleString('vi-VN', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    : '';
-
   // ─── FE-01: Tính kết quả (KHÔNG tự công bố — chỉ ra bản nháp để rà soát) ───
   // Vòng có advancementRule → không gửi topN (BE tự quyết). Vòng chưa có rule →
   // gửi topN EC nhập (nếu bỏ trống, BE dùng mặc định của nó).
   const handleCalculate = async () => {
-    if (!roundId || !roundEnded || busy) return;
+    if (!roundId || busy) return;
     let parsedTopN: number | undefined;
     if (!hasRule) {
       const raw = topN.trim();
@@ -92,7 +82,9 @@ export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
     }
     const ok = await dialog.confirm({
       title: 'Tính kết quả',
-      message: `Tính kết quả (bản nháp) cho "${selectedRound?.roundName ?? 'vòng thi'}"? Sau khi tính, bạn có thể rà soát trước khi bấm "Công bố" riêng.`,
+      message: roundEnded
+        ? `Tính kết quả (bản nháp) cho "${selectedRound?.roundName ?? 'vòng thi'}"? Sau khi tính, bạn có thể rà soát trước khi bấm "Công bố" riêng.`
+        : `Vòng thi hoặc (các) hạng mục CHƯA kết thúc nộp bài/chấm điểm. Tính kết quả bây giờ chỉ dựa trên dữ liệu hiện có và CÓ THỂ thay đổi nếu có bài nộp/điểm chấm mới sau đó. Vẫn muốn tính trước kết quả (bản nháp) cho "${selectedRound?.roundName ?? 'vòng thi'}"?`,
       confirmText: 'Tính kết quả',
     });
     if (!ok) return;
@@ -250,16 +242,16 @@ export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
               <button
                 type="button"
                 onClick={handleCalculate}
+<<<<<<< HEAD
                 disabled={!roundEnded || busy}
                 className="btn btn-create disabled:opacity-50 disabled:cursor-not-allowed"
+=======
+                disabled={busy}
+                className="px-4 py-2 rounded-sm t-body-sm font-bold bg-primary text-on-primary disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+>>>>>>> main
               >
                 {calculate.isPending ? 'Đang tính…' : 'Tính kết quả vòng'}
               </button>
-              {!roundEnded && (
-                <p className="t-caption-sm text-warning m-0">
-                  Nút mở khi vòng thi kết thúc{endDateText ? ` (${endDateText})` : ''}.
-                </p>
-              )}
             </div>
           </>
         )}

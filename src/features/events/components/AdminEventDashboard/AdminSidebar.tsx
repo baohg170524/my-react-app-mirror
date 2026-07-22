@@ -1,17 +1,16 @@
 'use client';
 
 import React from 'react';
-import { FileText, Users, Trophy, LucideIcon, UserCog, UserCheck, Inbox, Scale } from 'lucide-react';
+import { FileText, Users, Trophy, LucideIcon, UserCog, Inbox, Scale } from 'lucide-react';
 
 export type AdminTab =
-  | 'detail' | 'teams' | 'roles' | 'approvals'
+  | 'detail' | 'teams' | 'roles'
   | 'submission' | 'appeal' | 'leaderboard';
 
 const tabs: { id: AdminTab; label: string; icon: LucideIcon }[] = [
   { id: 'detail', label: 'Chi tiết sự kiện', icon: FileText },
   { id: 'teams', label: 'Danh sách đội', icon: Users },
   { id: 'roles', label: 'Danh sách vai trò', icon: UserCog },
-  { id: 'approvals', label: 'Xét duyệt tài khoản', icon: UserCheck },
   // Gộp "Chấm điểm" + "Bài nộp" thành 1 tab (xem SubmissionsScoringPanel.jsx).
   { id: 'submission', label: 'Bài nộp', icon: Inbox },
   { id: 'appeal', label: 'Phúc khảo', icon: Scale },

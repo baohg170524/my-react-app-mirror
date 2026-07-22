@@ -66,4 +66,16 @@ export const eventRolesApi = {
     );
     return data.data ?? [];
   },
+
+  /**
+   * Lấy TẤT CẢ bản ghi vai trò của 1 user trong 1 event (có thể nhiều dòng — vd Judge
+   * được giao chấm nhiều track cùng lúc). `GET /EventRoles/user-role` chỉ trả về 1 bản
+   * ghi nên không đủ cho trường hợp này; ở đây tận dụng `listByEvent` (trả toàn bộ role
+   * của event) rồi lọc theo userId ở client, vì backend chưa có endpoint lọc theo cả
+   * UserId lẫn trả về danh sách (chỉ có bản 1-object ở `getUserRole`).
+   */
+  listMyRoles: async (userId: string, eventId: string): Promise<EventRoleModel[]> => {
+    const all = await eventRolesApi.listByEvent(eventId);
+    return all.filter((r) => r.userId === userId);
+  },
 };

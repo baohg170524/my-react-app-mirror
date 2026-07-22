@@ -60,11 +60,25 @@ export function MyTeamTab({ eventId, userId }: Props) {
 
   return (
     <section className="p-6 max-w-2xl mx-auto space-y-6">
-      <div className="border border-hairline rounded-sm bg-canvas p-4 md:p-6 space-y-4">
+      <div
+        className={
+          isPending
+            ? 'border-2 border-amber-300 rounded-sm bg-canvas p-4 md:p-6 space-y-4'
+            : 'border border-hairline rounded-sm bg-canvas p-4 md:p-6 space-y-4'
+        }
+      >
         <header>
           <div className="flex items-center gap-3 flex-wrap">
             <h2 className="t-heading-md">{team.teamName}</h2>
           </div>
+          {/* Chỉ hiện dòng trạng thái khi đang PendingApproval. Registered vào thẳng
+              không cần hiện gì; Forming (kể cả sau khi bị từ chối) cũng không hiện
+              gì — coi như đội mới, không có tín hiệu "đã từng bị từ chối" trong UI. */}
+          {isPending && (
+            <p className="t-caption-sm font-bold text-amber-700 mt-1">
+              Trạng thái: Đang chờ duyệt
+            </p>
+          )}
           {team.description ? <p className="t-body-sm text-mute mt-1">{team.description}</p> : null}
         </header>
 

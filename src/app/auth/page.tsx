@@ -888,7 +888,7 @@ export default function AuthPage() {
                       size="large"
                       width="316"
                       shape="rectangular"
-                      text="signin_with"
+                      text="continue_with"
                       logo_alignment="center"
                     />
                   </GoogleOAuthProvider>
