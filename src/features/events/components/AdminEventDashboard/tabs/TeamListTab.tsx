@@ -299,7 +299,7 @@ function TeamStatusBadge({ status }: { status?: TeamStatus | string }) {
     },
     PendingApproval: {
       label: 'Đang chờ duyệt',
-      bg: 'rgba(245,158,11,0.14)', fg: '#b45309', bd: 'rgba(245,158,11,0.55)',
+      tone: 'pending',
     },
     Registered: {
       label: 'Đã duyệt',

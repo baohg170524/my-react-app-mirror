@@ -242,13 +242,8 @@ export function LeaderboardTab({ eventId }: LeaderboardTabProps) {
               <button
                 type="button"
                 onClick={handleCalculate}
-<<<<<<< HEAD
-                disabled={!roundEnded || busy}
-                className="btn btn-create disabled:opacity-50 disabled:cursor-not-allowed"
-=======
                 disabled={busy}
                 className="px-4 py-2 rounded-sm t-body-sm font-bold bg-primary text-on-primary disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
->>>>>>> main
               >
                 {calculate.isPending ? 'Đang tính…' : 'Tính kết quả vòng'}
               </button>
