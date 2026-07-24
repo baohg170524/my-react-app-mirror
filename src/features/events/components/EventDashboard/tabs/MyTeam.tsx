@@ -7,6 +7,7 @@ import { useNotify } from '@/components/NotificationProvider';
 import { useDialog } from '@/components/ConfirmDialogProvider';
 import { EventRoleBadge } from '@/components/EventRoleBadge';
 import { StatusBadge, type StatusTone } from '@/components/StatusBadge';
+import { TeamStatusBadge } from '@/features/teams/components/TeamStatusBadge';
 
 interface Props { eventId: string; userId: string; }
 
@@ -49,36 +50,52 @@ export function MyTeamTab({ eventId, userId }: Props) {
 
   // "Lời mời đã gửi" chỉ hiển thị lời mời VÀO ĐỘI. Yêu cầu chuyển quyền tái dùng chung
   // bảng TeamInvitations (BE không có field phân biệt loại) nhưng luôn gửi cho người ĐÃ
-  // trong đội → lọc bỏ theo membership để không lẫn vào danh sách lời mời.
+  // trong đội → lọc bỏ các yêu cầu chưa Accepted theo membership để không lẫn danh sách.
+  // Lời mời Accepted vẫn giữ lại để hiển thị "Đã tham gia".
   // Chuẩn hoá chữ thường + đối chiếu cả userId lẫn email để tránh trượt do GUID khác hoa/thường.
   const norm = (s?: string | null) => (s ?? '').trim().toLowerCase();
   const memberIds = new Set(team.members.map((m) => norm(m.userId)).filter(Boolean));
   const memberEmails = new Set(team.members.map((m) => norm(m.email)).filter(Boolean));
-  const sentInvitations = invitations.filter(
-    (inv) => !memberIds.has(norm(inv.invitedUserId)) && !memberEmails.has(norm(inv.invitedUserEmail)),
+  const teamInvitations = invitations.filter(
+    (inv) =>
+      inv.status === 'Accepted' ||
+      (!memberIds.has(norm(inv.invitedUserId)) &&
+        !memberEmails.has(norm(inv.invitedUserEmail))),
+  );
+
+  // Một email có thể được mời lại sau khi từ chối/hết hạn. Chỉ giữ lần mời mới
+  // nhất để UI phản ánh trạng thái hiện tại: Declined → PendingAccept → Accepted.
+  const latestInvitationByRecipient = new Map<string, (typeof invitations)[number]>();
+  for (const invitation of teamInvitations) {
+    const recipientKey =
+      norm(invitation.invitedUserEmail) ||
+      norm(invitation.invitedUserId) ||
+      invitation.invitationId;
+    const current = latestInvitationByRecipient.get(recipientKey);
+    const invitationTime = new Date(invitation.createdTime).getTime();
+    const currentTime = current ? new Date(current.createdTime).getTime() : Number.NEGATIVE_INFINITY;
+    if (
+      !current ||
+      invitationTime > currentTime ||
+      (invitationTime === currentTime && invitation.invitationId > current.invitationId)
+    ) {
+      latestInvitationByRecipient.set(recipientKey, invitation);
+    }
+  }
+  const sentInvitations = [...latestInvitationByRecipient.values()].sort(
+    (a, b) => new Date(b.createdTime).getTime() - new Date(a.createdTime).getTime(),
   );
 
   return (
     <section className="p-6 max-w-2xl mx-auto space-y-6">
       <div
-        className={
-          isPending
-            ? 'border-2 border-amber-300 rounded-sm bg-canvas p-4 md:p-6 space-y-4'
-            : 'border border-hairline rounded-sm bg-canvas p-4 md:p-6 space-y-4'
-        }
+        className="border border-hairline rounded-sm bg-canvas p-4 md:p-6 space-y-4"
       >
         <header>
           <div className="flex items-center gap-3 flex-wrap">
             <h2 className="t-heading-md">{team.teamName}</h2>
+            <TeamStatusBadge status={team.status} />
           </div>
-          {/* Chỉ hiện dòng trạng thái khi đang PendingApproval. Registered vào thẳng
-              không cần hiện gì; Forming (kể cả sau khi bị từ chối) cũng không hiện
-              gì — coi như đội mới, không có tín hiệu "đã từng bị từ chối" trong UI. */}
-          {isPending && (
-            <p className="t-caption-sm font-bold text-amber-700 mt-1">
-              Trạng thái: Đang chờ duyệt
-            </p>
-          )}
           {team.description ? <p className="t-body-sm text-mute mt-1">{team.description}</p> : null}
         </header>
 
@@ -192,10 +209,12 @@ export function MyTeamTab({ eventId, userId }: Props) {
           ) : (
             <ul className="divide-y divide-hairline">
               {sentInvitations.map((inv) => {
-                // Danh sách này đã LỌC BỎ thành viên hiện tại (xem filter ở trên), nên một lời mời
-                // "Accepted" còn xuất hiện ở đây nghĩa là người đó đã tham gia rồi RỜI ĐỘI
-                // -> hiển thị "Đã rời đội" thay vì "Đã tham gia" gây hiểu nhầm.
-                const hasLeft = inv.status === 'Accepted';
+                // Accepted + vẫn còn trong membership = đã tham gia. Chỉ đổi thành
+                // "Đã rời đội" khi lời mời đã Accepted nhưng người đó không còn trong đội.
+                const isCurrentMember =
+                  memberIds.has(norm(inv.invitedUserId)) ||
+                  memberEmails.has(norm(inv.invitedUserEmail));
+                const hasLeft = inv.status === 'Accepted' && !isCurrentMember;
                 const badge = hasLeft
                   ? { label: 'Đã rời đội', tone: 'inactive' as StatusTone }
                   : (INVITE_BADGE[inv.status] ?? { label: inv.status, tone: 'neutral' as StatusTone });

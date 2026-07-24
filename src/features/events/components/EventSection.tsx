@@ -1,14 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import type { AxiosError } from "axios";
 import { useAllEvents, useMyEvents, useJoinEvent } from "../hooks/useEvents";
 import { useUserProfile } from "@/features/user/hooks/useUserProfile";
 import { useUserRole } from "@/hooks/useUserRole";
 import { EventFilterTabs } from "./EventFilterTabs";
 import { EventGrid } from "./EventGrid";
-import { CreateEventForm } from "./CreateEventForm";
 import type { ApiError } from "@/services/api";
+
+const CreateEventForm = dynamic(
+  () => import("./CreateEventForm").then((mod) => mod.CreateEventForm),
+  { loading: () => <p className="t-body-md text-mute">Đang tải biểu mẫu…</p> },
+);
 
 type Filter = "all" | "my";
 type Mode = "list" | "create";

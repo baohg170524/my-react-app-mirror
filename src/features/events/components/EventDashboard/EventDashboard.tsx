@@ -1,23 +1,29 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
-import { EventDetailTab } from './tabs/EventDetail';
-import { CreateTeamTab } from './tabs/CreateTeam';
-import { MyTeamTab } from './tabs/MyTeam';
-import { SubmissionTab } from './tabs/Submission';
-import { ResultsTab } from './tabs/Results';
-import { LeaderboardTab } from './tabs/Leaderboard';
-import { JudgeAssignedTeamsTab } from './tabs/JudgeAssignedTeams';
-import SubmissionsScoringPanel from '../shared/SubmissionsScoringPanel';
-import AppealsPanel from '../shared/AppealsPanel';
-import { CompetitionRegistrationTab } from '@/features/registration/components/CompetitionRegistrationTab';
 import { useEventDashboard } from '@/features/events/contexts/EventDashboardContext';
 import { useEvent, useUserEventRole } from '@/features/events/hooks/useEvents';
 import { useMyTeamForEvent } from '@/features/teams/hooks/useTeams';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useRouter } from 'next/navigation';
+
+const tabLoading = () => <p className="t-body-md text-mute p-6">Đang tải nội dung…</p>;
+const EventDetailTab = dynamic(() => import('./tabs/EventDetail').then((mod) => mod.EventDetailTab), { loading: tabLoading });
+const CreateTeamTab = dynamic(() => import('./tabs/CreateTeam').then((mod) => mod.CreateTeamTab), { loading: tabLoading });
+const MyTeamTab = dynamic(() => import('./tabs/MyTeam').then((mod) => mod.MyTeamTab), { loading: tabLoading });
+const SubmissionTab = dynamic(() => import('./tabs/Submission').then((mod) => mod.SubmissionTab), { loading: tabLoading });
+const ResultsTab = dynamic(() => import('./tabs/Results').then((mod) => mod.ResultsTab), { loading: tabLoading });
+const LeaderboardTab = dynamic(() => import('./tabs/Leaderboard').then((mod) => mod.LeaderboardTab), { loading: tabLoading });
+const JudgeAssignedTeamsTab = dynamic(() => import('./tabs/JudgeAssignedTeams').then((mod) => mod.JudgeAssignedTeamsTab), { loading: tabLoading });
+const SubmissionsScoringPanel = dynamic(() => import('../shared/SubmissionsScoringPanel'), { loading: tabLoading });
+const AppealsPanel = dynamic(() => import('../shared/AppealsPanel'), { loading: tabLoading });
+const CompetitionRegistrationTab = dynamic(
+  () => import('@/features/registration/components/CompetitionRegistrationTab').then((mod) => mod.CompetitionRegistrationTab),
+  { loading: tabLoading },
+);
 
 interface EventDashboardProps { eventId: string; userId: string; }
 

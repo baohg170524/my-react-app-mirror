@@ -1,16 +1,19 @@
 'use client';
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEvent } from '@/features/events/hooks/useEvents';
 import { AdminSidebar, AdminTab } from './AdminSidebar';
-import { EventDetailTab } from './tabs/EventDetailTab';
-import { TeamListTab } from './tabs/TeamListTab';
-import { RoleListTab } from './tabs/RoleListTab';
-import { LeaderboardTab } from './tabs/LeaderboardTab';
-import SubmissionsScoringPanel from '../shared/SubmissionsScoringPanel';
-import AppealsPanel from '../shared/AppealsPanel';
+
+const tabLoading = () => <p className="t-body-md text-mute p-6">Đang tải nội dung…</p>;
+const EventDetailTab = dynamic(() => import('./tabs/EventDetailTab').then((mod) => mod.EventDetailTab), { loading: tabLoading });
+const TeamListTab = dynamic(() => import('./tabs/TeamListTab').then((mod) => mod.TeamListTab), { loading: tabLoading });
+const RoleListTab = dynamic(() => import('./tabs/RoleListTab').then((mod) => mod.RoleListTab), { loading: tabLoading });
+const LeaderboardTab = dynamic(() => import('./tabs/LeaderboardTab').then((mod) => mod.LeaderboardTab), { loading: tabLoading });
+const SubmissionsScoringPanel = dynamic(() => import('../shared/SubmissionsScoringPanel'), { loading: tabLoading });
+const AppealsPanel = dynamic(() => import('../shared/AppealsPanel'), { loading: tabLoading });
 
 interface AdminEventDashboardProps {
   eventId: string;
