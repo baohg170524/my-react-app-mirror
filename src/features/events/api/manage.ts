@@ -112,7 +112,7 @@ export const isMentorRole = (r: EventRole) =>
 export const manageApi = {
   /** GET /api/EventRoles/event — every role (judge/mentor/competitor) in an event. */
   listEventRoles: async (eventId: string, roleName?: number): Promise<EventRole[]> => {
-    const params: Record<string, any> = { EventId: eventId, PageNumber: 1, PageSize: 200 };
+    const params: Record<string, string | number> = { EventId: eventId, PageNumber: 1, PageSize: 200 };
     if (roleName !== undefined && roleName !== null) params.RoleName = roleName;
     const { data } = await apiClient.get<PagedResult<EventRole>>(
       "/EventRoles/event",
@@ -133,7 +133,7 @@ export const manageApi = {
 
   /** GET /api/Teams — filtered by eventId if provided. */
   listTeams: async (eventId?: string): Promise<TeamItem[]> => {
-    const params: Record<string, any> = { PageNumber: 1, PageSize: 200 };
+    const params: Record<string, string | number> = { PageNumber: 1, PageSize: 200 };
     if (eventId) params.EventId = eventId;
     
     const { data } = await apiClient.get<PagedResult<TeamItem>>("/Teams", {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { AxiosError } from 'axios';
 import { useEventRounds, useEventTracks } from '@/features/events/hooks/useEvents';
@@ -29,9 +29,32 @@ const fmt = (iso: string) =>
   });
 
 interface RoundInfo { id: string; roundName: string | null; startDate: string; endDate: string; }
+type RoundSubmissionStatus = 'not-open' | 'open' | 'closed';
+
+function roundSubmissionStatus(round: RoundInfo, now: number): RoundSubmissionStatus {
+  const start = new Date(round.startDate).getTime();
+  const end = new Date(round.endDate).getTime();
+  if (now < start) return 'not-open';
+  if (now <= end) return 'open';
+  return 'closed';
+}
+
+const ROUND_STATUS_LABEL: Record<RoundSubmissionStatus, string> = {
+  'not-open': 'Chưa mở',
+  open: 'Đã mở',
+  closed: 'Đã đóng',
+};
+
 interface EventModelWithSubmissionRules {
   rounds?: Array<{
-    tracks?: Array<{ id: string; submissionRuleDescription?: string | null }>;
+    id?: string;
+    tracks?: Array<{
+      id: string;
+      trackName?: string | null;
+      submissionRuleDescription?: string | null;
+      startDate?: string | null;
+      endDate?: string | null;
+    }>;
   }>;
 }
 
@@ -70,21 +93,38 @@ export function SubmissionTab({ teamId, eventId }: Props) {
   const update = useUpdateSubmission(teamId);
 
   const allRounds = rounds as RoundInfo[];
-  const allTracks = tracks as Array<{
+  type SubmissionTrack = {
     id: string;
     roundId: string;
     trackName: string | null;
     submissionRuleDescription?: string | null;
-  }>;
+  };
+  const flatTracks = tracks as SubmissionTrack[];
+  const nestedRounds =
+    (eventModel as EventModelWithSubmissionRules | undefined)?.rounds ?? [];
+  const nestedTracks: SubmissionTrack[] = nestedRounds.flatMap((round) =>
+    (round.tracks ?? []).map((track) => ({
+      id: track.id,
+      roundId: round.id ?? '',
+      trackName: track.trackName ?? null,
+      submissionRuleDescription: track.submissionRuleDescription,
+    })),
+  );
+  const flatTrackIds = new Set(flatTracks.map((track) => track.id.toLowerCase()));
+  const allTracks = [
+    ...flatTracks,
+    ...nestedTracks.filter((track) => !flatTrackIds.has(track.id.toLowerCase())),
+  ];
 
   // Sinh danh sách ô nhập link theo cấu hình của Track đang chọn:
   // mỗi dòng trong submissionRuleDescription = 1 loại link phải nộp.
   const buildLinksForTrack = (tid: string): SubmissionLink[] => {
     // Tìm rules từ nested model thay vì flat model (do BE không trả field này ở flat list)
     let ruleDesc: string | null | undefined = null;
-    const nestedRounds = (eventModel as EventModelWithSubmissionRules | undefined)?.rounds ?? [];
     for (const r of nestedRounds) {
-      const track = (r.tracks ?? []).find((x) => x.id === tid);
+      const track = (r.tracks ?? []).find(
+        (item) => item.id.toLowerCase() === tid.toLowerCase(),
+      );
       if (track) {
         ruleDesc = track.submissionRuleDescription;
         break;
@@ -97,32 +137,56 @@ export function SubmissionTab({ teamId, eventId }: Props) {
       : [{ label: DEFAULT_LINK_LABEL, url: '' }];
   };
 
-  // Vòng đang diễn ra (dùng để hiện banner + highlight trong dropdown).
-  const activeRound = useMemo(
-    () => allRounds.find((r) =>
-      now >= new Date(r.startDate).getTime() && now <= new Date(r.endDate).getTime()
-    ),
-    [allRounds, now],
+  const tracksForRound = allTracks.filter(
+    (track) => track.roundId.toLowerCase() === roundId.toLowerCase(),
   );
-
-  const tracksForRound = useMemo(
-    () => allTracks.filter((t) => t.roundId === roundId),
-    [allTracks, roundId],
-  );
-  const trackName = (id: string) => allTracks.find((t) => t.id === id)?.trackName ?? '—';
+  const trackName = (id: string) =>
+    allTracks.find((track) => track.id.toLowerCase() === id.toLowerCase())?.trackName ?? '—';
+  const trackSubmissionWindow = (tid: string) => {
+    for (const round of nestedRounds) {
+      const track = (round.tracks ?? []).find(
+        (item) => item.id.toLowerCase() === tid.toLowerCase(),
+      );
+      if (track) return { startDate: track.startDate, endDate: track.endDate };
+    }
+    return undefined;
+  };
+  const trackSubmissionStatus = (tid: string): RoundSubmissionStatus | undefined => {
+    const window = trackSubmissionWindow(tid);
+    if (!window?.startDate || !window.endDate) return undefined;
+    return roundSubmissionStatus(
+      {
+        id: tid,
+        roundName: null,
+        startDate: window.startDate,
+        endDate: window.endDate,
+      },
+      now,
+    );
+  };
 
   // Vòng của một bài nộp (suy từ track) — để biết bài còn trong hạn sửa hay không.
   const roundOfTrack = (tid: string): RoundInfo | undefined => {
-    const t = allTracks.find((x) => x.id === tid);
-    return t ? allRounds.find((r) => r.id === t.roundId) : undefined;
+    const track = allTracks.find((item) => item.id.toLowerCase() === tid.toLowerCase());
+    return track
+      ? allRounds.find(
+        (round) => round.id.toLowerCase() === track.roundId.toLowerCase(),
+      )
+      : undefined;
   };
   const isRoundOpen = (r?: RoundInfo) => {
     if (!r) return false;
-    return now >= new Date(r.startDate).getTime() && now <= new Date(r.endDate).getTime();
+    return roundSubmissionStatus(r, now) === 'open';
   };
 
   const selectedRound = allRounds.find((r) => r.id === roundId);
-  const selectedClosed = !!selectedRound && !isRoundOpen(selectedRound);
+  const selectedRoundStatus = selectedRound
+    ? roundSubmissionStatus(selectedRound, now)
+    : undefined;
+  const selectedTrackStatus = trackId ? trackSubmissionStatus(trackId) : undefined;
+  const selectedTrackWindow = trackId ? trackSubmissionWindow(trackId) : undefined;
+  const selectedClosed = !!selectedRoundStatus && selectedRoundStatus !== 'open';
+  const selectedTrackClosed = !!trackId && selectedTrackStatus !== 'open';
 
   // Gộp danh sách link thành giá trị gửi lên BE (trường submissionUrl):
   // - Track có cấu hình nhiều loại link -> JSON.stringify([{label,url},...])
@@ -165,33 +229,6 @@ export function SubmissionTab({ teamId, eventId }: Props) {
     <section className="p-6 max-w-2xl mx-auto space-y-6">
       <h2 className="t-heading-md">{editing ? 'Sửa bài nộp' : 'Nộp bài'}</h2>
 
-      {activeRound && !editing && (
-        <div
-          className="flex items-center gap-3 px-4 py-3"
-          style={{ background: 'rgba(118,185,0,0.08)', border: '1px solid rgba(118,185,0,0.3)', borderRadius: 4 }}
-        >
-          <div className="text-sm">
-            <span className="font-bold" style={{ color: '#5a8d00' }}>
-              {activeRound.roundName ?? 'Vòng thi'} đang diễn ra
-            </span>
-            <span className="ml-2" style={{ color: '#757575' }}>
-              Hạn nộp: {fmt(activeRound.endDate)}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {!activeRound && allRounds.length > 0 && !editing && (
-        <div
-          className="flex items-center gap-3 px-4 py-3"
-          style={{ background: 'rgba(255,193,7,0.1)', border: '1px solid #ffc107', borderRadius: 4 }}
-        >
-          <p className="text-sm m-0" style={{ color: '#8a6d00' }}>
-            Hiện không có vòng thi nào đang mở. Bạn chỉ có thể xem bài đã nộp.
-          </p>
-        </div>
-      )}
-
       <form onSubmit={submit} className="space-y-3 border border-hairline rounded-sm bg-white p-4 md:p-6">
         {editing ? (
           <p className="t-body-sm text-mute">
@@ -204,11 +241,11 @@ export function SubmissionTab({ teamId, eventId }: Props) {
               <select required value={roundId} onChange={(e) => { setRoundId(e.target.value); setTrackId(''); setLinks([]); }} className="input w-full mt-1">
                 <option value="">— Chọn vòng —</option>
                 {allRounds.map((r) => {
-                  const isActive = isRoundOpen(r);
+                  const status = roundSubmissionStatus(r, now);
                   return (
                     <option key={r.id} value={r.id}>
                       {r.roundName ?? 'Vòng ' + r.id.slice(0, 4)}
-                      {isActive ? ' (Đang mở)' : ''}
+                      {' '}({ROUND_STATUS_LABEL[status]})
                     </option>
                   );
                 })}
@@ -218,7 +255,9 @@ export function SubmissionTab({ teamId, eventId }: Props) {
             {selectedRound && (
               <p className={`t-body-sm ${selectedClosed ? 'text-error font-bold' : 'text-mute'}`}>
                 Thời gian nộp: {fmt(selectedRound.startDate)} → {fmt(selectedRound.endDate)}
-                {selectedClosed && ' — NGOÀI thời gian nộp bài'}
+                {selectedRoundStatus === 'not-open' && ' — Vòng chưa mở'}
+                {selectedRoundStatus === 'open' && ' — Đã mở nộp bài'}
+                {selectedRoundStatus === 'closed' && ' — Đã hết hạn nộp bài'}
               </p>
             )}
 
@@ -235,9 +274,28 @@ export function SubmissionTab({ teamId, eventId }: Props) {
                 className="input w-full mt-1" disabled={!roundId}
               >
                 <option value="">— Chọn hạng mục —</option>
-                {tracksForRound.map((t) => <option key={t.id} value={t.id}>{t.trackName ?? 'Hạng mục ' + t.id.slice(0, 4)}</option>)}
+                {tracksForRound.map((t) => {
+                  const status = trackSubmissionStatus(t.id);
+                  return (
+                    <option key={t.id} value={t.id}>
+                      {t.trackName ?? 'Hạng mục ' + t.id.slice(0, 4)}
+                      {' '}({status ? ROUND_STATUS_LABEL[status] : 'Chưa cập nhật thời gian'})
+                    </option>
+                  );
+                })}
               </select>
             </label>
+
+            {trackId && (
+              <p className={`t-body-sm ${selectedTrackClosed ? 'text-error font-bold' : 'text-mute'}`}>
+                {selectedTrackWindow?.startDate && selectedTrackWindow.endDate
+                  ? `Thời gian nộp hạng mục: ${fmt(selectedTrackWindow.startDate)} → ${fmt(selectedTrackWindow.endDate)}`
+                  : 'Hạng mục chưa được cập nhật thời gian nộp bài'}
+                {selectedTrackStatus === 'not-open' && ' — Hạng mục chưa mở'}
+                {selectedTrackStatus === 'open' && ' — Đã mở nộp bài'}
+                {selectedTrackStatus === 'closed' && ' — Đã hết hạn nộp bài'}
+              </p>
+            )}
           </>
         )}
 
@@ -267,7 +325,11 @@ export function SubmissionTab({ teamId, eventId }: Props) {
         {mutError ? <p className="t-body-sm text-error">{submitErrorMessage(mutError)}</p> : null}
 
         <div className="flex gap-2">
-          <button type="submit" disabled={pending || (!editing && selectedClosed)} className={`btn ${editing ? 'btn-update' : 'btn-create'}`}>
+          <button
+            type="submit"
+            disabled={pending || (!editing && (selectedClosed || selectedTrackClosed))}
+            className={`btn ${editing ? 'btn-update' : 'btn-create'}`}
+          >
             {pending ? 'Đang lưu…' : editing ? 'Lưu thay đổi' : 'Nộp bài'}
           </button>
           {editing && (
@@ -290,7 +352,8 @@ export function SubmissionTab({ teamId, eventId }: Props) {
           <ul className="space-y-3">
             {existing.map((s) => {
               const r = roundOfTrack(s.trackId);
-              const canEdit = isRoundOpen(r);
+              const canEdit =
+                isRoundOpen(r) && trackSubmissionStatus(s.trackId) === 'open';
               return (
                 <li key={s.id} className="border border-hairline rounded-sm bg-white p-4 space-y-2">
                   {/* Dòng 1: trạng thái + hạng mục / vòng + nút Sửa */}

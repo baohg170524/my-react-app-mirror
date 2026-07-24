@@ -1210,6 +1210,13 @@ function EventFormBody({
   const editMutation = useMutation({
     mutationFn: async () => {
       const id = eventId as string;
+      // Snapshot the server-backed ids at the start of this save. New rounds/tracks
+      // receive ids during the mutation and must be retained in local form state so
+      // a second save in the same open form updates them instead of creating duplicates.
+      const previouslySavedRoundIds = [...originalRoundIds.current];
+      const previouslySavedTrackIds = [...originalTrackIds.current];
+      const savedRoundIds = new Set<string>();
+      const savedTrackIds = new Set<string>();
       const oldStart = new Date(initialForm.startDate).getTime();
       const oldEnd = new Date(initialForm.endDate).getTime();
       const newStart = new Date(form.startDate).getTime();
@@ -1255,7 +1262,22 @@ function EventFormBody({
         };
         let roundId = r.id;
         if (roundId) await roundsApi.update(roundId, roundPayload);
-        else roundId = (await roundsApi.create(roundPayload)).id;
+        else {
+          roundId = (await roundsApi.create(roundPayload)).id;
+          const createdRoundId = roundId;
+          originalRoundIds.current = Array.from(
+            new Set([...originalRoundIds.current, createdRoundId]),
+          );
+          // Persist only the new id, preserving any field edits made while the
+          // request was in flight.
+          setForm((current) => ({
+            ...current,
+            rounds: current.rounds.map((round) =>
+              round.uid === r.uid ? { ...round, id: createdRoundId } : round,
+            ),
+          }));
+        }
+        savedRoundIds.add(roundId);
 
         for (const t of r.tracks) {
           const trackPayload = {
@@ -1273,10 +1295,30 @@ function EventFormBody({
           const trackId = t.id;
           if (trackId) {
             await tracksApi.update(trackId, trackPayload);
+            savedTrackIds.add(trackId);
           } else {
             // POST /Tracks (CreateTrackRequestModel) chưa nhận submissionRuleDescription
             // → tạo xong update ngay để lưu yêu cầu nộp bài cho hạng mục mới thêm khi sửa.
             const createdId = (await tracksApi.create(trackPayload)).id;
+            savedTrackIds.add(createdId);
+            originalTrackIds.current = Array.from(
+              new Set([...originalTrackIds.current, createdId]),
+            );
+            // Keep the form usable after saving: subsequent saves must PUT this
+            // track, and removing it later in the same session must DELETE it.
+            setForm((current) => ({
+              ...current,
+              rounds: current.rounds.map((round) =>
+                round.uid === r.uid
+                  ? {
+                    ...round,
+                    tracks: round.tracks.map((track) =>
+                      track.uid === t.uid ? { ...track, id: createdId } : track,
+                    ),
+                  }
+                  : round,
+              ),
+            }));
             if (trackPayload.submissionRuleDescription.trim()) {
               await tracksApi.update(createdId, trackPayload);
             }
@@ -1284,21 +1326,22 @@ function EventFormBody({
         }
       }
 
-      const keptTrackIds = new Set(
-        form.rounds.flatMap((r) => r.tracks.map((t) => t.id)).filter(Boolean),
-      );
-      for (const tid of originalTrackIds.current) {
-        if (!keptTrackIds.has(tid)) await tracksApi.remove(tid);
+      for (const tid of previouslySavedTrackIds) {
+        if (!savedTrackIds.has(tid)) await tracksApi.remove(tid);
       }
-      const keptRoundIds = new Set(form.rounds.map((r) => r.id).filter(Boolean));
-      for (const rid of originalRoundIds.current) {
-        if (!keptRoundIds.has(rid)) await roundsApi.remove(rid);
+      for (const rid of previouslySavedRoundIds) {
+        if (!savedRoundIds.has(rid)) await roundsApi.remove(rid);
       }
 
       // 3. Finalize Event to its actual bounds
       if (requiresTempWidening) {
         await eventsApi.update(id, finalPayload);
       }
+
+      // These refs are also the deletion baseline for the next save while the
+      // user remains in this form.
+      originalRoundIds.current = [...savedRoundIds];
+      originalTrackIds.current = [...savedTrackIds];
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["events"] });
@@ -1513,6 +1556,40 @@ function EventFormBody({
     if (Number.isNaN(eventStart)) return "Ngày bắt đầu sự kiện không hợp lệ.";
     if (Number.isNaN(eventEnd)) return "Ngày kết thúc sự kiện không hợp lệ.";
 
+    if (!isEdit) {
+      const now = Date.now();
+      const createDates: Array<[label: string, value: string]> = [
+        ["Thời gian bắt đầu sự kiện", form.startDate],
+        ["Thời gian kết thúc sự kiện", form.endDate],
+        ["Thời gian mở đăng ký", form.registrationStartDate],
+        ["Thời gian kết thúc đăng ký", form.registrationEndDate],
+      ];
+      form.rounds.forEach((round, roundIndex) => {
+        const roundLabel = `Vòng ${roundIndex + 1}`;
+        createDates.push(
+          [`${roundLabel}: thời gian bắt đầu`, round.startDate],
+          [`${roundLabel}: thời gian kết thúc`, round.endDate],
+        );
+        round.tracks.forEach((track, trackIndex) => {
+          const trackLabel = `${roundLabel} – Hạng mục ${trackIndex + 1}`;
+          createDates.push(
+            [`${trackLabel}: mở nộp bài`, track.startDate],
+            [`${trackLabel}: hạn nộp bài`, track.endDate],
+            [`${trackLabel}: bắt đầu chấm điểm`, track.scoringStartDate],
+            [`${trackLabel}: kết thúc chấm điểm`, track.scoringEndDate],
+          );
+        });
+      });
+
+      for (const [label, value] of createDates) {
+        if (!value) continue;
+        const time = new Date(toIso(value)).getTime();
+        if (!Number.isNaN(time) && time < now) {
+          return `${label} không thể nằm trong quá khứ.`;
+        }
+      }
+    }
+
     if (eventEnd <= eventStart) {
       return "Ngày kết thúc sự kiện phải sau ngày bắt đầu.";
     }
@@ -1600,6 +1677,22 @@ function EventFormBody({
         const track = round.tracks[j];
         const trackLabel = `${roundLabel} – Hạng mục ${j + 1}`;
         const originalTrack = originalRound?.tracks.find((item) => item.id === track.id);
+
+        if (track.trackName.trim()) {
+          const requirements = track.submissionRequirements;
+          const hasFixedRequirement =
+            requirements.repo || requirements.demo || requirements.reportSlide;
+          const hasOtherRequirement =
+            requirements.otherEnabled && requirements.otherText.trim().length > 0;
+
+          if (requirements.otherEnabled && !requirements.otherText.trim()) {
+            return `${trackLabel}: vui lòng nhập nội dung cho yêu cầu “Khác”.`;
+          }
+          if (!hasFixedRequirement && !hasOtherRequirement) {
+            return `${trackLabel}: vui lòng chọn ít nhất một yêu cầu nộp bài.`;
+          }
+        }
+
         for (const [label, original, next] of [
           [`${trackLabel}: mở nộp bài`, originalTrack?.startDate ?? "", track.startDate],
           [`${trackLabel}: hạn nộp bài`, originalTrack?.endDate ?? "", track.endDate],

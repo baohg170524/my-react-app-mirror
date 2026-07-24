@@ -175,27 +175,35 @@ function buildTimeline(
     // Mỗi hạng mục có đúng 2 khoảng thời gian do BE quản lý: Nộp bài
     // (startDate → endDate) và Chấm điểm (scoringStartDate → scoringEndDate).
     // Map trực tiếp từ API — KHÔNG nội suy/chia nhỏ thời gian.
-    const trackCards: TrackCardData[] = roundTracks.map((t) => {
-      const d = opts.trackDatesByTrackId?.get(t.id);
-      return {
-        id: t.id,
-        trackName: t.trackName ?? '—',
-        description: t.description || undefined,
-        submit: { start: d?.startDate ?? null, end: d?.endDate ?? null },
-        scoring: { start: d?.scoringStartDate ?? null, end: d?.scoringEndDate ?? null },
-        admin: opts.admin
-          ? {
-              template: t.templateId ? opts.templateName?.(t.templateId) ?? '—' : null,
-              submissionRules: parseSubmissionRuleLines(opts.submissionRuleByTrackId?.get(t.id)),
-              stats: {
-                teams: distinct(roles.filter((r) => r.trackId === t.id).map((r) => r.teamId)),
-                mentors: t.mentors?.length ?? 0,
-                judges: t.judges?.length ?? 0,
-              },
-            }
-          : undefined,
-      };
-    });
+    const trackCards: TrackCardData[] = roundTracks
+      .map((t) => {
+        const d = opts.trackDatesByTrackId?.get(t.id);
+        return {
+          id: t.id,
+          trackName: t.trackName ?? '—',
+          description: t.description || undefined,
+          submit: { start: d?.startDate ?? null, end: d?.endDate ?? null },
+          scoring: { start: d?.scoringStartDate ?? null, end: d?.scoringEndDate ?? null },
+          admin: opts.admin
+            ? {
+                template: t.templateId ? opts.templateName?.(t.templateId) ?? '—' : null,
+                submissionRules: parseSubmissionRuleLines(opts.submissionRuleByTrackId?.get(t.id)),
+                stats: {
+                  teams: distinct(roles.filter((r) => r.trackId === t.id).map((r) => r.teamId)),
+                  mentors: t.mentors?.length ?? 0,
+                  judges: t.judges?.length ?? 0,
+                },
+              }
+            : undefined,
+        };
+      })
+      .sort((a, b) => {
+        const aTime = new Date(a.submit.start ?? a.scoring.start ?? '').getTime();
+        const bTime = new Date(b.submit.start ?? b.scoring.start ?? '').getTime();
+        const safeATime = Number.isNaN(aTime) ? Number.POSITIVE_INFINITY : aTime;
+        const safeBTime = Number.isNaN(bTime) ? Number.POSITIVE_INFINITY : bTime;
+        return safeATime - safeBTime || a.id.localeCompare(b.id);
+      });
 
     nodes.push({
       id: `round-${round.id}`,

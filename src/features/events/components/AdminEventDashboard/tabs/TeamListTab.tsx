@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { EventRoleBadge } from '@/components/EventRoleBadge';
-import { StatusBadge, type StatusTone } from '@/components/StatusBadge';
 import { Search } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useEventRoles, useTeams } from '@/features/events/hooks/useEvents';
@@ -11,7 +10,7 @@ import { useDialog } from '@/components/ConfirmDialogProvider';
 import { getErrorMessage } from '@/lib/apiError';
 import { useApproveTeamRegistration, useRejectTeamRegistration } from '@/features/teams/hooks/useTeams';
 import { teamsApi } from '@/features/teams/api/teams';
-import type { TeamStatus } from '@/features/teams/types/team.types';
+import { TeamStatusBadge } from '@/features/teams/components/TeamStatusBadge';
 import { Card } from '../../EventDashboard/Card';
 import { CardSkeleton } from '../../EventDashboard/SkeletonLoaders';
 
@@ -284,33 +283,6 @@ export function TeamListTab({ eventId }: TeamListTabProps) {
       </div>
     </Card>
   );
-}
-
-// ─── Team status badge ───────────────────────────────────────────────────────────
-
-/** Badge trạng thái đội — 3 giá trị thật xác nhận từ code Backend (TeamStatus enum).
- *  PendingApproval dùng tông vàng/cam riêng (đã chốt UX), khác hẳn Registered (xanh)
- *  và Forming (trung tính). */
-function TeamStatusBadge({ status }: { status?: TeamStatus | string }) {
-  const map: Record<string, { label: string; tone: StatusTone }> = {
-    Forming: {
-      label: 'Đang lập đội',
-      tone: 'neutral',
-    },
-    PendingApproval: {
-      label: 'Đang chờ duyệt',
-      tone: 'pending',
-    },
-    Registered: {
-      label: 'Đã duyệt',
-      tone: 'success',
-    },
-  };
-  const s = (status && map[status]) || {
-    label: status || '—',
-    tone: 'neutral' as StatusTone,
-  };
-  return <StatusBadge tone={s.tone}>{s.label}</StatusBadge>;
 }
 
 // ─── Team members panel ───────────────────────────────────────────────────────────
